@@ -1,0 +1,6 @@
+outputs
+.vscode
+*.png
+*.svg
+*.o
+*.so
