@@ -35,20 +35,23 @@ function plot_model!()
     # Create inputs
     x = scale_dbspl(pure_tone(1000.0, 0.0, 0.25, 100e3), 50.0)
     meout = zeros(length(x))
+    modelout = zeros(length(x))
 
     # Apply ME filter
-    model!(x, 1000.0, 1, 1/100e3, length(x), 1.0, 1.0, 1, meout)
+    model!(x, 1000.0, 1, 1/100e3, length(x), 1.0, 1.0, 1, meout, modelout)
 
     # Plot output
     fig = Figure()
-    axs = [Axis(fig[i, 1]) for i in 1:2]
+    axs = [Axis(fig[i, 1]) for i in 1:3]
     t = 0.0:(1/100e3):(0.25-1/100e3)
     lines!(axs[1], t, x)
     lines!(axs[2], t, meout)
+    lines!(axs[3], t, modelout)
     xlims!.(axs, 0.00, 0.01)
-    axs[2].xlabel = "Time (s)"
+    axs[end].xlabel = "Time (s)"
     axs[1].ylabel = "Input pressure"
     axs[2].ylabel = "Middle ear response"
+    axs[3].ylabel = "Model out"
     fig
     save(projectdir("outputs", "test", "model!.png"), fig)
 end

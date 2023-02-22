@@ -55,12 +55,78 @@
  * 
  */
 void model(double *px, double cf, int nrep, double tdres, int totalstim,
-           double cohc, double cihc, int species, double *meout) {
+           double cohc, double cihc, int species, double *meout, double *modelout) {
+    /* Declare variables used in the model */
+    double *tmpgain;
+    double bmplace, centerfreq, gain, taubm, ratiowb, TauWBMax, TauWBMin, bmTaubm, fcohc, tauwb, wbgain, lasttmpgain, wbout1, wbout;
+    int bmorder, n, wborder;
+    double Taumin[1],Taumax[1], bmTaumin[1], bmTaumax[1], ratiobm[1];
+    int grdelay[1];
+
+    /* Allocate memory */
+    tmpgain = (double*) calloc(totalstim, sizeof(double));
+
     /* Declare functions used in model */
 	void middle_ear(double *, double, int, int, double *);
+    double Get_tauwb(double, int, int, double *, double *);
+	double Get_taubm(double, int, double, double *, double *, double *);
+    double gain_groupdelay(double, double, double, double, int *);
+    double WbGammaTone(double, double, double, int, double, double, int);
 
     /* Calculate middle-ear output */
     middle_ear(px, tdres, totalstim, species, meout);
+
+	/* Calculate the center frequency for the control-path wideband filter
+	   from the location on basilar membrane, based on Greenwood (JASA 1990) */
+	if (species == 1) {
+    /* Cat frequency shift corresponding to 1.2 mm */
+        bmplace = 11.9 * log10(0.80 + cf / 456.0); /* Calculate the location on basilar membrane from CF */
+        centerfreq = 456.0*(pow(10,(bmplace+1.2)/11.9)-0.80); /* Shift the center freq */
+    }
+	else {
+    /* Human frequency shift corresponding to 1.2 mm */
+        bmplace = (35/2.1) * log10(1.0 + cf / 165.4); /* Calculate the location on basilar membrane from CF */
+        centerfreq = 165.4*(pow(10,(bmplace+1.2)/(35/2.1))-1.0); /* Shift the center freq */
+    }
+
+    /* Calculate parameters associated with cochlear gain */
+	if(species == 1) { 
+        gain = 52.0/2.0*(tanh(2.2*log10(cf/0.6e3)+0.15)+1.0);
+    }
+    else {
+        gain = 52.0/2.0*(tanh(2.2*log10(cf/0.6e3)+0.15)+1.0);
+    }
+
+    /* Limit gain to range of 15 to 60 dB */
+    if (gain > 60.0) gain = 60.0;
+    if (gain < 15.0) gain = 15.0;
+
+	/* Determine parameters for the ??? */
+	bmorder = 3;
+	Get_tauwb(cf, species, bmorder, Taumax, Taumin);
+	taubm   = cohc*(Taumax[0]-Taumin[0])+Taumin[0];
+	ratiowb = Taumin[0]/Taumax[0];
+
+    /* Determine parameters for the signal-path C1 filter */
+	Get_taubm(cf, species, Taumax[0], bmTaumax, bmTaumin, ratiobm);
+	bmTaubm = cohc*(bmTaumax[0]-bmTaumin[0])+bmTaumin[0];
+	fcohc = bmTaumax[0]/bmTaubm;
+
+    /* Determine parameters for the control-path wideband filter */
+	wborder = 3;
+    TauWBMax = Taumin[0]+0.2*(Taumax[0]-Taumin[0]);
+	TauWBMin = TauWBMax/Taumax[0]*Taumin[0];
+    tauwb = TauWBMax+(bmTaubm-bmTaumax[0])*(TauWBMax-TauWBMin)/(bmTaumax[0]-bmTaumin[0]);
+	wbgain = gain_groupdelay(tdres,centerfreq,cf,tauwb,grdelay);
+	tmpgain[0] = wbgain;
+	lasttmpgain = wbgain;
+
+    /* Compute the main model loop*/
+    for (n=0; n<totalstim; n++) {
+        wbout1 = WbGammaTone(meout[n], tdres, centerfreq, n, tauwb, wbgain, wborder);
+        wbout = pow((tauwb/TauWBMax), wborder) * wbout1 * 10e3 *__max(1, cf/5e3);
+        modelout[n] = wbout;
+    }
 }
 
 /**
@@ -481,4 +547,39 @@ double NLogarithm(double x, double slope, double asym, double cf) {
 	};  
 
     return(xx);
+}
+
+double WbGammaTone(double x,double tdres,double centerfreq, int n, double tau,double gain,int order)
+{
+  static double wbphase;
+  static COMPLEX wbgtf[4], wbgtfl[4];
+
+  double delta_phase,dtmp,c1LP,c2LP,out;
+  int i,j;
+  
+  if (n==0)
+  {
+      wbphase = 0;
+      for(i=0; i<=order;i++)
+      {
+            wbgtfl[i] = compmult(0,compexp(0));
+            wbgtf[i]  = compmult(0,compexp(0));
+      }
+  }
+  
+  delta_phase = -TWOPI*centerfreq*tdres;
+  wbphase += delta_phase;
+  
+  dtmp = tau*2.0/tdres;
+  c1LP = (dtmp-1)/(dtmp+1);
+  c2LP = 1.0/(dtmp+1);
+  wbgtf[0] = compmult(x,compexp(wbphase));                 /* FREQUENCY SHIFT */
+  
+  for(j = 1; j <= order; j++)                              /* IIR Bilinear transformation LPF */
+  wbgtf[j] = comp2sum(compmult(c2LP*gain,comp2sum(wbgtf[j-1],wbgtfl[j-1])),
+      compmult(c1LP,wbgtfl[j]));
+  out = REAL(compprod(compexp(-wbphase), wbgtf[order])); /* FREQ SHIFT BACK UP */
+  
+  for(i=0; i<=order;i++) wbgtfl[i] = wbgtf[i];
+  return(out);
 }
