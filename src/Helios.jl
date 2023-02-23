@@ -16,7 +16,12 @@ function model!(
     cihc::Float64,
     species::Int64,
     meout::Vector{Float64},
-    modelout::Vector{Float64},
+    controlout::Vector{Float64},
+    c1out::Vector{Float64},
+    c1vihcout::Vector{Float64},
+    c2out::Vector{Float64},
+    c2vihcout::Vector{Float64},
+    ihcout::Vector{Float64},
 )
     ccall(
             (:model, libgfc2023),  # function call
@@ -28,12 +33,31 @@ function model!(
                 Cdouble,      # tdres
                 Cint,         # totalstim
                 Cdouble,      # cohc
-                Cint,         # cihc
+                Cdouble,      # cihc
                 Cint,         # species
                 Ptr{Cdouble}, # meout
+                Ptr{Cdouble}, # control
+                Ptr{Cdouble}, # c1 
+                Ptr{Cdouble}, # c1vihc
+                Ptr{Cdouble}, # c2 
+                Ptr{Cdouble}, # c2vihc
                 Ptr{Cdouble}, # modelout
             ),
-            px, cf, nrep, tdres, totalstim, cohc, cihc, species, meout, modelout  # input args
+            px, 
+            cf, 
+            nrep, 
+            tdres, 
+            totalstim, 
+            cohc, 
+            cihc, 
+            species, 
+            meout, 
+            controlout, 
+            c1out, 
+            c1vihcout,
+            c2out, 
+            c2vihcout,
+            ihcout,
         )
 end
 

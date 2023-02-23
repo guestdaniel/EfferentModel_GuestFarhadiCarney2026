@@ -55,16 +55,19 @@
  * 
  */
 void model(double *px, double cf, int nrep, double tdres, int totalstim,
-           double cohc, double cihc, int species, double *meout, double *modelout) {
+           double cohc, double cihc, int species, double *meout, 
+           double *controlout, double *c1out, double *c1vihcout, 
+           double *c2out, double *c2vihcout, double *ihcout) {
     /* Declare variables used in the model */
-    double *tmpgain;
-    double bmplace, centerfreq, gain, taubm, ratiowb, TauWBMax, TauWBMin, bmTaubm, fcohc, tauwb, wbgain, lasttmpgain, wbout1, wbout;
-    int bmorder, n, wborder;
+    double *tmpgain, *ihcouttmp;
+    double bmplace, centerfreq, gain, TauWBMax, TauWBMin, bmTaubm, tauwb, wbgain, lasttmpgain, wbout1, wbout, ohcasym, ihcasym, ohcnonlinout, ohcout, tmptauc1, tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp, delay;
+    int bmorder, n, wborder, grd, i, delaypoint;
     double Taumin[1],Taumax[1], bmTaumin[1], bmTaumax[1], ratiobm[1];
     int grdelay[1];
 
     /* Allocate memory */
     tmpgain = (double*) calloc(totalstim, sizeof(double));
+	ihcouttmp  = (double*)calloc(totalstim*nrep,sizeof(double));
 
     /* Declare functions used in model */
 	void middle_ear(double *, double, int, int, double *);
@@ -72,6 +75,15 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
 	double Get_taubm(double, int, double, double *, double *, double *);
     double gain_groupdelay(double, double, double, double, int *);
     double WbGammaTone(double, double, double, int, double, double, int);
+	double Boltzman(double, double, double, double, double);
+    double NLafterohc(double, double, double, double);
+    double OhcLowPass(double, double, double, int, double, int);
+	double C1ChirpFilt(double, double,double, int, double, double);
+	double C2ChirpFilt(double, double,double, int, double, double);
+    double NLogarithm(double, double, double, double);
+    double IhcLowPass(double, double, double, int, double, int);
+    double delay_cat(double);
+    double delay_human(double);
 
     /* Calculate middle-ear output */
     middle_ear(px, tdres, totalstim, species, meout);
@@ -104,13 +116,11 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
 	/* Determine parameters for the ??? */
 	bmorder = 3;
 	Get_tauwb(cf, species, bmorder, Taumax, Taumin);
-	taubm   = cohc*(Taumax[0]-Taumin[0])+Taumin[0];
-	ratiowb = Taumin[0]/Taumax[0];
+	/* taubm = cohc*(Taumax[0]-Taumin[0])+Taumin[0]; */
 
     /* Determine parameters for the signal-path C1 filter */
 	Get_taubm(cf, species, Taumax[0], bmTaumax, bmTaumin, ratiobm);
 	bmTaubm = cohc*(bmTaumax[0]-bmTaumin[0])+bmTaumin[0];
-	fcohc = bmTaumax[0]/bmTaubm;
 
     /* Determine parameters for the control-path wideband filter */
 	wborder = 3;
@@ -121,12 +131,83 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
 	tmpgain[0] = wbgain;
 	lasttmpgain = wbgain;
 
+    /* Determine parameters for OHC/IHC transduction nonlinearities */
+	ohcasym  = 7.0;    
+	ihcasym  = 3.0;
+
     /* Compute the main model loop*/
     for (n=0; n<totalstim; n++) {
+        /* Pass signal through control-path filter */
         wbout1 = WbGammaTone(meout[n], tdres, centerfreq, n, tauwb, wbgain, wborder);
         wbout = pow((tauwb/TauWBMax), wborder) * wbout1 * 10e3 *__max(1, cf/5e3);
-        modelout[n] = wbout;
+
+        /* Pass the control-path signal through the OHC model (nonlinear transduction and 
+           lowpass filtering) */
+        ohcnonlinout = Boltzman(wbout, ohcasym, 12.0, 5.0, 5.0);
+		ohcout = OhcLowPass(ohcnonlinout, tdres, 600, n, 1.0, 2);
+		tmptauc1 = NLafterohc(ohcout, bmTaumin[0], bmTaumax[0], ohcasym);
+        controlout[n] = tmptauc1;
+
+        /* Determine time constant and shift of C1 filter poles based on output of OHCs */
+		tauc1 = cohc*(tmptauc1-bmTaumin[0]) + bmTaumin[0]; 
+		rsigma = 1/tauc1 - 1/bmTaumax[0];
+
+		tauwb = TauWBMax + (tauc1-bmTaumax[0])*(TauWBMax-TauWBMin)/(bmTaumax[0]-bmTaumin[0]);
+
+        wb_gain = gain_groupdelay(tdres, centerfreq, cf, tauwb, grdelay);
+
+		grd = grdelay[0];
+
+        if ((grd+n) < totalstim) {
+            tmpgain[grd+n] = wb_gain;
+        }
+        if (tmpgain[n] == 0) {
+			tmpgain[n] = lasttmpgain;
+        }
+
+		wbgain = tmpgain[n];
+		lasttmpgain = wbgain;
+
+        /* Apply signal-path C1 filter */
+	    c1filterouttmp = C1ChirpFilt(meout[n], tdres, cf, n, bmTaumax[0], rsigma);
+        c1out[n] = c1filterouttmp;
+
+        /* Apply parallel-path C2 filter */
+		c2filterouttmp  = C2ChirpFilt(meout[n], tdres, cf, n, bmTaumax[0], 1/ratiobm[0]);
+        c2out[n] = c2filterouttmp;
+
+	    /* Apply IHC model: NL input-output function and lowpass filtering */
+        c1vihctmp  = NLogarithm(cihc*c1filterouttmp, 0.1, ihcasym, cf);
+        c1vihcout[n] = c1vihctmp;
+		c2vihctmp = -NLogarithm(c2filterouttmp*fabs(c2filterouttmp)*cf/10*cf/2e3, 0.2, 1.0, cf); /* C2 transduction output */
+        c2vihcout[n] = c2vihctmp;
+        ihcouttmp[n] = IhcLowPass(c1vihctmp+c2vihctmp, tdres, 3000, n, 1.0, 7);
     }
+
+    /* Stretched out the IHC output according to nrep (number of repetitions) */
+    for(i=0;i<totalstim*nrep;i++)
+        {
+            ihcouttmp[i] = ihcouttmp[(int) (fmod(i,totalstim))];
+    };
+        /* Adjust total path delay to IHC output signal */
+    if (species==1)
+    {
+        delay      = delay_cat(cf);
+    }
+    if (species>1)
+    {
+        delay      = delay_cat(cf); /* signal delay changed back to cat function for version 5.2 */
+    };
+    delaypoint =__max(0,(int) ceil(delay/tdres));
+
+    for(i=delaypoint;i<totalstim*nrep;i++)
+    {
+        ihcout[i] = ihcouttmp[i - delaypoint];
+    };
+
+    /* Free memory */
+    free(tmpgain);
+    free(ihcouttmp);
 }
 
 /**
@@ -251,7 +332,7 @@ double Get_tauwb(double cf, int species, int order, double *taumax, double *taum
     if (species==2) {
         Q10 = pow((cf/1000),0.3)*12.7*0.505+0.2085;
     }
-    if (species==3) {
+    else {
         Q10 = cf/24.7/(4.37*(cf/1000)+1)*0.505+0.2085;
     }
 
@@ -456,34 +537,60 @@ double OhcLowPass(double x, double tdres, double Fc, int n, double gain, int ord
  * @param gain Scalar gain applied to input
  * @param order Filter order 
  */
-double IhcLowPass(double x, double tdres, double Fc, int n, double gain, int order) {
-    static double ihc[8],ihcl[8];
-    double C,c1LP,c2LP;
-    int i,j;
+// double IhcLowPass(double x, double tdres, double Fc, int n, double gain, int order) {
+//     static double ihc[8],ihcl[8];
+//     double C,c1LP,c2LP;
+//     int i,j;
 
-    /* If we're on the first sample, initialize static memory to zeros */
-    if (n==0) {
-        for(i=0; i<(order+1); i++) {
-            ihc[i] = 0;
-            ihcl[i] = 0;
-        }
-    }     
+//     /* If we're on the first sample, initialize static memory to zeros */
+//     if (n==0) {
+//         for(i=0; i<(order+1); i++) {
+//             ihc[i] = 0;
+//             ihcl[i] = 0;
+//         }
+//     }     
 
-    /* Calculate filter coefficients */ 
-    C = 2.0/tdres;
-    c1LP = ( C - TWOPI*Fc ) / ( C + TWOPI*Fc );
-    c2LP = TWOPI*Fc / (TWOPI*Fc + C);
+//     /* Calculate filter coefficients */ 
+//     C = 2.0/tdres;
+//     c1LP = ( C - TWOPI*Fc ) / ( C + TWOPI*Fc );
+//     c2LP = TWOPI*Fc / (TWOPI*Fc + C);
 
-    /* Implement the filter */
-    ihc[0] = x*gain;
-    for (i=0; i<order;i++) {
-        ihc[i+1] = c1LP*ihcl[i+1] + c2LP*(ihc[i]+ihcl[i]);
-    }
-    for (j=0; j<=order;j++) { 
-        ihcl[j] = ihc[j];
-    }
+//     /* Implement the filter */
+//     ihc[0] = x*gain;
+//     for (i=0; i<order;i++) {
+//         ihc[i+1] = c1LP*ihcl[i+1] + c2LP*(ihc[i]+ihcl[i]);
+//     }
+//     for (j=0; j<=order;j++) { 
+//         ihcl[j] = ihc[j];
+//     }
 
-    return(ihc[order]);
+//     return(ihc[order]);
+// }
+double IhcLowPass(double x,double tdres,double Fc, int n,double gain,int order)
+{
+  static double ihc[8],ihcl[8];
+  
+  double C,c1LP,c2LP;
+  int i,j;
+
+  if (n==0)
+  {
+      for(i=0; i<(order+1);i++)
+      {
+          ihc[i] = 0;
+          ihcl[i] = 0;
+      }
+  }     
+  
+  C = 2.0/tdres;
+  c1LP = ( C - TWOPI*Fc ) / ( C + TWOPI*Fc );
+  c2LP = TWOPI*Fc / (TWOPI*Fc + C);
+  
+  ihc[0] = x*gain;
+  for(i=0; i<order;i++)
+    ihc[i+1] = c1LP*ihcl[i+1] + c2LP*(ihc[i]+ihcl[i]);
+  for(j=0; j<=order;j++) ihcl[j] = ihc[j];
+  return(ihc[order]);
 }
 
 /**
@@ -531,23 +638,41 @@ double NLafterohc(double x,double taumin, double taumax, double asym) {
  * @param asym ???
  * @param cf Characteristic frequency (Hz)
  */
-double NLogarithm(double x, double slope, double asym, double cf) {
-    double corner,strength,xx,splx,asym_t;
+// double NLogarithm(double x, double slope, double asym, double cf) {
+//     double corner,strength,xx,splx,asym_t;
 
-    /* Calculate constants and parameters */
+//     /* Calculate constants and parameters */
+//     corner    = 80; 
+//     strength  = 20.0e6/pow(10,corner/20);
+
+//     /* Calculate output */
+//     xx = log(1.0+strength*fabs(x))*slope;
+//     if (x<0) {
+// 		splx = 20*log10(-x/20e-6);
+// 		asym_t = asym -(asym-1)/(1+exp(splx/5.0));
+// 		xx = -1/asym_t*xx;
+// 	};  
+
+//     return(xx);
+// }
+double NLogarithm(double x, double slope, double asym, double cf)
+{
+	double corner,strength,xx,splx,asym_t;
+	    
     corner    = 80; 
     strength  = 20.0e6/pow(10,corner/20);
-
-    /* Calculate output */
+            
     xx = log(1.0+strength*fabs(x))*slope;
-    if (x<0) {
-		splx = 20*log10(-x/20e-6);
+    
+    if(x<0)
+	{
+		splx   = 20*log10(-x/20e-6);
 		asym_t = asym -(asym-1)/(1+exp(splx/5.0));
 		xx = -1/asym_t*xx;
-	};  
-
+	};   
     return(xx);
 }
+
 
 double WbGammaTone(double x,double tdres,double centerfreq, int n, double tau,double gain,int order)
 {
@@ -583,3 +708,281 @@ double WbGammaTone(double x,double tdres,double centerfreq, int n, double tau,do
   for(i=0; i<=order;i++) wbgtfl[i] = wbgtf[i];
   return(out);
 }
+
+double C1ChirpFilt(double x, double tdres,double cf, int n, double taumax, double rsigma)
+{
+    static double C1gain_norm, C1initphase; 
+    static double C1input[12][4], C1output[12][4];
+
+    double ipw, ipb, rpa, pzero, rzero;
+	double sigma0,fs_bilinear,CF,norm_gain,phase,c1filterout;
+	int i,r,order_of_pole,half_order_pole,order_of_zero;
+	double temp, dy, preal, pimg;
+
+	COMPLEX p[11]; 
+	
+	/* Defining initial locations of the poles and zeros */
+	/*======== setup the locations of poles and zeros =======*/
+	  sigma0 = 1/taumax;
+	  ipw    = 1.01*cf*TWOPI-50;
+	  ipb    = 0.2343*TWOPI*cf-1104;
+	  rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
+	  pzero  = pow(10,log10(cf)*0.7+1.6)+500;
+
+	/*===============================================================*/     
+         
+     order_of_pole    = 10;             
+     half_order_pole  = order_of_pole/2;
+     order_of_zero    = half_order_pole;
+
+	 fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
+     rzero       = -pzero;
+	 CF          = TWOPI*cf;
+   
+   if (n==0)
+   {		  
+	p[1].x = -sigma0;     
+
+    p[1].y = ipw;
+
+	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
+
+    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
+
+    p[2]   = compconj(p[1]);    p[4] = compconj(p[3]); p[6] = compconj(p[5]);
+
+    p[7]   = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
+
+	   C1initphase = 0.0;
+       for (i=1;i<=half_order_pole;i++)          
+	   {
+           preal     = p[i*2-1].x;
+		   pimg      = p[i*2-1].y;
+	       C1initphase = C1initphase + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
+	   };
+
+	/*===================== Initialize C1input & C1output =====================*/
+
+      for (i=1;i<=(half_order_pole+1);i++)          
+      {
+		   C1input[i][3] = 0; 
+		   C1input[i][2] = 0; 
+		   C1input[i][1] = 0;
+		   C1output[i][3] = 0; 
+		   C1output[i][2] = 0; 
+		   C1output[i][1] = 0;
+      }
+
+	/*===================== normalize the gain =====================*/
+    
+      C1gain_norm = 1.0;
+      for (r=1; r<=order_of_pole; r++)
+		   C1gain_norm = C1gain_norm*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
+      
+   };
+     
+    norm_gain= sqrt(C1gain_norm)/pow(sqrt(CF*CF+rzero*rzero),order_of_zero);
+	
+	p[1].x = -sigma0 - rsigma;
+
+	p[1].y = ipw;
+
+	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
+
+    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
+
+    p[2] = compconj(p[1]); p[4] = compconj(p[3]); p[6] = compconj(p[5]);
+
+    p[7] = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
+
+    phase = 0.0;
+    for (i=1;i<=half_order_pole;i++)          
+    {
+           preal = p[i*2-1].x;
+		   pimg  = p[i*2-1].y;
+	       phase = phase-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
+	};
+
+	rzero = -CF/tan((C1initphase-phase)/order_of_zero);
+
+   /*%==================================================  */
+	/*each loop below is for a pair of poles and one zero */
+   /*%      time loop begins here                         */
+   /*%==================================================  */
+ 
+       C1input[1][3]=C1input[1][2]; 
+	   C1input[1][2]=C1input[1][1]; 
+	   C1input[1][1]= x;
+
+       for (i=1;i<=half_order_pole;i++)          
+       {
+           preal = p[i*2-1].x;
+		   pimg  = p[i*2-1].y;
+		  	   
+           temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
+		   
+
+           /*dy = (input[i][1] + (1-(fs_bilinear+rzero)/(fs_bilinear-rzero))*input[i][2]
+                                 - (fs_bilinear+rzero)/(fs_bilinear-rzero)*input[i][3] );
+           dy = dy+2*output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg);
+
+           dy = dy-output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);*/
+		   
+	       dy = C1input[i][1]*(fs_bilinear-rzero) - 2*rzero*C1input[i][2] - (fs_bilinear+rzero)*C1input[i][3]
+                 +2*C1output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
+			     -C1output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+
+		   dy = dy/temp;
+
+		   C1input[i+1][3] = C1output[i][2]; 
+		   C1input[i+1][2] = C1output[i][1]; 
+		   C1input[i+1][1] = dy;
+
+		   C1output[i][2] = C1output[i][1]; 
+		   C1output[i][1] = dy;
+       }
+
+	   dy = C1output[half_order_pole][1]*norm_gain;  /* don't forget the gain term */
+	   c1filterout= dy/4.0;   /* signal path output is divided by 4 to give correct C1 filter gain */
+	                   
+     return (c1filterout);
+}  
+
+/* -------------------------------------------------------------------------------------------- */
+/** Parallelpath C2 filter: same as the signal-path C1 filter with the OHC completely impaired */
+
+double C2ChirpFilt(double xx, double tdres,double cf, int n, double taumax, double fcohc)
+{
+	static double C2gain_norm, C2initphase;
+    static double C2input[12][4];  static double C2output[12][4];
+   
+	double ipw, ipb, rpa, pzero, rzero;
+
+	double sigma0,fs_bilinear,CF,norm_gain,phase,c2filterout;
+	int    i,r,order_of_pole,half_order_pole,order_of_zero;
+	double temp, dy, preal, pimg;
+
+	COMPLEX p[11]; 	
+    
+    /*================ setup the locations of poles and zeros =======*/
+
+	  sigma0 = 1/taumax;
+	  ipw    = 1.01*cf*TWOPI-50;
+      ipb    = 0.2343*TWOPI*cf-1104;
+	  rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
+	  pzero  = pow(10,log10(cf)*0.7+1.6)+500;
+	/*===============================================================*/     
+         
+     order_of_pole    = 10;             
+     half_order_pole  = order_of_pole/2;
+     order_of_zero    = half_order_pole;
+
+	 fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
+     rzero       = -pzero;
+	 CF          = TWOPI*cf;
+   	    
+    if (n==0)
+    {		  
+	p[1].x = -sigma0;     
+
+    p[1].y = ipw;
+
+	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
+
+    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
+
+    p[2] = compconj(p[1]); p[4] = compconj(p[3]); p[6] = compconj(p[5]);
+
+    p[7] = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
+
+	   C2initphase = 0.0;
+       for (i=1;i<=half_order_pole;i++)         
+	   {
+           preal     = p[i*2-1].x;
+		   pimg      = p[i*2-1].y;
+	       C2initphase = C2initphase + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
+	   };
+
+	/*===================== Initialize C2input & C2output =====================*/
+
+      for (i=1;i<=(half_order_pole+1);i++)          
+      {
+		   C2input[i][3] = 0; 
+		   C2input[i][2] = 0; 
+		   C2input[i][1] = 0;
+		   C2output[i][3] = 0; 
+		   C2output[i][2] = 0; 
+		   C2output[i][1] = 0;
+      }
+    
+    /*===================== normalize the gain =====================*/
+    
+     C2gain_norm = 1.0;
+     for (r=1; r<=order_of_pole; r++)
+		   C2gain_norm = C2gain_norm*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
+    };
+     
+    norm_gain= sqrt(C2gain_norm)/pow(sqrt(CF*CF+rzero*rzero),order_of_zero);
+    
+	p[1].x = -sigma0*fcohc;
+
+	p[1].y = ipw;
+
+	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
+
+    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
+
+    p[2] = compconj(p[1]); p[4] = compconj(p[3]); p[6] = compconj(p[5]);
+
+    p[7] = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
+
+    phase = 0.0;
+    for (i=1;i<=half_order_pole;i++)          
+    {
+           preal = p[i*2-1].x;
+		   pimg  = p[i*2-1].y;
+	       phase = phase-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
+	};
+
+	rzero = -CF/tan((C2initphase-phase)/order_of_zero);	
+   /*%==================================================  */
+   /*%      time loop begins here                         */
+   /*%==================================================  */
+
+       C2input[1][3]=C2input[1][2]; 
+	   C2input[1][2]=C2input[1][1]; 
+	   C2input[1][1]= xx;
+
+      for (i=1;i<=half_order_pole;i++)          
+      {
+           preal = p[i*2-1].x;
+		   pimg  = p[i*2-1].y;
+		  	   
+           temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
+		   
+           /*dy = (input[i][1] + (1-(fs_bilinear+rzero)/(fs_bilinear-rzero))*input[i][2]
+                                 - (fs_bilinear+rzero)/(fs_bilinear-rzero)*input[i][3] );
+           dy = dy+2*output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg);
+
+           dy = dy-output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);*/
+		   
+	      dy = C2input[i][1]*(fs_bilinear-rzero) - 2*rzero*C2input[i][2] - (fs_bilinear+rzero)*C2input[i][3]
+                 +2*C2output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
+			     -C2output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+
+		   dy = dy/temp;
+
+		   C2input[i+1][3] = C2output[i][2]; 
+		   C2input[i+1][2] = C2output[i][1]; 
+		   C2input[i+1][1] = dy;
+
+		   C2output[i][2] = C2output[i][1]; 
+		   C2output[i][1] = dy;
+
+       };
+
+	  dy = C2output[half_order_pole][1]*norm_gain;
+	  c2filterout= dy/4.0;
+	  
+	  return (c2filterout); 
+}   

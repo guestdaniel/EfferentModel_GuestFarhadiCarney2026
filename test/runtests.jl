@@ -28,15 +28,35 @@ pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs)
     @test begin
         # Create inputs
         x = pt()
-        meout = zeros(length(x))
-        modelout = zeros(length(x))
+        meout_new = zeros(length(x))
+        controlout_new = zeros(length(x))
+        c1out_new = zeros(length(x))
+        c1vihcout_new = zeros(length(x))
+        c2out_new = zeros(length(x))
+        c2vihcout_new = zeros(length(x))
+        ihcout_new = zeros(length(x))
 
-        # Apply ME filter
-        model!(x, 1000.0, 1, 1/100e3, length(x), 1.0, 1.0, 1, meout, modelout)
+        # Run model
+        model!(
+            x, 
+            1000.0, 
+            1, 
+            1/100e3, 
+            length(x), 
+            1.0, 
+            1.0, 
+            2, 
+            meout_new, 
+            controlout_new, 
+            c1out_new, 
+            c1vihcout_new, 
+            c2out_new, 
+            c2vihcout_new, 
+            ihcout_new
+        )
 
         # Verify output is non-zero
-        DSP.rms(meout) != 0
-        DSP.rms(modelout) != 0
+        DSP.rms(ihcout_new) != 0
     end
 
 end
