@@ -9,7 +9,6 @@ export middle_ear!, model!
 function model!(
     px::Vector{Float64},
     cf::Float64,
-    nrep::Int64,
     tdres::Float64,
     totalstim::Int64, 
     cohc::Float64,
@@ -29,7 +28,6 @@ function model!(
             (
                 Ptr{Cdouble}, # px
                 Cdouble,      # cf
-                Cint,         # nrep
                 Cdouble,      # tdres
                 Cint,         # totalstim
                 Cdouble,      # cohc
@@ -45,7 +43,6 @@ function model!(
             ),
             px, 
             cf, 
-            nrep, 
             tdres, 
             totalstim, 
             cohc, 

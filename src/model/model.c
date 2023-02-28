@@ -54,20 +54,20 @@
 /**
  * 
  */
-void model(double *px, double cf, int nrep, double tdres, int totalstim,
+void model(double *px, double cf, double tdres, int totalstim,
            double cohc, double cihc, int species, double *meout, 
            double *controlout, double *c1out, double *c1vihcout, 
            double *c2out, double *c2vihcout, double *ihcout) {
     /* Declare variables used in the model */
     double *tmpgain, *ihcouttmp;
     double bmplace, centerfreq, gain, TauWBMax, TauWBMin, bmTaubm, tauwb, wbgain, lasttmpgain, wbout1, wbout, ohcasym, ihcasym, ohcnonlinout, ohcout, tmptauc1, tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp, delay;
-    int bmorder, n, wborder, grd, i, delaypoint;
+    int bmorder, n, wborder, grd, delaypoint, i;
     double Taumin[1],Taumax[1], bmTaumin[1], bmTaumax[1], ratiobm[1];
     int grdelay[1];
 
     /* Allocate memory */
     tmpgain = (double*) calloc(totalstim, sizeof(double));
-	ihcouttmp  = (double*)calloc(totalstim*nrep,sizeof(double));
+    ihcouttmp = (double*) calloc(totalstim, sizeof(double));
 
     /* Declare functions used in model */
 	void middle_ear(double *, double, int, int, double *);
@@ -135,6 +135,10 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
 	ohcasym  = 7.0;    
 	ihcasym  = 3.0;
 
+    /* Calculate signal delay time for this channel */
+    delay = delay_cat(cf);
+    delaypoint =__max(0, (int) ceil(delay/tdres));
+
     /* Compute the main model loop*/
     for (n=0; n<totalstim; n++) {
         /* Pass signal through control-path filter */
@@ -146,7 +150,7 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
         ohcnonlinout = Boltzman(wbout, ohcasym, 12.0, 5.0, 5.0);
 		ohcout = OhcLowPass(ohcnonlinout, tdres, 600, n, 1.0, 2);
 		tmptauc1 = NLafterohc(ohcout, bmTaumin[0], bmTaumax[0], ohcasym);
-        controlout[n] = tmptauc1;
+        controlout[n] = tmptauc1;  /* store sample output in vector */
 
         /* Determine time constant and shift of C1 filter poles based on output of OHCs */
 		tauc1 = cohc*(tmptauc1-bmTaumin[0]) + bmTaumin[0]; 
@@ -170,22 +174,23 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
 
         /* Apply signal-path C1 filter */
 	    c1filterouttmp = C1ChirpFilt(meout[n], tdres, cf, n, bmTaumax[0], rsigma);
-        c1out[n] = c1filterouttmp;
+        c1out[n] = c1filterouttmp;  /* store sample output in vector */
 
         /* Apply parallel-path C2 filter */
 		c2filterouttmp  = C2ChirpFilt(meout[n], tdres, cf, n, bmTaumax[0], 1/ratiobm[0]);
-        c2out[n] = c2filterouttmp;
+        c2out[n] = c2filterouttmp;  /* store sample output in vector */
 
 	    /* Apply IHC model: NL input-output function and lowpass filtering */
         c1vihctmp  = NLogarithm(cihc*c1filterouttmp, 0.1, ihcasym, cf);
-        c1vihcout[n] = c1vihctmp;
+        c1vihcout[n] = c1vihctmp;  /* store sample output in vector */
 		c2vihctmp = -NLogarithm(c2filterouttmp*fabs(c2filterouttmp)*cf/10*cf/2e3, 0.2, 1.0, cf); /* C2 transduction output */
-        c2vihcout[n] = c2vihctmp;
+        c2vihcout[n] = c2vihctmp;  /* store sample output in vector */
+
         ihcouttmp[n] = IhcLowPass(c1vihctmp+c2vihctmp, tdres, 3000, n, 1.0, 7);
     }
 
     /* Stretched out the IHC output according to nrep (number of repetitions) */
-    for(i=0;i<totalstim*nrep;i++)
+    for(i=0;i<totalstim;i++)
         {
             ihcouttmp[i] = ihcouttmp[(int) (fmod(i,totalstim))];
     };
@@ -200,7 +205,7 @@ void model(double *px, double cf, int nrep, double tdres, int totalstim,
     };
     delaypoint =__max(0,(int) ceil(delay/tdres));
 
-    for(i=delaypoint;i<totalstim*nrep;i++)
+    for(i=delaypoint;i<totalstim;i++)
     {
         ihcout[i] = ihcouttmp[i - delaypoint];
     };

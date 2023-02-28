@@ -45,7 +45,6 @@ pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs)
         model!(
             x, 
             1000.0, 
-            1, 
             1/100e3, 
             length(x), 
             1.0, 
@@ -87,7 +86,6 @@ end
         model!(
             x, 
             1000.0, 
-            1, 
             1/100e3, 
             length(x), 
             1.0, 
