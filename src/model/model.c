@@ -542,60 +542,34 @@ double OhcLowPass(double x, double tdres, double Fc, int n, double gain, int ord
  * @param gain Scalar gain applied to input
  * @param order Filter order 
  */
-// double IhcLowPass(double x, double tdres, double Fc, int n, double gain, int order) {
-//     static double ihc[8],ihcl[8];
-//     double C,c1LP,c2LP;
-//     int i,j;
+double IhcLowPass(double x, double tdres, double Fc, int n, double gain, int order) {
+    static double ihc[8],ihcl[8];
+    double C,c1LP,c2LP;
+    int i,j;
 
-//     /* If we're on the first sample, initialize static memory to zeros */
-//     if (n==0) {
-//         for(i=0; i<(order+1); i++) {
-//             ihc[i] = 0;
-//             ihcl[i] = 0;
-//         }
-//     }     
+    /* If we're on the first sample, initialize static memory to zeros */
+    if (n==0) {
+        for(i=0; i<(order+1); i++) {
+            ihc[i] = 0;
+            ihcl[i] = 0;
+        }
+    }     
 
-//     /* Calculate filter coefficients */ 
-//     C = 2.0/tdres;
-//     c1LP = ( C - TWOPI*Fc ) / ( C + TWOPI*Fc );
-//     c2LP = TWOPI*Fc / (TWOPI*Fc + C);
+    /* Calculate filter coefficients */ 
+    C = 2.0/tdres;
+    c1LP = ( C - TWOPI*Fc ) / ( C + TWOPI*Fc );
+    c2LP = TWOPI*Fc / (TWOPI*Fc + C);
 
-//     /* Implement the filter */
-//     ihc[0] = x*gain;
-//     for (i=0; i<order;i++) {
-//         ihc[i+1] = c1LP*ihcl[i+1] + c2LP*(ihc[i]+ihcl[i]);
-//     }
-//     for (j=0; j<=order;j++) { 
-//         ihcl[j] = ihc[j];
-//     }
+    /* Implement the filter */
+    ihc[0] = x*gain;
+    for (i=0; i<order;i++) {
+        ihc[i+1] = c1LP*ihcl[i+1] + c2LP*(ihc[i]+ihcl[i]);
+    }
+    for (j=0; j<=order;j++) { 
+        ihcl[j] = ihc[j];
+    }
 
-//     return(ihc[order]);
-// }
-double IhcLowPass(double x,double tdres,double Fc, int n,double gain,int order)
-{
-  static double ihc[8],ihcl[8];
-  
-  double C,c1LP,c2LP;
-  int i,j;
-
-  if (n==0)
-  {
-      for(i=0; i<(order+1);i++)
-      {
-          ihc[i] = 0;
-          ihcl[i] = 0;
-      }
-  }     
-  
-  C = 2.0/tdres;
-  c1LP = ( C - TWOPI*Fc ) / ( C + TWOPI*Fc );
-  c2LP = TWOPI*Fc / (TWOPI*Fc + C);
-  
-  ihc[0] = x*gain;
-  for(i=0; i<order;i++)
-    ihc[i+1] = c1LP*ihcl[i+1] + c2LP*(ihc[i]+ihcl[i]);
-  for(j=0; j<=order;j++) ihcl[j] = ihc[j];
-  return(ihc[order]);
+    return(ihc[order]);
 }
 
 /**
@@ -643,41 +617,23 @@ double NLafterohc(double x,double taumin, double taumax, double asym) {
  * @param asym ???
  * @param cf Characteristic frequency (Hz)
  */
-// double NLogarithm(double x, double slope, double asym, double cf) {
-//     double corner,strength,xx,splx,asym_t;
+double NLogarithm(double x, double slope, double asym, double cf) {
+    double corner,strength,xx,splx,asym_t;
 
-//     /* Calculate constants and parameters */
-//     corner    = 80; 
-//     strength  = 20.0e6/pow(10,corner/20);
-
-//     /* Calculate output */
-//     xx = log(1.0+strength*fabs(x))*slope;
-//     if (x<0) {
-// 		splx = 20*log10(-x/20e-6);
-// 		asym_t = asym -(asym-1)/(1+exp(splx/5.0));
-// 		xx = -1/asym_t*xx;
-// 	};  
-
-//     return(xx);
-// }
-double NLogarithm(double x, double slope, double asym, double cf)
-{
-	double corner,strength,xx,splx,asym_t;
-	    
+    /* Calculate constants and parameters */
     corner    = 80; 
     strength  = 20.0e6/pow(10,corner/20);
-            
+
+    /* Calculate output */
     xx = log(1.0+strength*fabs(x))*slope;
-    
-    if(x<0)
-	{
-		splx   = 20*log10(-x/20e-6);
+    if (x<0) {
+		splx = 20*log10(-x/20e-6);
 		asym_t = asym -(asym-1)/(1+exp(splx/5.0));
 		xx = -1/asym_t*xx;
-	};   
+	};  
+
     return(xx);
 }
-
 
 double WbGammaTone(double x,double tdres,double centerfreq, int n, double tau,double gain,int order)
 {
