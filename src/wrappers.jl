@@ -55,14 +55,14 @@ function sim_gfc2023(
     # Synthesize ffGn
     if noiseType == 1.0
         ffGn = ffGn_native(
-            Int(ceil((length(x) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3)),
-            1/fs_synapse,
+            Int(ceil(length(x) + 2 * floor(7500 / (cf / 1e3)))),
+            1/fs,
             0.9,
             noiseType,
             spont,
         )
     else
-        ffGn = zeros(Int(ceil((length(x) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3)))
+        ffGn = zeros(Int(ceil(length(x) + 2 * floor(7500 / (cf / 1e3)))))
     end
 
     # Pre-allocate memory
@@ -77,15 +77,15 @@ function sim_gfc2023(
     exponout = zeros(length(x))
     delaypoint = Int(floor(7500 / (cf / 1e3)))
     powerlawin = zeros(length(x) + delaypoint*3)
-    sout1 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
-    sout2 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
+    sout1 = zeros(length(ihcout) + 2*delaypoint)
+    sout2 = zeros(length(ihcout) + 2*delaypoint)
 
     # Run model
     model!(
         x, 
         ffGn,
         1000.0, 
-        1/100e3, 
+        1/fs, 
         length(x), 
         cohc, 
         cihc, 

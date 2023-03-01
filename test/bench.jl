@@ -64,14 +64,20 @@ function plot_model_2!()
     fig = Figure(; resolution=(800, 200*length(stages)))
     axs = [Axis(fig[i, 1]) for i in eachindex(stages)]
     for (ax, stage) in zip(axs, stages)
-        lines!(ax, resps_orig[stage]; color=:gray)
-        lines!(ax, resps_new[stage]; color=:red, linestyle=:dash, linewidth=3.0)
+        # Resample if needed
+        new = resps_new[stage]
+        orig = resps_orig[stage]
+        if stage in ["sout1", "sout2"]
+            orig = resample(orig, 10)
+        end
+        lines!(ax, orig; color=:gray)
+        lines!(ax, new; color=:red, linestyle=:dash, linewidth=3.0)
         ax.ylabel = stage
     end
 
     # Adjust labels
     xlims!(axs[1], 10000, 11000)
-    xlims!.(axs[2:3], 700, 1000)
+    xlims!.(axs[2:3], 7000, 10000)
     xlims!(axs[4], 5000, 6000)
     axs[end].xlabel = "Time (s)"
     fig

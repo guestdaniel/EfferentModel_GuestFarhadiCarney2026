@@ -85,18 +85,14 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     double VI0, VI1, alpha, beta, theta1, theta2, theta3, vsat, tmpst, tmp, PPI,
         CIlast, temp;
 
-    double *synSampOut, *TmpSyn;
-    double *sampIHC, *ihcDims;
-    double sampFreq = 10e3;
+    double *synouttmp;
+    double *ihcDims;
 
     /* Declare variables used in the subcortical stage */
+    synouttmp = (double*)calloc((long) ceil(totalstim+2*delaypoint2),sizeof(double));
 
     /* Allocate memory for cochlear filtering and hair cell stage */
     tmpgain = (double*) calloc(totalstim, sizeof(double));
-
-    /* Allocate memory for auditory-nerve stage */
-    synSampOut  = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
-    TmpSyn  = (double*)calloc((long) ceil(totalstim+2*delaypoint2),sizeof(double));
 
     /* Declare functions used in model */
 	void middle_ear(double *, double, int, int, double *);
@@ -169,7 +165,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     delaypoint =__max(0, (int) ceil(delay/tdres));
 
     /* Set parameters for power-law */
-    binwidth = 1/sampFreq;
+    binwidth = tdres;
     alpha1 = 2.5e-6*100e3; beta1 = 5e-4; I1 = 0;
     alpha2 = 1e-2*100e3; beta2 = 1e-1; I2 = 0;
 
@@ -301,15 +297,12 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     for (indx=totalstim+delaypoint2; indx<totalstim+3*delaypoint2; indx++)
         powerLawIn[indx] = powerLawIn[indx-1];
 
-    /* Downsample IHC by factor of resamp */
-    sampIHC = decimate(powerLawIn, (int)ceil(totalstim+3*delaypoint2), resamp);
-
     /* Implement power-law adaptation */
     k = 0;
-    for (indx = 0; indx < floor((totalstim + 2 * delaypoint2) * tdres * sampFreq); indx++) {
+    for (indx = 0; indx < floor(totalstim + 2 * delaypoint2); indx++) {
         /* Do something? */
-        sout1[k]  = __max( 0, sampIHC[indx] + randNums[indx]- alpha1*I1);
-        sout2[k] = __max(0, sampIHC[indx] - alpha2 * I2);
+        sout1[k]  = __max( 0, powerLawIn[indx] + randNums[indx]- alpha1*I1);
+        sout2[k] = __max(0, powerLawIn[indx] - alpha2 * I2);
 
         /* Core power-law loop */
         I1 = 0; I2 = 0;
@@ -318,26 +311,18 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
             I2 += (sout2[j])*binwidth/((k-j)*binwidth + beta2);
         }
 
-        /* Sum different channels to produce final output */
-        synSampOut[k] = sout1[k] + sout2[k];
+    //     /* Sum different channels to produce final output */
+        synouttmp[k] = sout1[k] + sout2[k];
         k = k+1;
     }
 
-    /* Upsample to original sampling rate */
-    for (z = 0; z < indx-1; ++z) {
-        incr = (synSampOut[z+1]-synSampOut[z])/resamp;
-        for (b = 0; b < resamp; ++b) {
-            TmpSyn[z*resamp+b] = synSampOut[z]+ b*incr;
-        }
-    }
-    for (q = 0; q < totalstim; ++q) {
-        synout[q] = TmpSyn[q+delaypoint2];
+    // /* Fill in synapse output */
+    for (i=0; i < totalstim; ++i) {
+        synout[i] = synouttmp[i+delaypoint2];
     }
 
     /* Free dynamic memory */
-    free(tmpgain);
-    free(synSampOut); 
-    free(TmpSyn);
+    free(tmpgain); free(synouttmp);
 }
 
 /**
