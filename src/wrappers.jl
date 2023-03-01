@@ -26,7 +26,7 @@ function sim_gfc2023(
     cihc::Float64=1.0,
     species::String="human",
     fiber_type::String="high", 
-    power_law::String="approximate", 
+    power_law::String="actual", 
     fractional::Bool=false,
 )
     # Convert human-readable arguments into C-side floats/ints
@@ -137,7 +137,7 @@ function sim_orig(
     cihc::Float64=1.0,
     species::String="human",
     fiber_type::String="high", 
-    power_law::String="approximate", 
+    power_law::String="actual", 
     fractional::Bool=false,
 )
     # Convert human-readable arguments into C-side floats/ints
