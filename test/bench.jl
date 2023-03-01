@@ -14,7 +14,7 @@ function plot_model!()
     # Responses
     resps_orig = sim_orig_dict(x, 1000.0)
     resps_new = sim_gfc2023_dict(x, 1000.0)
-    stages = ["control", "c1", "c2", "ihc", "expon", "powerlaw"]
+    stages = ["control", "c1", "c2", "ihc", "expon"]
     delay = ccall(
         (:delay_cat, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
         Cdouble,
@@ -47,7 +47,7 @@ function plot_model!()
     axs[end].xlabel = "Time (s)"
     hidexdecorations!.(axs[1:(end-1)], ticks=false, grid=false)
     fig
-    save(projectdir("outputs", "test", "responses_up_to_powerlaw.png"), fig)
+    save(projectdir("outputs", "test", "responses_up_to_exponout.png"), fig)
 end
 plot_model!()
 
@@ -58,7 +58,7 @@ function plot_model_2!()
     # Responses
     resps_orig = sim_orig_dict(x, 1000.0)
     resps_new = sim_gfc2023_dict(x, 1000.0)
-    stages = ["sout1", "sout2", "syn"]
+    stages = ["powerlaw", "sout1", "sout2", "syn"]
 
     # Plot output
     fig = Figure(; resolution=(800, 200*length(stages)))
@@ -70,11 +70,11 @@ function plot_model_2!()
     end
 
     # Adjust labels
-    xlims!.(axs[1:2], 1000, 1100)
-    xlims!(axs[3], 5000, 6000)
+    xlims!(axs[1], 10000, 11000)
+    xlims!.(axs[2:3], 700, 1000)
+    xlims!(axs[4], 5000, 6000)
     axs[end].xlabel = "Time (s)"
-    hidexdecorations!.(axs[1:(end-1)], ticks=false, grid=false)
     fig
-    save(projectdir("outputs", "test", "responses_beyond_powerlaw.png"), fig)
+    save(projectdir("outputs", "test", "responses_beyond_exponout.png"), fig)
 end
 plot_model_2!()
