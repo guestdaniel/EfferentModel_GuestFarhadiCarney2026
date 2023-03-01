@@ -22,6 +22,8 @@ function model!(
     synout::Vector{Float64},
     exponout::Vector{Float64},
     powerlawin::Vector{Float64},
+    sout1::Vector{Float64},
+    sout2::Vector{Float64},
 )
     ccall(
             (:model, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"), 
@@ -48,6 +50,8 @@ function model!(
                 Ptr{Cdouble}, # synout
                 Ptr{Cdouble}, # exponOut
                 Ptr{Cdouble}, # powerLawIn
+                Ptr{Cdouble}, # sout1
+                Ptr{Cdouble}, # sout2
                 Ptr{Cvoid},   # decimate
             ),
             px,
@@ -71,6 +75,8 @@ function model!(
             synout,
             exponout,
             powerlawin,
+            sout1,
+            sout2,
             @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),                         # input cfunction
         )
 end

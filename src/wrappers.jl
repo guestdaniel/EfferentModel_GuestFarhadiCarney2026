@@ -77,6 +77,8 @@ function sim_gfc2023(
     exponout = zeros(length(x))
     delaypoint = Int(floor(7500 / (cf / 1e3)))
     powerlawin = zeros(length(x) + delaypoint*3)
+    sout1 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
+    sout2 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
 
     # Run model
     model!(
@@ -101,14 +103,16 @@ function sim_gfc2023(
         synout,
         exponout,
         powerlawin,
+        sout1,
+        sout2,
     )
 
     # Return
-    return meout, controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin
+    return meout, controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    me, control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw = sim_gfc2023(args..., kwargs...)
+    me, control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw, sout1, sout2 = sim_gfc2023(args..., kwargs...)
     return Dict(
         "me" => me,
         "control" => control,
@@ -120,6 +124,8 @@ function sim_gfc2023_dict(args...; kwargs...)
         "syn" => syn,
         "expon" => expon,
         "powerlaw" => powerlaw,
+        "sout1" => sout1,
+        "sout2" => sout2,
     )
 end
 
@@ -203,8 +209,11 @@ function sim_orig(
     exponout = zeros(length(x))
     delaypoint = Int(floor(7500 / (cf / 1e3)))
     powerlawin = zeros(length(x) + delaypoint*3)
+    sout1 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
+    sout2 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
     len_noise = Int(ceil((length(ihcout) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3))
     ffGn = zeros(len_noise)
+
     ccall(
         (:SYNAPSEDEBUG, "C:\\Users\\dguest2\\cl_code\\Helios\\external\\julia\\libzbc2014debug.so"),
         Cvoid,                   # return type
@@ -222,17 +231,19 @@ function sim_orig(
             Ptr{Cdouble},        # synout
             Ptr{Cdouble},        # exponout
             Ptr{Cdouble},        # powerlawin
+            Ptr{Cdouble},        # sout1
+            Ptr{Cdouble},        # sout2
             Ptr{Cvoid},          # decimate function handle
         ),
-        ihcout, ffGn, 1/100e3, 1000.0, length(ihcout), 1, spont, noiseType, implnt, 10e3, synout, exponout, powerlawin, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
+        ihcout, ffGn, 1/100e3, 1000.0, length(ihcout), 1, spont, noiseType, implnt, 10e3, synout, exponout, powerlawin, sout1, sout2, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
     )
 
     # Return
-    return controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin
+    return controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2
 end
 
 function sim_orig_dict(args...; kwargs...)
-    control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw = sim_orig(args..., kwargs...)
+    control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw, sout1, sout2 = sim_orig(args..., kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -243,5 +254,7 @@ function sim_orig_dict(args...; kwargs...)
         "syn" => syn,
         "expon" => expon,
         "powerlaw" => powerlaw,
+        "sout1" => sout1,
+        "sout2" => sout2,
     )
 end

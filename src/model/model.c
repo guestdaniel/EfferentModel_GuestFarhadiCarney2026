@@ -59,7 +59,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
            double implnt, double *meout, 
            double *controlout, double *c1out, double *c1vihcout, 
            double *c2out, double *c2vihcout, double *ihcout, double *synout,
-           double *exponOut, double *powerLawIn, double *(*decimate)(double *, int, int)) {
+           double *exponOut, double *powerLawIn, double *sout1, double *sout2, double *(*decimate)(double *, int, int)) {
     /* Declare variables used in the cochlear-filtering and hair-cell stage */
     double *tmpgain, *ihcouttmp;
     double bmplace, centerfreq, gain, TauWBMax, TauWBMin, bmTaubm, tauwb, wbgain, 
@@ -84,7 +84,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     double VI0, VI1, alpha, beta, theta1, theta2, theta3, vsat, tmpst, tmp, PPI,
         CIlast, temp;
 
-    double *sout1, *sout2, *synSampOut, *TmpSyn;
+    double *synSampOut, *TmpSyn;
     double *m1, *m2, *m3, *m4, *m5;
     double *n1, *n2, *n3;
     double *sampIHC, *ihcDims;
@@ -99,8 +99,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     /* Allocate memory for auditory-nerve stage */
     //exponOut = (double*)calloc((long) ceil(totalstim),sizeof(double));
     //powerLawIn = (double*)calloc((long) ceil(totalstim+3*delaypoint2),sizeof(double));
-    sout1 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
-    sout2 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
     synSampOut  = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
     TmpSyn  = (double*)calloc((long) ceil(totalstim+2*delaypoint2),sizeof(double));
 
@@ -332,36 +330,92 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     for (indx=totalstim+delaypoint2; indx<totalstim+3*delaypoint2; indx++)
         powerLawIn[indx] = powerLawIn[indx-1];
 
-    // Everything looks good up to powerLawIn step! -- 2/28/2023
-    //
     // Debug todo list --- extract sampihc, sout1, sout2?
+    //
+    // 3/1/2022 - 12:32pm
+    // By inserting println statements into ANF.deicmate, it's easy to verify that the 
+    // waveforms returned by decimate match in both the original and new code, so 
+    // downsampling is almost certainly NOT the issue.
+    //
 
     sampIHC = decimate(powerLawIn, (int)ceil(totalstim+3*delaypoint2), resamp);
+
+  /*----------------------------------------------------------*/
+  /*----- Running Power-law Adaptation -----------------------*/
+  /*----------------------------------------------------------*/
+  k = 0;
 
   for (indx = 0; indx < floor((totalstim + 2 * delaypoint2) *
                               tdres * sampFreq);
         indx++)
   {
-    sout1[indx]  = __max( 0, sampIHC[indx] + randNums[indx]- alpha1*I1);
-    sout2[indx] = __max(0, sampIHC[indx] - alpha2 * I2);
+    sout1[k]  = __max( 0, sampIHC[indx] + randNums[indx]- alpha1*I1);
+    //sout1[k] = __max(0, sampIHC[indx] - alpha1 * I1); /* No fGn condition */
+    sout2[k] = __max(0, sampIHC[indx] - alpha2 * I2);
 
     if (implnt == 1) /* ACTUAL Implementation */
     {
       I1 = 0; I2 = 0;
       for (j=0; j<k+1; ++j)
       {
-        I1 += (sout1[j])*binwidth/((indx-j)*binwidth + beta1);
-        I2 += (sout2[j])*binwidth/((indx-j)*binwidth + beta2);
+        I1 += (sout1[j])*binwidth/((k-j)*binwidth + beta1);
+        I2 += (sout2[j])*binwidth/((k-j)*binwidth + beta2);
       }
     } /* end of actual */
-    synSampOut[indx] = sout1[indx] + sout2[indx];
+
+    if (implnt==0)    /* APPROXIMATE Implementation */
+    {
+      if (k==0)
+      {
+        n1[k] = 1.0e-3*sout2[k];
+        n2[k] = n1[k]; n3[0]= n2[k];
+      }
+      else if (k==1)
+      {
+        n1[k] = 1.992127932802320*n1[k-1]+ 1.0e-3*(sout2[k] - 0.994466986569624*sout2[k-1]);
+        n2[k] = 1.999195329360981*n2[k-1]+ n1[k] - 1.997855276593802*n1[k-1];
+        n3[k] = -0.798261718183851*n3[k-1]+ n2[k] + 0.798261718184977*n2[k-1];
+      }
+      else
+      {
+        n1[k] = 1.992127932802320*n1[k-1] - 0.992140616993846*n1[k-2]+ 1.0e-3*(sout2[k] - 0.994466986569624*sout2[k-1] + 0.000000000002347*sout2[k-2]);
+        n2[k] = 1.999195329360981*n2[k-1] - 0.999195402928777*n2[k-2]+n1[k] - 1.997855276593802*n1[k-1] + 0.997855827934345*n1[k-2];
+        n3[k] =-0.798261718183851*n3[k-1] - 0.199131619873480*n3[k-2]+n2[k] + 0.798261718184977*n2[k-1] + 0.199131619874064*n2[k-2];
+      }
+      I2 = n3[k];
+
+      if (k==0)
+      {
+        m1[k] = 0.2*sout1[k];
+        m2[k] = m1[k];	m3[k] = m2[k];
+        m4[k] = m3[k];	m5[k] = m4[k];
+      }
+      else if (k==1)
+      {
+        m1[k] = 0.491115852967412*m1[k-1] + 0.2*(sout1[k] - 0.173492003319319*sout1[k-1]);
+        m2[k] = 1.084520302502860*m2[k-1] + m1[k] - 0.803462163297112*m1[k-1];
+        m3[k] = 1.588427084535629*m3[k-1] + m2[k] - 1.416084732997016*m2[k-1];
+        m4[k] = 1.886287488516458*m4[k-1] + m3[k] - 1.830362725074550*m3[k-1];
+        m5[k] = 1.989549282714008*m5[k-1] + m4[k] - 1.983165053215032*m4[k-1];
+      }
+      else
+      {
+        m1[k] = 0.491115852967412*m1[k-1] - 0.055050209956838*m1[k-2]+ 0.2*(sout1[k]- 0.173492003319319*sout1[k-1]+ 0.000000172983796*sout1[k-2]);
+        m2[k] = 1.084520302502860*m2[k-1] - 0.288760329320566*m2[k-2] + m1[k] - 0.803462163297112*m1[k-1] + 0.154962026341513*m1[k-2];
+        m3[k] = 1.588427084535629*m3[k-1] - 0.628138993662508*m3[k-2] + m2[k] - 1.416084732997016*m2[k-1] + 0.496615555008723*m2[k-2];
+        m4[k] = 1.886287488516458*m4[k-1] - 0.888972875389923*m4[k-2] + m3[k] - 1.830362725074550*m3[k-1] + 0.836399964176882*m3[k-2];
+        m5[k] = 1.989549282714008*m5[k-1] - 0.989558985673023*m5[k-2] + m4[k] - 1.983165053215032*m4[k-1] + 0.983193027347456*m4[k-2];
+      }
+      I1 = m5[k];
+    } /* end of approximate implementation */
+    synSampOut[k] = sout1[k] + sout2[k];
+    k = k+1;
   }   /* end of all samples */
 
     /* Free memory */
     free(tmpgain);
     free(ihcouttmp);
 
-    free(sout1); free(sout2);
     free(m1); free(m2); free(m3); free(m4); free(m5); free(n1); free(n2); free(n3);
 
     /*----------------------------------------------------------*/

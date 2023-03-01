@@ -11,7 +11,7 @@ using Helios
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ==========================================================================================
 pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs), l)
-stages = ["control", "c1", "c2", "ihc", "expon", "powerlaw", "syn"]
+stages = ["control", "c1", "c2", "ihc", "expon", "powerlaw", "sout1", "sout2", "syn"]
 
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -34,11 +34,13 @@ stages = ["control", "c1", "c2", "ihc", "expon", "powerlaw", "syn"]
         ihcout_new = zeros(length(x))
         synout_new = zeros(length(x))
         exponout_new = zeros(length(x))
-        delaypoint2 = Int(floor(7500 / (cf / 1e3)))
-        powerlawin_new = zeros(length(x) + delaypoint2*3)
+        delaypoint = Int(floor(7500 / (cf / 1e3)))
+        powerlawin_new = zeros(length(x) + delaypoint*3)
         fs = 100e3
         len_noise = Int(ceil((length(ihcout_new) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3))
         ffGn = zeros(len_noise)
+        sout1 = zeros(Int(ceil((length(x)+2*delaypoint) * 1/100e3 * 10e3)))
+        sout2 = zeros(Int(ceil((length(x)+2*delaypoint) * 1/100e3 * 10e3)))
 
         # Run model
         model!(
@@ -63,6 +65,8 @@ stages = ["control", "c1", "c2", "ihc", "expon", "powerlaw", "syn"]
             synout_new,
             exponout_new,
             powerlawin_new,
+            sout1,
+            sout2,
         )
 
         true

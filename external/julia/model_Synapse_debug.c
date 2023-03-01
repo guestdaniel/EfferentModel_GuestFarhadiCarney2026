@@ -85,7 +85,7 @@
 double SYNAPSEDEBUG(double *ihcout, double *randNums, double tdres, double cf, int totalstim, int nrep,
                double spont, double noiseType, double implnt, double sampFreq,
 //               double *synouttmp, double *(*ffGn)(int, double, double, double, double),
-               double *synouttmp, double *exponOut, double *powerLawIn, double*(*decimate)(double *, int, int))
+               double *synouttmp, double *exponOut, double *powerLawIn, double *sout1, double *sout2, double*(*decimate)(double *, int, int))
 {
   /* Initalize Variables */
   int z, b;
@@ -101,7 +101,7 @@ double SYNAPSEDEBUG(double *ihcout, double *randNums, double tdres, double cf, i
   double VI0, VI1, alpha, beta, theta1, theta2, theta3, vsat, tmpst, tmp, PPI,
       CIlast, temp;
 
-  double *sout1, *sout2, *synSampOut, *TmpSyn;
+  double *synSampOut, *TmpSyn;
   double *m1, *m2, *m3, *m4, *m5;
   double *n1, *n2, *n3;
 
@@ -110,8 +110,6 @@ double SYNAPSEDEBUG(double *ihcout, double *randNums, double tdres, double cf, i
 
 //  exponOut = (double*)calloc((long) ceil(totalstim*nrep),sizeof(double));
 //  powerLawIn = (double*)calloc((long) ceil(totalstim*nrep+3*delaypoint),sizeof(double));
-  sout1 = (double*)calloc((long) ceil((totalstim*nrep+2*delaypoint)*tdres*sampFreq),sizeof(double));
-  sout2 = (double*)calloc((long) ceil((totalstim*nrep+2*delaypoint)*tdres*sampFreq),sizeof(double));
   synSampOut  = (double*)calloc((long) ceil((totalstim*nrep+2*delaypoint)*tdres*sampFreq),sizeof(double));
   TmpSyn  = (double*)calloc((long) ceil(totalstim*nrep+2*delaypoint),sizeof(double));
 
@@ -300,7 +298,6 @@ double SYNAPSEDEBUG(double *ihcout, double *randNums, double tdres, double cf, i
     synSampOut[k] = sout1[k] + sout2[k];
     k = k+1;
   }   /* end of all samples */
-  free(sout1); free(sout2);
   free(m1); free(m2); free(m3); free(m4); free(m5); free(n1); free(n2); free(n3);
 
   /*----------------------------------------------------------*/
