@@ -54,20 +54,65 @@
 /**
  * 
  */
-void model(double *px, double cf, double tdres, int totalstim,
-           double cohc, double cihc, int species, double *meout, 
+void model(double *px, double *randNums, double cf, double tdres, int totalstim,
+           double cohc, double cihc, int species, double spont, double noiseType, 
+           double implnt, double *meout, 
            double *controlout, double *c1out, double *c1vihcout, 
-           double *c2out, double *c2vihcout, double *ihcout) {
-    /* Declare variables used in the model */
+           double *c2out, double *c2vihcout, double *ihcout, double *synout,
+           double *exponOut, double *powerLawIn, double *(*decimate)(double *, int, int)) {
+    /* Declare variables used in the cochlear-filtering and hair-cell stage */
     double *tmpgain, *ihcouttmp;
-    double bmplace, centerfreq, gain, TauWBMax, TauWBMin, bmTaubm, tauwb, wbgain, lasttmpgain, wbout1, wbout, ohcasym, ihcasym, ohcnonlinout, ohcout, tmptauc1, tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp, delay;
-    int bmorder, n, wborder, grd, delaypoint, i;
+    double bmplace, centerfreq, gain, TauWBMax, TauWBMin, bmTaubm, tauwb, wbgain, 
+           lasttmpgain, wbout1, wbout, ohcasym, ihcasym, ohcnonlinout, ohcout, tmptauc1, 
+           tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp, delay;
+    int bmorder, wborder, grd, delaypoint;
+    int n, i;  /* Indexing variables */
     double Taumin[1],Taumax[1], bmTaumin[1], bmTaumax[1], ratiobm[1];
     int grdelay[1];
 
-    /* Allocate memory */
+    /* Declare variables used in the auditory-nerve stage */
+    int z, b;
+    int resamp = (int)ceil(1 / (tdres * 10e3));
+    double incr = 0.0;
+    int delaypoint2 = (int)floor(7500 / (cf / 1e3));
+
+    double alpha1, beta1, I1, alpha2, beta2, I2, binwidth;
+    int k, j, indx, q;
+    double synstrength, synslope, CI, CL, PG, CG, VL, PL, VI;
+    double cf_factor, PImax, kslope, Ass, Asp, TauR, TauST, Ar_Ast, PTS, Aon,
+        AR, AST, Prest, gamma1, gamma2, k1, k2;
+    double VI0, VI1, alpha, beta, theta1, theta2, theta3, vsat, tmpst, tmp, PPI,
+        CIlast, temp;
+
+    double *sout1, *sout2, *synSampOut, *TmpSyn;
+    double *m1, *m2, *m3, *m4, *m5;
+    double *n1, *n2, *n3;
+    double *sampIHC, *ihcDims;
+    double sampFreq = 10e3;
+
+    /* Declare variables used in the subcortical stage */
+
+    /* Allocate memory for cochlear filtering and hair cell stage */
     tmpgain = (double*) calloc(totalstim, sizeof(double));
     ihcouttmp = (double*) calloc(totalstim, sizeof(double));
+
+    /* Allocate memory for auditory-nerve stage */
+    //exponOut = (double*)calloc((long) ceil(totalstim),sizeof(double));
+    //powerLawIn = (double*)calloc((long) ceil(totalstim+3*delaypoint2),sizeof(double));
+    sout1 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    sout2 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    synSampOut  = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    TmpSyn  = (double*)calloc((long) ceil(totalstim+2*delaypoint2),sizeof(double));
+
+    m1 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    m2 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    m3  = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    m4 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    m5  = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+
+    n1 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    n2 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
+    n3 = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
 
     /* Declare functions used in model */
 	void middle_ear(double *, double, int, int, double *);
@@ -138,6 +183,59 @@ void model(double *px, double cf, double tdres, int totalstim,
     /* Calculate signal delay time for this channel */
     delay = delay_cat(cf);
     delaypoint =__max(0, (int) ceil(delay/tdres));
+
+    /* Set parameters for power-law */
+    binwidth = 1/sampFreq;
+    alpha1 = 2.5e-6*100e3; beta1 = 5e-4; I1 = 0;
+    alpha2 = 1e-2*100e3; beta2 = 1e-1; I2 = 0;
+
+    /* Set parameters for double-exponential adaptation */
+    if (spont==100) cf_factor = __min(800,pow(10,0.29*cf/1e3 + 0.7));
+    if (spont==4)   cf_factor = __min(50,2.5e-4*cf*4+0.2);
+    if (spont==0.1) cf_factor = __min(1.0,2.5e-4*cf*0.1+0.15);
+
+    PImax  = 0.6;                /* PI2 : Maximum of the PI(PI at steady state) */
+    kslope = (1+50.0)/(5+50.0)*cf_factor*20.0*PImax;
+    /* Ass    = 300*TWOPI/2*(1+cf/100e3); */  /* Older value: Steady State Firing Rate eq.10 */
+    Ass    = 800*(1+cf/100e3);    /* Steady State Firing Rate eq.10 */
+
+    if (implnt==1) Asp = spont*3.0;   /* Spontaneous Firing Rate if actual implementation */
+    if (implnt==0) Asp = spont*2.75; /* Spontaneous Firing Rate if approximate implementation */
+    TauR   = 2e-3;               /* Rapid Time Constant eq.10 */
+    TauST  = 60e-3;              /* Short Time Constant eq.10 */
+    Ar_Ast = 6;                  /* Ratio of Ar/Ast */
+    PTS    = 3;                  /* Peak to Steady State Ratio, characteristic of PSTH */
+
+    Aon    = PTS*Ass;                          /* Onset rate = Ass+Ar+Ast eq.10 */
+    AR     = (Aon-Ass)*Ar_Ast/(1+Ar_Ast);      /* Rapid component magnitude: eq.10 */
+    AST    = Aon-Ass-AR;                       /* Short time component: eq.10 */
+    Prest  = PImax/Aon*Asp;                    /* eq.A15 */
+    CG  = (Asp*(Aon-Asp))/(Aon*Prest*(1-Asp/Ass));    /* eq.A16 */
+    gamma1 = CG/Asp;                           /* eq.A19 */
+    gamma2 = CG/Ass;                           /* eq.A20 */
+    k1     = -1/TauR;                          /* eq.8 & eq.10 */
+    k2     = -1/TauST;                         /* eq.8 & eq.10 */
+            /* eq.A21 & eq.A22 */
+    VI0    = (1-PImax/Prest)/(gamma1*(AR*(k1-k2)/CG/PImax+k2/Prest/gamma1-k2/PImax/gamma2));
+    VI1    = (1-PImax/Prest)/(gamma1*(AST*(k2-k1)/CG/PImax+k1/Prest/gamma1-k1/PImax/gamma2));
+    VI  = (VI0+VI1)/2;
+    alpha  = gamma2/k1/k2;       /* eq.A23,eq.A24 or eq.7 */
+    beta   = -(k1+k2)*alpha;     /* eq.A23 or eq.7 */
+    theta1 = alpha*PImax/VI;
+    theta2 = VI/PImax;
+    theta3 = gamma2-1/PImax;
+
+    PL  = ((beta-theta2*theta3)/theta1-1)*PImax;  /* eq.4' */
+    PG  = 1/(theta3-1/PL);                        /* eq.5' */
+    VL  = theta1*PL*PG;                           /* eq.3' */
+    CI  = Asp/Prest;                              /* CI at rest, from eq.A3,eq.A12 */
+    CL  = CI*(Prest+PL)/PL;                       /* CL at rest, from eq.1 */
+
+    if(kslope>=0)  vsat = kslope+Prest;
+    tmpst  = log(2)*vsat/Prest;
+    if(tmpst<400) synstrength = log(exp(tmpst)-1);
+    else synstrength = tmpst;
+    synslope = Prest/log(2)*synstrength;
 
     /* Compute the main model loop*/
     for (n=0; n<totalstim; n++) {
@@ -210,9 +308,77 @@ void model(double *px, double cf, double tdres, int totalstim,
         ihcout[i] = ihcouttmp[i - delaypoint];
     };
 
+    /* Compute the AN loop */
+    for (indx=0; indx<totalstim; ++indx) {
+        tmp = synstrength*(ihcout[indx]);
+        if(tmp<400) tmp = log(1+exp(tmp));
+        PPI = synslope/synstrength*tmp;
+
+        CIlast = CI;
+        CI = CI + (tdres/VI)*(-PPI*CI + PL*(CL-CI));
+        CL = CL + (tdres/VL)*(-PL*(CL - CIlast) + PG*(CG - CL));
+        if (CI < 0) {
+            temp = 1/PG+1/PL+1/PPI;
+            CI = CG/(PPI*temp);
+            CL = CI*(PPI+PL)/PL;
+        }
+        exponOut[indx] = CI*PPI;
+    }
+
+    for (indx=0; indx<delaypoint2; indx++)
+        powerLawIn[indx] = exponOut[0];
+    for (indx=delaypoint2; indx<totalstim+delaypoint2; indx++)
+        powerLawIn[indx] = exponOut[indx-delaypoint2];
+    for (indx=totalstim+delaypoint2; indx<totalstim+3*delaypoint2; indx++)
+        powerLawIn[indx] = powerLawIn[indx-1];
+
+    // Everything looks good up to powerLawIn step! -- 2/28/2023
+    //
+    // Debug todo list --- extract sampihc, sout1, sout2?
+
+    sampIHC = decimate(powerLawIn, (int)ceil(totalstim+3*delaypoint2), resamp);
+
+  for (indx = 0; indx < floor((totalstim + 2 * delaypoint2) *
+                              tdres * sampFreq);
+        indx++)
+  {
+    sout1[indx]  = __max( 0, sampIHC[indx] + randNums[indx]- alpha1*I1);
+    sout2[indx] = __max(0, sampIHC[indx] - alpha2 * I2);
+
+    if (implnt == 1) /* ACTUAL Implementation */
+    {
+      I1 = 0; I2 = 0;
+      for (j=0; j<k+1; ++j)
+      {
+        I1 += (sout1[j])*binwidth/((indx-j)*binwidth + beta1);
+        I2 += (sout2[j])*binwidth/((indx-j)*binwidth + beta2);
+      }
+    } /* end of actual */
+    synSampOut[indx] = sout1[indx] + sout2[indx];
+  }   /* end of all samples */
+
     /* Free memory */
     free(tmpgain);
     free(ihcouttmp);
+
+    free(sout1); free(sout2);
+    free(m1); free(m2); free(m3); free(m4); free(m5); free(n1); free(n2); free(n3);
+
+    /*----------------------------------------------------------*/
+    /*----- Upsampling to original (High 100 kHz) sampling rate --------*/
+    /*----------------------------------------------------------*/
+    for(z=0; z<indx-1; ++z)
+    {
+        incr = (synSampOut[z+1]-synSampOut[z])/resamp;
+        for(b=0; b<resamp; ++b)
+        {
+            TmpSyn[z*resamp+b] = synSampOut[z]+ b*incr;
+        }
+    }
+    for (q=0;q<totalstim;++q)
+        synout[q] = TmpSyn[q+delaypoint2];
+
+    free(synSampOut); free(TmpSyn);
 }
 
 /**
