@@ -323,6 +323,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
         exponOut[indx] = CI*PPI;
     }
 
+    /* Handle zeropadding internal simulation to account for power-law onset instability? */
     for (indx=0; indx<delaypoint2; indx++)
         powerLawIn[indx] = exponOut[0];
     for (indx=delaypoint2; indx<totalstim+delaypoint2; indx++)
@@ -330,38 +331,23 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     for (indx=totalstim+delaypoint2; indx<totalstim+3*delaypoint2; indx++)
         powerLawIn[indx] = powerLawIn[indx-1];
 
-    // Debug todo list --- extract sampihc, sout1, sout2?
-    //
-    // 3/1/2022 - 12:32pm
-    // By inserting println statements into ANF.deicmate, it's easy to verify that the 
-    // waveforms returned by decimate match in both the original and new code, so 
-    // downsampling is almost certainly NOT the issue.
-    //
-
+    /* Downsample IHC by factor of resamp */
     sampIHC = decimate(powerLawIn, (int)ceil(totalstim+3*delaypoint2), resamp);
 
-  /*----------------------------------------------------------*/
-  /*----- Running Power-law Adaptation -----------------------*/
-  /*----------------------------------------------------------*/
-  k = 0;
+    /* Implement power-law adaptation */
+    k = 0;
 
-  for (indx = 0; indx < floor((totalstim + 2 * delaypoint2) *
-                              tdres * sampFreq);
-        indx++)
-  {
-    sout1[k]  = __max( 0, sampIHC[indx] + randNums[indx]- alpha1*I1);
-    //sout1[k] = __max(0, sampIHC[indx] - alpha1 * I1); /* No fGn condition */
-    sout2[k] = __max(0, sampIHC[indx] - alpha2 * I2);
+    for (indx = 0; indx < floor((totalstim + 2 * delaypoint2) * tdres * sampFreq); indx++) {
+        sout1[k]  = __max( 0, sampIHC[indx] + randNums[indx]- alpha1*I1);
+        sout2[k] = __max(0, sampIHC[indx] - alpha2 * I2);
 
-    if (implnt == 1) /* ACTUAL Implementation */
-    {
-      I1 = 0; I2 = 0;
-      for (j=0; j<k+1; ++j)
-      {
-        I1 += (sout1[j])*binwidth/((k-j)*binwidth + beta1);
-        I2 += (sout2[j])*binwidth/((k-j)*binwidth + beta2);
-      }
-    } /* end of actual */
+    if (implnt == 1) {
+        I1 = 0; I2 = 0;
+        for (j=0; j<k+1; ++j) {
+            I1 += (sout1[j])*binwidth/((k-j)*binwidth + beta1);
+            I2 += (sout2[j])*binwidth/((k-j)*binwidth + beta2);
+        }
+    }
 
     if (implnt==0)    /* APPROXIMATE Implementation */
     {
@@ -408,14 +394,14 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
       }
       I1 = m5[k];
     } /* end of approximate implementation */
-    synSampOut[k] = sout1[k] + sout2[k];
-    k = k+1;
-  }   /* end of all samples */
+
+        synSampOut[k] = sout1[k] + sout2[k];
+        k = k+1;
+    }
 
     /* Free memory */
     free(tmpgain);
     free(ihcouttmp);
-
     free(m1); free(m2); free(m3); free(m4); free(m5); free(n1); free(n2); free(n3);
 
     /*----------------------------------------------------------*/
