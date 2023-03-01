@@ -61,10 +61,11 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
            double *c2out, double *c2vihcout, double *ihcout, double *synout,
            double *exponOut, double *powerLawIn, double *sout1, double *sout2, double *(*decimate)(double *, int, int)) {
     /* Declare variables used in the cochlear-filtering and hair-cell stage */
-    double *tmpgain, *ihcouttmp;
+    double *tmpgain;
     double bmplace, centerfreq, gain, TauWBMax, TauWBMin, bmTaubm, tauwb, wbgain, 
            lasttmpgain, wbout1, wbout, ohcasym, ihcasym, ohcnonlinout, ohcout, tmptauc1, 
-           tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp, delay;
+           tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp, delay,
+           me_curr;
     int bmorder, wborder, grd, delaypoint;
     int n, i; 
     double Taumin[1],Taumax[1], bmTaumin[1], bmTaumax[1], ratiobm[1];
@@ -92,7 +93,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
 
     /* Allocate memory for cochlear filtering and hair cell stage */
     tmpgain = (double*) calloc(totalstim, sizeof(double));
-    ihcouttmp = (double*) calloc(totalstim, sizeof(double));
 
     /* Allocate memory for auditory-nerve stage */
     synSampOut  = (double*)calloc((long) ceil((totalstim+2*delaypoint2)*tdres*sampFreq),sizeof(double));
@@ -223,8 +223,15 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
 
     /* Compute the main model loop*/
     for (n=0; n<totalstim; n++) {
+        /* Delay signal according to delay time */
+        if ((n - delaypoint) < 0) {
+            me_curr = 0.0;
+        } else {
+            me_curr = meout[n - delaypoint];
+        }
+
         /* Pass signal through control-path filter */
-        wbout1 = WbGammaTone(meout[n], tdres, centerfreq, n, tauwb, wbgain, wborder);
+        wbout1 = WbGammaTone(me_curr, tdres, centerfreq, n, tauwb, wbgain, wborder);
         wbout = pow((tauwb/TauWBMax), wborder) * wbout1 * 10e3 *__max(1, cf/5e3);
 
         /* Pass the control-path signal through the OHC model (nonlinear transduction and 
@@ -255,11 +262,11 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
 		lasttmpgain = wbgain;
 
         /* Apply signal-path C1 filter */
-	    c1filterouttmp = C1ChirpFilt(meout[n], tdres, cf, n, bmTaumax[0], rsigma);
+	    c1filterouttmp = C1ChirpFilt(me_curr, tdres, cf, n, bmTaumax[0], rsigma);
         c1out[n] = c1filterouttmp;  /* store sample output in vector */
 
         /* Apply parallel-path C2 filter */
-		c2filterouttmp  = C2ChirpFilt(meout[n], tdres, cf, n, bmTaumax[0], 1/ratiobm[0]);
+		c2filterouttmp  = C2ChirpFilt(me_curr, tdres, cf, n, bmTaumax[0], 1/ratiobm[0]);
         c2out[n] = c2filterouttmp;  /* store sample output in vector */
 
 	    /* Apply IHC model: NL input-output function and lowpass filtering */
@@ -268,29 +275,8 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
 		c2vihctmp = -NLogarithm(c2filterouttmp*fabs(c2filterouttmp)*cf/10*cf/2e3, 0.2, 1.0, cf); /* C2 transduction output */
         c2vihcout[n] = c2vihctmp;  /* store sample output in vector */
 
-        ihcouttmp[n] = IhcLowPass(c1vihctmp+c2vihctmp, tdres, 3000, n, 1.0, 7);
+        ihcout[n] = IhcLowPass(c1vihctmp+c2vihctmp, tdres, 3000, n, 1.0, 7);
     }
-
-    /* Stretched out the IHC output according to nrep (number of repetitions) */
-    for(i=0;i<totalstim;i++)
-        {
-            ihcouttmp[i] = ihcouttmp[(int) (fmod(i,totalstim))];
-    };
-        /* Adjust total path delay to IHC output signal */
-    if (species==1)
-    {
-        delay      = delay_cat(cf);
-    }
-    if (species>1)
-    {
-        delay      = delay_cat(cf); /* signal delay changed back to cat function for version 5.2 */
-    };
-    delaypoint =__max(0,(int) ceil(delay/tdres));
-
-    for(i=delaypoint;i<totalstim;i++)
-    {
-        ihcout[i] = ihcouttmp[i - delaypoint];
-    };
 
     /* Compute the AN loop */
     for (indx=0; indx<totalstim; ++indx) {
@@ -352,7 +338,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
 
     /* Free dynamic memory */
     free(tmpgain);
-    free(ihcouttmp);
     free(synSampOut); 
     free(TmpSyn);
 }

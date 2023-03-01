@@ -83,9 +83,39 @@ end
     # Check response to 1 kHz pure tone at every filter output
     # ======================================================================================
     @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages
+        # Create stimulus 
         x = pt(1000.0, 50.0)
+
+        # Simulate original and new responses
         orig = sim_orig_dict(x, 1000.0)[stage]
         new = sim_gfc2023_dict(x, 1000.0)[stage]
-        @test all(orig .== new)
+
+        # Calculate delaypoint if needed
+        delay = ccall(
+            (:delay_cat, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
+            Cdouble,
+            (
+                Cdouble,
+            ),
+            1000.0
+        )
+        delaypoint = Int(ceil(delay/(1/100e3)))
+
+        # If we're looking at control, c1, or c2, we need to shift signal by delaypoint
+        # samples to accomodate the fact that we shifted delay from immediately after IHC
+        # in original code to immediately after middle ear filter in new code
+        if stage in ["control", "c1", "c2"]
+            orig = shiftsignal(orig, delaypoint)
+        end
+
+        # Verify fidelity using isapprox
+        # TODO: determine appropriate tolerance values?
+        if stage == "control"
+            # Control onset is messed up a bit because it starts out non-zero, so simply 
+            # zero-padding old control signal isn't viable
+            @test orig[2000:end] ≈ new[2000:end]
+        else
+            @test orig ≈ new
+        end
     end
 end

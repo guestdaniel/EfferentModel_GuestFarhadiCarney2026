@@ -3,6 +3,7 @@ using AuditorySignalUtils
 using AuditoryNerveFiber
 using DrWatson
 using CairoMakie
+using DSP
 
 pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs), l)
 
@@ -14,13 +15,30 @@ function plot_model!()
     resps_orig = sim_orig_dict(x, 1000.0)
     resps_new = sim_gfc2023_dict(x, 1000.0)
     stages = ["control", "c1", "c2", "ihc", "expon", "powerlaw"]
+    delay = ccall(
+        (:delay_cat, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
+        Cdouble,
+        (
+            Cdouble,
+        ),
+        1000.0
+    )
+    delaypoint = Int(ceil(delay/(1/100e3)))
 
     # Plot output
     fig = Figure(; resolution=(800, 200*length(stages)))
     axs = [Axis(fig[i, 1]) for i in eachindex(stages)]
     for (ax, stage) in zip(axs, stages)
-        lines!(ax, resps_orig[stage]; color=:gray)
-        lines!(ax, resps_new[stage]; color=:red, linestyle=:dash, linewidth=3.0)
+        # Extract original and new responses
+        orig = resps_orig[stage]
+        new = resps_new[stage]
+
+        # Shift by delaypoint (if needed)
+        if stage in ["control", "c1", "c2"]
+            orig = shiftsignal(orig, delaypoint)
+        end
+        lines!(ax, orig; color=:gray)
+        lines!(ax, new; color=:red, linestyle=:dash, linewidth=3.0)
         ax.ylabel = stage
     end
 
