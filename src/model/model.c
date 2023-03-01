@@ -276,11 +276,9 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
         c2vihcout[n] = c2vihctmp;  /* store sample output in vector */
 
         ihcout[n] = IhcLowPass(c1vihctmp+c2vihctmp, tdres, 3000, n, 1.0, 7);
-    }
 
-    /* Compute the AN loop */
-    for (indx=0; indx<totalstim; ++indx) {
-        tmp = synstrength*(ihcout[indx]);
+        /* Apply double-exponential adaptation */
+        tmp = synstrength*(ihcout[n]);
         if(tmp<400) tmp = log(1+exp(tmp));
         PPI = synslope/synstrength*tmp;
 
@@ -292,7 +290,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
             CI = CG/(PPI*temp);
             CL = CI*(PPI+PL)/PL;
         }
-        exponOut[indx] = CI*PPI;
+        exponOut[n] = CI*PPI;
     }
 
     /* Handle zero-padding internal simulation to account for power-law onset instability? */
