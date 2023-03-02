@@ -66,7 +66,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
            lasttmpgain, wbout1, wbout, ohcasym, ihcasym, ohcnonlinout, ohcout, tmptauc1, 
            tauc1, rsigma, wb_gain, c1filterouttmp, c2filterouttmp, c1vihctmp, c2vihctmp,
            me_curr, delay_transmission;
-    int bmorder, wborder, grd, delay_point_transmission;
+    int bmorder, wborder, grd, len_delay_transmission;
     int n, i; 
     double Taumin[1],Taumax[1], bmTaumin[1], bmTaumax[1], ratiobm[1];
     int grdelay[1];
@@ -75,7 +75,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     int z, b;
     int resamp = (int)ceil(1 / (tdres * 10e3));
     double incr = 0.0;
-    int len_pad_powerlaw = (int)floor(7500 / (cf / 1e3));
 
     double alpha1, beta1, I1, alpha2, beta2, I2, binwidth;
     int k, j, indx, q;
@@ -89,7 +88,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     double *ihcDims;
 
     /* Declare variables used in the subcortical stage */
-    synouttmp = (double*)calloc((long) ceil(totalstim+2*len_pad_powerlaw),sizeof(double));
 
     /* Allocate memory for cochlear filtering and hair cell stage */
     tmpgain = (double*) calloc(totalstim, sizeof(double));
@@ -162,7 +160,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
 
     /* Calculate transmission delay time (to account for measured spike latency) */
     delay_transmission = delay_cat(cf);  /* Delay time in s */
-    delay_point_transmission = __max(0, (int) ceil(delay_transmission/tdres));  /* Delay time in samples*/
+    len_delay_transmission = __max(0, (int) ceil(delay_transmission/tdres));  /* Delay time in samples*/
 
     /* Set parameters for power-law */
     binwidth = tdres;
@@ -218,12 +216,13 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
     synslope = Prest/log(2)*synstrength;
 
     /* Compute the main model loop*/
+    k = 0;
     for (n=0; n<totalstim; n++) {
         /* Delay signal according to delay time */
-        if ((n - delay_point_transmission) < 0) {
+        if ((n - len_delay_transmission) < 0) {
             me_curr = 0.0;
         } else {
-            me_curr = meout[n - delay_point_transmission];
+            me_curr = meout[n - len_delay_transmission];
         }
 
         /* Pass signal through control-path filter */
@@ -277,7 +276,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
         tmp = synstrength*(ihcout[n]);
         if(tmp<400) tmp = log(1+exp(tmp));
         PPI = synslope/synstrength*tmp;
-
         CIlast = CI;
         CI = CI + (tdres/VI)*(-PPI*CI + PL*(CL-CI));
         CL = CL + (tdres/VL)*(-PL*(CL - CIlast) + PG*(CG - CL));
@@ -287,42 +285,21 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
             CL = CI*(PPI+PL)/PL;
         }
         exponOut[n] = CI*PPI;
-    }
 
-    /* Handle zero-padding internal simulation to account for power-law onset instability? */
-    for (indx=0; indx<len_pad_powerlaw; indx++)
-        powerLawIn[indx] = exponOut[0];
-    for (indx=len_pad_powerlaw; indx<totalstim+len_pad_powerlaw; indx++)
-        powerLawIn[indx] = exponOut[indx-len_pad_powerlaw];
-    for (indx=totalstim+len_pad_powerlaw; indx<totalstim+3*len_pad_powerlaw; indx++)
-        powerLawIn[indx] = powerLawIn[indx-1];
-
-    /* Implement power-law adaptation */
-    k = 0;
-    for (indx = 0; indx < floor(totalstim + 2 * len_pad_powerlaw); indx++) {
-        /* Do something? */
-        sout1[k]  = __max( 0, powerLawIn[indx] + randNums[indx]- alpha1*I1);
-        sout2[k] = __max(0, powerLawIn[indx] - alpha2 * I2);
-
-        /* Core power-law loop */
+        /* Apply power-law adaptation */
+        sout1[k]  = __max(0, exponOut[n] + randNums[n] - alpha1*I1);
+        sout2[k] = __max(0, exponOut[n] - alpha2 * I2);
         I1 = 0; I2 = 0;
         for (j=0; j<k+1; ++j) {
             I1 += (sout1[j])*binwidth/((k-j)*binwidth + beta1);
             I2 += (sout2[j])*binwidth/((k-j)*binwidth + beta2);
         }
-
-    //     /* Sum different channels to produce final output */
-        synouttmp[k] = sout1[k] + sout2[k];
+        synout[k] = sout1[k] + sout2[k];
         k = k+1;
     }
 
-    // /* Fill in synapse output */
-    for (i=0; i < totalstim; ++i) {
-        synout[i] = synouttmp[i+len_pad_powerlaw];
-    }
-
     /* Free dynamic memory */
-    free(tmpgain); free(synouttmp);
+    free(tmpgain);
 }
 
 /**

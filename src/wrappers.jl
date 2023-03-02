@@ -55,14 +55,14 @@ function sim_gfc2023(
     # Synthesize ffGn
     if noiseType == 1.0
         ffGn = ffGn_native(
-            Int(ceil(length(x) + 2 * floor(7500 / (cf / 1e3)))),
+            Int(ceil(length(x))),
             1/fs,
             0.9,
             noiseType,
             spont,
         )
     else
-        ffGn = zeros(Int(ceil(length(x) + 2 * floor(7500 / (cf / 1e3)))))
+        ffGn = zeros(Int(ceil(length(x))))
     end
 
     # Pre-allocate memory
@@ -75,16 +75,15 @@ function sim_gfc2023(
     ihcout = zeros(length(x))
     synout = zeros(length(x))
     exponout = zeros(length(x))
-    delaypoint = Int(floor(7500 / (cf / 1e3)))
-    powerlawin = zeros(length(x) + delaypoint*3)
-    sout1 = zeros(length(ihcout) + 2*delaypoint)
-    sout2 = zeros(length(ihcout) + 2*delaypoint)
+    powerlawin = zeros(length(x))
+    sout1 = zeros(length(ihcout))
+    sout2 = zeros(length(ihcout))
 
     # Run model
     model!(
         x, 
         ffGn,
-        1000.0, 
+        cf,
         1/fs, 
         length(x), 
         cohc, 
@@ -202,7 +201,7 @@ function sim_orig(
             Ptr{Cdouble},        # c2vihcout
             Ptr{Cdouble},        # controlout
         ),
-        x, 1000.0, 1, 1/100e3, length(x), cohc, cihc, species_flag, ihcout, c1out, c1vihcout, c2out, c2vihcout, controlout, # pass arguments
+        x, cf, 1, 1/fs, length(x), cohc, cihc, species_flag, ihcout, c1out, c1vihcout, c2out, c2vihcout, controlout, # pass arguments
     )
 
     synout = zeros(length(ihcout))
@@ -235,7 +234,7 @@ function sim_orig(
             Ptr{Cdouble},        # sout2
             Ptr{Cvoid},          # decimate function handle
         ),
-        ihcout, ffGn, 1/100e3, 1000.0, length(ihcout), 1, spont, noiseType, implnt, 10e3, synout, exponout, powerlawin, sout1, sout2, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
+        ihcout, ffGn, 1/fs, cf, length(ihcout), 1, spont, noiseType, implnt, 10e3, synout, exponout, powerlawin, sout1, sout2, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
     )
 
     # Return
