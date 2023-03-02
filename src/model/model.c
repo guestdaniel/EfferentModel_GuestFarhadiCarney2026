@@ -1,7 +1,7 @@
  /*
-  This is v0.1.0 of the code for subcortical auditory model model of:
+  This is v0.0.12 of the code for subcortical auditory model model of:
 
-  Guest, D. R., ..., and Carney, L. H. (202x). 
+  Guest, D. R., ..., and Carney, L. H. (202x). ...
 
   The peripheral stage of this model is derived from the work of:
 
@@ -27,6 +27,41 @@
 
   Please cite these papers if you publish any research
   results obtained with this code or any modified versions of this code.
+
+  Changelog:
+  0.0.11 // a0f27528b0127e77d0e64acf6e0ac9e43d681456 [Helios]
+        Removed power-law zeropadding ("delaypoint") system and moved power-law adaptation
+        into primary loop. Renamed several variables related to the initial "traveling-wave
+        delay" to improve clarity. 
+  0.0.10 // 14a4116e964679d5e864ffda65acbf0f61937087 [Helios]
+        Removed downsampling stage from the IHC/synapse model.
+  0.0.9 // dbeed3c05d6468f961ec679417dc93103a2881ab [Helios]
+        Moved double-exponential adaptation stage into main model loop.
+  0.0.8 // 53c503450b3d6337b41fe5fe4ec6f2f39032815f [Helios]
+        Converted "traveling-wave delay" that accounts for differences in ANF spiking 
+        latency as a function of CF into a sample-wise implementation consisting of a 
+        short delay after middle-ear filtering and before cochlear filtering.
+  0.0.7 // 03ce225a9fc5ae1e8b1deeebf4358d8c1d7f7ac2
+        Removed logic related to `implnt`, which controls whether to use the actual or 
+        approximate implementation of power-law adaptation. Left the argument in the 
+        signature of `model()` for convenience, but it now effectively does nothing.
+  0.0.6 // 703fbaf9a89e1068358edb6769429e9d9f2e72aa [Helios]
+        Added additional model stages after IHC, up to synapse output.
+  0.0.4 // fd04a31c75961d0b0282f8f1e605d3cb54921a69 [Helios]
+        Adjusted formatting and comments in a few underlying C functions (NLogarithm, 
+        IhcLowPass, etc.)
+  0.0.3 // 4c6b89f83f52eeea8318969c1f1b167d18546233 [Helios]
+        Removed nrep as an option from the new model code. If users want to repeat 
+        simulations, they should pass in a repeated stimulus or repeat the call (instead of
+        using the nrep functionality provided in 2014/2018 model code).
+  0.0.2 // 430393b4070a0b047c76e904cf46e2d1a99fd3f0 [Helios]
+        Implemented full IHC signal path into `model()`, adjusted code to allow the caller to 
+        get many time-varying outputs from different model stages as outputs so they can be 
+        inspected post hoc.
+  0.0.1 // 72e5632dd5825e105e6804a0bcf73791116488d2 [Helios]
+        Started process of merging IHCAN.c and Synapse.c, part of the original 2014 model 
+        code, into a single file, model.c. Created a new function, `model()`, intended to
+        implement both the BM/IHC and AN model stages into a single samplewise loop.
 
 */
 
@@ -222,7 +257,7 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
         if ((n - len_delay_transmission) < 0) {
             me_curr = 0.0;
         } else {
-            me_curr = meout[n - len_delay_transmission];
+            me_curr = meout[n - len_delay_transmission]; /* TODO Transmission or ?? */
         }
 
         /* Pass signal through control-path filter */
@@ -269,7 +304,6 @@ void model(double *px, double *randNums, double cf, double tdres, int totalstim,
         c1vihcout[n] = c1vihctmp;  /* store sample output in vector */
 		c2vihctmp = -NLogarithm(c2filterouttmp*fabs(c2filterouttmp)*cf/10*cf/2e3, 0.2, 1.0, cf); /* C2 transduction output */
         c2vihcout[n] = c2vihctmp;  /* store sample output in vector */
-
         ihcout[n] = IhcLowPass(c1vihctmp+c2vihctmp, tdres, 3000, n, 1.0, 7);
 
         /* Apply double-exponential adaptation */
