@@ -4,3 +4,4 @@ outputs
 *.svg
 *.o
 *.so
+model_temp
