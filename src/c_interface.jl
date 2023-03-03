@@ -10,8 +10,6 @@ function model!(
     cihc::Float64,
     species::Int64,
     spont::Float64,
-    noiseType::Float64,
-    implnt::Float64,
     meout::Vector{Float64},
     controlout::Vector{Float64},
     c1out::Vector{Float64},
@@ -21,7 +19,6 @@ function model!(
     ihcout::Vector{Float64},
     synout::Vector{Float64},
     exponout::Vector{Float64},
-    powerlawin::Vector{Float64},
     sout1::Vector{Float64},
     sout2::Vector{Float64},
 )
@@ -38,8 +35,6 @@ function model!(
                 Cdouble,      # cihc
                 Cint,         # species
                 Cdouble,      # spont
-                Cdouble,      # noiseType
-                Cdouble,      # implnt
                 Ptr{Cdouble}, # meout
                 Ptr{Cdouble}, # control
                 Ptr{Cdouble}, # c1 
@@ -49,10 +44,8 @@ function model!(
                 Ptr{Cdouble}, # ihcout
                 Ptr{Cdouble}, # synout
                 Ptr{Cdouble}, # exponOut
-                Ptr{Cdouble}, # powerLawIn
                 Ptr{Cdouble}, # sout1
                 Ptr{Cdouble}, # sout2
-                Ptr{Cvoid},   # decimate
             ),
             px,
             ffGn,
@@ -63,8 +56,6 @@ function model!(
             cihc, 
             species, 
             spont,
-            noiseType,
-            implnt,
             meout, 
             controlout, 
             c1out, 
@@ -74,10 +65,8 @@ function model!(
             ihcout,
             synout,
             exponout,
-            powerlawin,
             sout1,
             sout2,
-            @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),                         # input cfunction
         )
 end
 

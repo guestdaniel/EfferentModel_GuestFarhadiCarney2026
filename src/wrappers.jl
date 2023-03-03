@@ -9,11 +9,11 @@ Simulates full model output for sound-pressure input
 - `input::Vector{Float64}`: sound-pressure waveform (Pa)
 - `cf::Float64`: characteristic frequency of the fiber in Hz
 - `fs::Float64`: sampling rate of the *input* in Hz
-- `fs_synapse::Float64`: sampling rate of the interior synapse simulation. The ratio between fs and fs_synapse must be an integer.
+- `cohc::Float64`:
+- `cihc::Float64`:
+- `species::String`:
 - `fiber_type::String`: fiber type, one of ("low", "medium", "high") spontaneous rate
-- `power_law::String`: whether we use true or approximate power law adaptation, one of ("actual", "approximate")
-- `fractional::Bool`: whether we use ffGn or not, one of (true, false)
-- `n_rep::Int64`: number of repetititons to run. We assume that the input was also generated using `n_rep=n_rep`, hence we infer that the input acoustic waveform is of length `length(input)/n_rep`.
+- `fractional::Bool`: 
 
 # Returns
 - `output::Vector{Float64}`: synapse output (unknown units?), length is `length(input)`
@@ -26,8 +26,7 @@ function sim_gfc2023(
     cihc::Float64=1.0,
     species::String="human",
     fiber_type::String="high", 
-    power_law::String="actual", 
-    fractional::Bool=false,
+    fractional=false,
 )
     # Convert human-readable arguments into C-side floats/ints
     species_flag = Dict(
@@ -42,23 +41,13 @@ function sim_gfc2023(
         "high" => 100.0
     )[fiber_type]
 
-    implnt = Dict(
-        "actual" => 1.0,
-        "approximate" => 0.0
-    )[power_law]
-
-    noiseType = Dict(
-        true => 1.0,
-        false => 0.0
-    )[fractional]
-
     # Synthesize ffGn
-    if noiseType == 1.0
+    if fractional
         ffGn = ffGn_native(
             Int(ceil(length(x))),
             1/fs,
             0.9,
-            noiseType,
+            1.0,
             spont,
         )
     else
@@ -75,7 +64,6 @@ function sim_gfc2023(
     ihcout = zeros(length(x))
     synout = zeros(length(x))
     exponout = zeros(length(x))
-    powerlawin = zeros(length(x))
     sout1 = zeros(length(ihcout))
     sout2 = zeros(length(ihcout))
 
@@ -90,8 +78,6 @@ function sim_gfc2023(
         cihc, 
         species_flag, 
         spont,
-        noiseType,
-        implnt,
         meout, 
         controlout, 
         c1out, 
@@ -101,17 +87,16 @@ function sim_gfc2023(
         ihcout,
         synout,
         exponout,
-        powerlawin,
         sout1,
         sout2,
     )
 
     # Return
-    return meout, controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2
+    return meout, controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, sout1, sout2
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    me, control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw, sout1, sout2 = sim_gfc2023(args..., kwargs...)
+    me, control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, sout1, sout2 = sim_gfc2023(args..., kwargs...)
     return Dict(
         "me" => me,
         "control" => control,
@@ -122,7 +107,6 @@ function sim_gfc2023_dict(args...; kwargs...)
         "ihc" => ihc,
         "syn" => syn,
         "expon" => expon,
-        "powerlaw" => powerlaw,
         "sout1" => sout1,
         "sout2" => sout2,
     )
