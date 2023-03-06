@@ -20,7 +20,7 @@ Simulates full model output for sound-pressure input
 """
 function sim_gfc2023(
     x::Vector{Float64}, 
-    cf::Float64; 
+    cf::Vector{Float64}; 
     fs::Float64=100e3,
     cohc::Float64=1.0,
     cihc::Float64=1.0,
@@ -28,6 +28,9 @@ function sim_gfc2023(
     fiber_type::String="high", 
     fractional=false,
 )
+    # Calculate n_chan
+    n_chan = length(cf)
+
     # Convert human-readable arguments into C-side floats/ints
     species_flag = Dict(
         "cat" => 1,
@@ -56,16 +59,16 @@ function sim_gfc2023(
 
     # Pre-allocate memory
     meout = zeros(length(x))
-    controlout = zeros(length(x))
-    c1out = zeros(length(x))
-    c1vihcout = zeros(length(x))
-    c2out = zeros(length(x))
-    c2vihcout = zeros(length(x))
-    ihcout = zeros(length(x))
-    synout = zeros(length(x))
-    exponout = zeros(length(x))
-    sout1 = zeros(length(ihcout))
-    sout2 = zeros(length(ihcout))
+    controlout = [zeros(length(x)) for _ in 1:n_chan]
+    c1out = [zeros(length(x)) for _ in 1:n_chan]
+    c1vihcout = [zeros(length(x)) for _ in 1:n_chan]
+    c2out = [zeros(length(x)) for _ in 1:n_chan]
+    c2vihcout = [zeros(length(x)) for _ in 1:n_chan]
+    ihcout = [zeros(length(x)) for _ in 1:n_chan]
+    synout = [zeros(length(x)) for _ in 1:n_chan]
+    exponout = [zeros(length(x)) for _ in 1:n_chan]
+    sout1 = [zeros(length(x)) for _ in 1:n_chan]
+    sout2 = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -93,6 +96,10 @@ function sim_gfc2023(
 
     # Return
     return meout, controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, sout1, sout2
+end
+
+function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
+    [idx > 1 ? x[1] : x for (idx, x) in enumerate(sim_gfc2023(x, [cf]; kwargs...))]
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
