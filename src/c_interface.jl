@@ -4,6 +4,7 @@ function model!(
     px::Vector{Float64},
     ffGn::Vector{Float64},
     cf::Vector{Float64},
+    n_chan::Int64,
     tdres::Float64,
     totalstim::Int64, 
     cohc::Float64,
@@ -29,6 +30,7 @@ function model!(
                 Ptr{Cdouble}, # px
                 Ptr{Cdouble}, # ffGn
                 Ptr{Cdouble}, # cf
+                Cint,         # nchan
                 Cdouble,      # tdres
                 Cint,         # totalstim
                 Cdouble,      # cohc
@@ -50,6 +52,7 @@ function model!(
             px,
             ffGn,
             cf, 
+            n_chan,
             tdres, 
             totalstim, 
             cohc, 

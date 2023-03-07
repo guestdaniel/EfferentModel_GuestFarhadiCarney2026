@@ -7,6 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "complex.hpp"
 
 void accept_vector(double *x) {
     /* Print simple confirmation that everything is working */
@@ -26,3 +27,87 @@ void accept_matrix(double **x) {
         }
     }
 }   
+
+void allocate_vector_complex() {
+    /* Allocate memory for a complex vector */
+    COMPLEX *x;
+    x = (COMPLEX*) calloc(4, sizeof(COMPLEX));
+
+    for (int i = 0; i < 4; i++) {
+        printf("x = %f\n", x[i].x);
+        printf("y = %f\n", x[i].y);
+    }
+
+    /* Free memory */
+    free(x);
+}
+
+void allocate_matrix_complex() {
+    /* Declare print_vector */
+    void print_vector(COMPLEX *x);
+
+    /* Allocate memory for a complex vector */
+    COMPLEX **x;
+    for (int i = 0; i < 5; i++) {
+        x[i] = (COMPLEX*) calloc(4, sizeof(COMPLEX));
+    }
+
+    // for (int i = 0; i < 5; i++) {
+    //     for (int j = 0; j < 4; j++){
+    //         printf("x = %f\n", x[i][j].x);
+    //         printf("y = %f\n", x[i][j].y);
+    //     }
+    // }
+
+    print_vector(x[1]);
+
+    /* Free memory */
+    for (int i = 0; i < 5; i++) {
+        free(x[i]);
+    }
+}
+
+void allocate_matrix_complex2() {
+    /* Declare print_vector */
+    void print_vector(COMPLEX *x);
+
+    /* Allocate memory for a complex vector */
+    COMPLEX *x[5];
+    for (int i = 0; i < 5; i++) {
+        x[i] = (COMPLEX*) calloc(4, sizeof(COMPLEX));
+    }
+
+    // for (int i = 0; i < 5; i++) {
+    //     for (int j = 0; j < 4; j++){
+    //         printf("x = %f\n", x[i][j].x);
+    //         printf("y = %f\n", x[i][j].y);
+    //     }
+    // }
+
+    print_vector(x[1]);
+
+    /* Free memory */
+    for (int i = 0; i < 5; i++) {
+        free(x[i]);
+    }
+}
+
+
+void print_vector(COMPLEX *x) {
+    for (int i = 0; i < 4; i++) {
+            printf("x = %f\n", x[i].x);
+            printf("y = %f\n", x[i].y);
+    }
+}
+
+void test_wbgt(int *x) {
+    printf("Original value = %d\n", *x);
+    (*x)++;
+}
+
+void pass_by_reference() {
+    int vector_of_ints[10];
+    vector_of_ints[3] = 22;
+    test_wbgt(&vector_of_ints[3]);
+    printf("New value = %d\n", vector_of_ints[3]);
+}

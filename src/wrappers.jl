@@ -75,6 +75,7 @@ function sim_gfc2023(
         x, 
         ffGn,
         cf,
+        n_chan,
         1/fs, 
         length(x), 
         cohc, 

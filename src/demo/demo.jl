@@ -18,3 +18,15 @@ ccall(
     ),
     x,
 )
+
+ccall(
+    (:allocate_matrix_complex2, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\demo\\demo.so"),
+    Cvoid,
+    (),
+)
+
+ccall(
+    (:pass_by_reference, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\demo\\demo.so"),
+    Cvoid,
+    (),
+)

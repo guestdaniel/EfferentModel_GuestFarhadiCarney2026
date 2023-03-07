@@ -26,7 +26,7 @@ function get_rtol(stage)
 end
 
 # Functions to run our simulations
-function postprocess_simulations(orig, new, stage)
+function postprocess_simulations(orig, new, stage, cf=1000.0)
     # If we're looking at control, c1, or c2, we need to shift signal by delaypoint
     # samples to accomodate the fact that we shifted delay from immediately after IHC
     # in original code to immediately after middle ear filter in new code
@@ -36,7 +36,7 @@ function postprocess_simulations(orig, new, stage)
         (
             Cdouble,
         ),
-        1000.0
+        cf,
     )
     delaypoint = Int(ceil(delay/(1/100e3)))
     if stage in ["control", "c1", "c2"]
@@ -52,7 +52,7 @@ function postprocess_simulations(orig, new, stage)
     # the IHC respons. This is eliminated in the new code.
     if stage in ["sout1", "sout2"]
         new = new[1:10:end]
-        delaypoint = Int(floor(7500/(1000.0/1e3))/10)
+        delaypoint = Int(floor(7500/(cf/1e3))/10)
         orig = orig[(1:length(new)) .+ delaypoint]
     end
 
@@ -101,8 +101,7 @@ function test_run_simulations(cf::Vector{Float64}, stage::String)
     new = sim_gfc2023_dict(x, cf)[stage]
 
     # Postprocess all responses
-    p1, p2 = map(x -> postprocess_simulations(x[1], x[2], stage), zip(orig, new))
-    return p1, p2
+    map(x -> postprocess_simulations(x[1], x[2], stage, x[3]), zip(orig, new, cf))
 end
 
 # ==========================================================================================
@@ -125,7 +124,7 @@ end
     # Check response to 1 kHz pure tone at 1 kHz and 2 kHz CFs
     # ======================================================================================
     @testset "1-kHz pure tone, 50 dB SPL, multichannel, stage: $stage" for stage in stages
-        ps = test_run_simulations([1000.0, 2000.0], stage)
-        @test all(map(x -> isapprox(x[1], x[2]; rtol=get_rtol(stage)), ps))
+        pairs = test_run_simulations([1000.0, 2000.0], stage)
+        @test all(map(pair -> isapprox(pair[1], pair[2]; rtol=get_rtol(stage)), pairs))
     end
 end
