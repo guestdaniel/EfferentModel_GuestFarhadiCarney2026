@@ -2,7 +2,7 @@ export model!
 
 function model!(
     px::Vector{Float64},
-    ffGn::Vector{Float64},
+    ffGn::Vector{Vector{Float64}},
     cf::Vector{Float64},
     n_chan::Int64,
     tdres::Float64,
@@ -28,7 +28,7 @@ function model!(
             Cvoid, # return type
             (
                 Ptr{Cdouble}, # px
-                Ptr{Cdouble}, # ffGn
+                Ptr{Ptr{Cdouble}}, # ffGn
                 Ptr{Cdouble}, # cf
                 Cint,         # nchan
                 Cdouble,      # tdres

@@ -46,15 +46,17 @@ function sim_gfc2023(
 
     # Synthesize ffGn
     if fractional
-        ffGn = ffGn_native(
-            Int(ceil(length(x))),
-            1/fs,
-            0.9,
-            1.0,
-            spont,
-        )
+        ffGn = map(1:n_chan) do _
+            ffGn_native(
+                Int(ceil(length(x))),
+                1/fs,
+                0.9,
+                1.0,
+                spont,
+            )
+        end
     else
-        ffGn = zeros(Int(ceil(length(x))))
+        ffGn = [zeros(Int(ceil(length(x)))) for _ in 1:n_chan]
     end
 
     # Pre-allocate memory

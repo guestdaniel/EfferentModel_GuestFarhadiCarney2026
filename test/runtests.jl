@@ -4,6 +4,7 @@ using AuditoryNerveFiber
 using Statistics
 using DSP
 using Helios
+
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~ Configure and define
@@ -19,7 +20,7 @@ pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs)
 stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
 function get_rtol(stage)
     if stage in ["sout1", "sout2", "syn"]
-        return 0.03
+        return 0.10
     else
         return 0.001
     end

@@ -111,3 +111,27 @@ void pass_by_reference() {
     test_wbgt(&vector_of_ints[3]);
     printf("New value = %d\n", vector_of_ints[3]);
 }
+
+void allocate_3d_array() {
+    int M = 10;
+    int N = 4;
+    int O = 12;
+
+    int*** test = (int***) malloc(M * sizeof(int**));
+
+    for (int i = 0; i < M; i++) {
+        test[i] = (int**) malloc(N * sizeof(int*));
+        for (int j = 0; j < N; j++) {
+            test[i][j] = (int*) malloc(O * sizeof(int));
+        }
+    }
+
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 4; j++) {
+            for (int k = 0; k < 12; k++) {
+                test[i][j][k] = 10*i + j - k;
+            }
+        }
+    }
+    printf("Val: %d\n", test[1][2][3]);
+}

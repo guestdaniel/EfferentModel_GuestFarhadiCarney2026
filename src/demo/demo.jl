@@ -26,7 +26,7 @@ ccall(
 )
 
 ccall(
-    (:pass_by_reference, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\demo\\demo.so"),
+    (:allocate_3d_array, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\demo\\demo.so"),
     Cvoid,
     (),
 )
