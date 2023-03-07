@@ -1,4 +1,4 @@
-export sim_gfc2023, sim_gfc2023_dict, sim_orig, sim_orig_dict
+export sim_anrate_gfc2023, sim_gfc2023, sim_gfc2023_dict, sim_orig, sim_orig_dict
 
 """
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, fiber_type="high", power_law="approximate", fractional=false, n_rep=1)
@@ -120,6 +120,16 @@ function sim_gfc2023_dict(args...; kwargs...)
         "sout1" => sout1,
         "sout2" => sout2,
     )
+end
+
+function sim_anrate_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
+    _, _, _, _, _, _, _, synout, _, _, _ = sim_gfc2023(x, cf; kwargs...)
+    synout ./ (1.0 .+ 0.75e-3 .* synout)
+end
+
+function sim_anrate_gfc2023(x::Vector{Float64}, cf::Vector{Float64}; kwargs...)
+    _, _, _, _, _, _, _, synout, _, _, _ = sim_gfc2023(x, cf; kwargs...)
+    map(x -> x ./ (1.0 .+ 0.75e-3 .* x), synout)
 end
 
 function sim_orig(
