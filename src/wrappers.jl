@@ -60,17 +60,14 @@ function sim_gfc2023(
     end
 
     # Pre-allocate memory
-    meout = zeros(length(x))
     controlout = [zeros(length(x)) for _ in 1:n_chan]
     c1out = [zeros(length(x)) for _ in 1:n_chan]
-    c1vihcout = [zeros(length(x)) for _ in 1:n_chan]
     c2out = [zeros(length(x)) for _ in 1:n_chan]
-    c2vihcout = [zeros(length(x)) for _ in 1:n_chan]
     ihcout = [zeros(length(x)) for _ in 1:n_chan]
-    synout = [zeros(length(x)) for _ in 1:n_chan]
     exponout = [zeros(length(x)) for _ in 1:n_chan]
     sout1 = [zeros(length(x)) for _ in 1:n_chan]
     sout2 = [zeros(length(x)) for _ in 1:n_chan]
+    synout = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -84,41 +81,35 @@ function sim_gfc2023(
         cihc, 
         species_flag, 
         spont,
-        meout, 
         controlout, 
         c1out, 
-        c1vihcout, 
         c2out, 
-        c2vihcout, 
         ihcout,
-        synout,
         exponout,
         sout1,
         sout2,
+        synout,
     )
 
     # Return
-    return meout, controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, sout1, sout2
+    return controlout, c1out, c2out, ihcout, exponout, sout1, sout2, synout
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
-    [idx > 1 ? x[1] : x for (idx, x) in enumerate(sim_gfc2023(x, [cf]; kwargs...))]
+    [x[1] for (idx, x) in enumerate(sim_gfc2023(x, [cf]; kwargs...))]
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    me, control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, sout1, sout2 = sim_gfc2023(args..., kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn = sim_gfc2023(args..., kwargs...)
     return Dict(
-        "me" => me,
         "control" => control,
         "c1" => c1,
-        "c1vihc" => c1vihc,
         "c2" => c2,
-        "c2vihc" => c2vihc,
         "ihc" => ihc,
-        "syn" => syn,
         "expon" => expon,
         "sout1" => sout1,
         "sout2" => sout2,
+        "syn" => syn,
     )
 end
 

@@ -28,7 +28,7 @@ function plot_model!(name; xlims=(5000, 7000))
     delaypoint = Int(ceil(delay/(1/100e3)))
 
     # Plot output
-    fig = Figure(; resolution=(2400*2, 600*length(stages)))
+    fig = Figure(; resolution=(900*2, 270*length(stages)))
     axs = [Axis(fig[i, 1]) for i in eachindex(stages)]
     axs_diff = [Axis(fig[i, 2]) for i in eachindex(stages)]
     for (ax, ax_diff, stage) in zip(axs, axs_diff, stages)
@@ -48,8 +48,8 @@ function plot_model!(name; xlims=(5000, 7000))
             orig = orig[(1:length(x)) .+ delaypoint]
         end
 
-        lines!(ax, orig; color=:gray)
-        lines!(ax, new; color=:red, linestyle=:dot, linewidth=2.0)
+        lines!(ax, orig; color=:cyan, linewidth=8.0)
+        lines!(ax, new; color=:red, linestyle=:dot, linewidth=3.0)
         lines!(ax_diff, new .- orig; color=:black)
         ax.ylabel = stage
     end
@@ -64,9 +64,7 @@ function plot_model!(name; xlims=(5000, 7000))
     save(projectdir("outputs", "test", "$name.png"), fig)
     fig
 end
-
-# 
-plot_model!("validate_sustained_responses")
+plot_model!("validate_sustained_responses"; xlims=(5000, 5500))
 plot_model!("validate_onset_responses"; xlims=(0, 2000))
 
 # Create function to plot models easily
