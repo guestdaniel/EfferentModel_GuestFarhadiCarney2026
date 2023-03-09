@@ -118,11 +118,14 @@ end
 # ~~~~ Configure and define
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ==========================================================================================
-# Stages to test
+# Stages to test, peripheral
 # Note: we currently omit sout2, which is difficult to match exactly due to 
 # resampling issues and small numerical discrepancies. Both outputs are still analyzed 
 # visually in other testing code
-stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
+stages_peripheral = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
+
+# Stages to test, subcortical
+stages_subcortical = ["cn"]
 
 # Define function to set relative tolerance for comparisons at each stage
 function get_rtol(stage)
@@ -130,6 +133,32 @@ function get_rtol(stage)
         return 0.10
     else
         return 0.001
+    end
+end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Check whether new model outputs match 2014 model outputs
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+@testset "Regression vs 2014 --- single channel" begin
+    # ======================================================================================
+    # Check response to 1 kHz pure tone at every filter output
+    # ======================================================================================
+    @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages_peripheral
+        orig, new = run_2014_vs_2023_pure_tone(stage)
+        @test isapprox(orig, new; rtol=get_rtol(stage))
+    end
+end
+
+@testset "Regression vs 2014 --- multichannel" begin
+    # ======================================================================================
+    # Check response to 1 kHz pure tone at 1 kHz and 2 kHz CFs
+    # ======================================================================================
+    @testset "1-kHz pure tone, 50 dB SPL, multichannel, stage: $stage" for stage in stages_peripheral
+        orig, new = run_2014_vs_2023_pure_tone([1000.0, 2000.0], stage)
+        pairs = zip(orig, new)
+        @test all(map(pair -> isapprox(pair[1], pair[2]; rtol=get_rtol(stage)), pairs))
     end
 end
 
@@ -198,26 +227,52 @@ end
 
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~ Check whether new model outputs match 2014 model outputs
+# ~~~~ Check whether subcortial model outputs look reasonable and are behaving
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ==========================================================================================
-@testset "Regression vs 2014 --- single channel" begin
+@testset "Regression vs 2004 --- single channel" begin
     # ======================================================================================
-    # Check response to 1 kHz pure tone at every filter output
+    # Check response to 1 kHz pure tone at subcortical stages
     # ======================================================================================
-    @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages
-        orig, new = run_2014_vs_2023_pure_tone(stage)
-        @test isapprox(orig, new; rtol=get_rtol(stage))
-    end
-end
+    @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages_subcortical
+        # Construct parameter range to test CN stage
+        τ_e = [0.5e-3, 1e-3]
+        τ_i = [1e-3, 2e-3]
+        d = [0.5e-3, 2e-3]
+        a = [1.0, 3.0]
+        s = [0.5, 2.0]
+        combo = Iterators.product(τ_e, τ_i, d, a, s)
+        @testset "Stage parameters: $params" for params in combo
+            # Extract params
+            τ_e, τ_i, d, a, s = params
 
-@testset "Regression vs 2014 --- multichannel" begin
-    # ======================================================================================
-    # Check response to 1 kHz pure tone at 1 kHz and 2 kHz CFs
-    # ======================================================================================
-    @testset "1-kHz pure tone, 50 dB SPL, multichannel, stage: $stage" for stage in stages
-        orig, new = run_2014_vs_2023_pure_tone([1000.0, 2000.0], stage)
-        pairs = zip(orig, new)
-        @test all(map(pair -> isapprox(pair[1], pair[2]; rtol=get_rtol(stage)), pairs))
+            # Create stimulus
+            x = pt(1000.0, 50.0)
+
+            # Simulate response from C subcortical model
+            out = sim_gfc2023_dict(
+                x, 
+                1000.0;
+                cn_tau_e=τ_e,
+                cn_tau_i=τ_i,
+                cn_delay=d,
+                cn_amp=a,
+                cn_inh=s,
+            )
+            new = out["cn"]
+
+            # Simulate response from AuditoryMidbrain.jl for cochlear nucleus stage
+            old = sim_sfie_nc2004(
+                out["anrate"], 
+                τ_e=τ_e,
+                τ_i=τ_i,
+                d_i=d,
+                S=s,
+                A=a,
+            )
+
+            # Compare
+            @test old ≈ new
+        end
     end
 end

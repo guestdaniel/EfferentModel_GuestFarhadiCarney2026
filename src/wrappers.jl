@@ -27,6 +27,11 @@ function sim_gfc2023(
     species::String="human",
     fiber_type::String="high", 
     fractional=false,
+    cn_tau_e=0.5e-3,
+    cn_tau_i=2.0e-3,
+    cn_delay=1.0e-3,
+    cn_amp=1.5,
+    cn_inh=0.6,
 )
     # Calculate n_chan
     n_chan = length(cf)
@@ -83,11 +88,11 @@ function sim_gfc2023(
         cihc, 
         species_flag, 
         spont,
-        0.5e-3,
-        2.0e-3,
-        1e-3,
-        1.5,
-        0.6,
+        cn_tau_e,
+        cn_tau_i,
+        cn_delay,
+        cn_amp,
+        cn_inh,
         controlout, 
         c1out, 
         c2out, 
@@ -109,7 +114,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, anrate, cn = sim_gfc2023(args..., kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, anrate, cn = sim_gfc2023(args...; kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
