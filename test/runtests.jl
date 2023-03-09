@@ -7,41 +7,36 @@ using Helios
 
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~ Configure and define
+# ~~~~ Write functions to aid testing protocol
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ==========================================================================================
-# Convenience function to synthesize pure tone
-pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs), l)
+"""
+    postprocess_simulations(sim, stage, model, cf=1000.0)
 
-# Stages to test
-# Note: we currently omit sout2, which is difficult to match exactly due to 
-# resampling issues and small numerical discrepancies. Both outputs are still analyzed 
-# visually in other testing code
-stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
-function get_rtol(stage)
-    if stage in ["sout1", "sout2", "syn"]
-        return 0.10
-    else
-        return 0.001
-    end
-end
+Postprocesses a simulation based on which model produced it to allow for testing
 
-# Functions to run our simulations
-function postprocess_simulations(orig, new, stage, cf=1000.0)
-    # If we're looking at control, c1, or c2, we need to shift signal by delaypoint
-    # samples to accomodate the fact that we shifted delay from immediately after IHC
-    # in original code to immediately after middle ear filter in new code
-    delay = ccall(
-        (:delay_cat, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
-        Cdouble,
-        (
+# Arguments
+- `sim`: Vector containing some simulation result for a given stage
+- `stage`: String indicating which stage this stage corresponds to, from ["control", "c1", \
+    "c2", "ihc", "expon", "sout1", "syn", "cn"]
+- `model`: Which model the response came from, from ["zbc2014", "gfc2023"]
+- `cf`: Characteristic frequency (Hz)
+"""
+function postprocess_simulations(sim, stage, model, cf=1000.0)
+    # If we're looking at control, c1, or c2 in an old model, we need to shift signal by 
+    # delaypoint samples to accomodate the fact that we shifted delay from immediately after
+    # IHC in original code to immediately after middle ear filter in new code
+    if (model == "zbc2014") & (stage in ["control", "c1", "c2"])
+        delay = ccall(
+            (:delay_cat, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
             Cdouble,
-        ),
-        cf,
-    )
-    delaypoint = Int(ceil(delay/(1/100e3)))
-    if stage in ["control", "c1", "c2"]
-        orig = shiftsignal(orig, delaypoint)
+            (
+                Cdouble,
+            ),
+            cf,
+        )
+        delaypoint = Int(ceil(delay/(1/100e3)))
+        sim = shiftsignal(sim, delaypoint)
     end
 
     # If we're looking at power-law synapse stages, we need to adjust for the fact that
@@ -50,59 +45,91 @@ function postprocess_simulations(orig, new, stage, cf=1000.0)
     # To account for this, we downsample the new outputs by simply selecting every
     # 10th sample. We also need to account for the fact that the original sout1 and 
     # sout2 (and the whole powerlaw in general) included zeropadding on the edges of
-    # the IHC respons. This is eliminated in the new code.
-    if stage in ["sout1", "sout2"]
-        new = new[1:10:end]
+    # the IHC respons. This is eliminated in the new code and produces edge effects numerical
+    # the temporal edge of the simulations.
+    if (model == "gfc2023") & (stage in ["sout1", "sout2"])
+        sim = sim[1:10:end]
+    end
+    if (model == "zbc2014") & (stage in ["sout1", "sout2"])
         delaypoint = Int(floor(7500/(cf/1e3))/10)
-        orig = orig[(1:length(new)) .+ delaypoint]
+        sim = sim[(1:(length(sim) - delaypoint*2)) .+ delaypoint]
     end
 
-    # If we're looking at the synapse, we need to get every 10th sample of both 
-    # responses, because otherwise the test of equality will fail simply because the 
-    # original code used a linear interpolation to upsample back to the stimulus 
-    # sampling rate, but the new code is actually simulated at 100 kHz
-    if stage in ["syn"]
-        new = new[1:10:end]
-        orig = orig[1:10:end]
+    # If we're looking at the synapse, we need to get every 10th sample (this is because 
+    # the original code used a linear interpolation to upsample back to the stimulus 
+    # sampling rate, but the new code is actually simulated at 100 kHz, producing large
+    # disparities between sample points)
+    if stage == "syn"
+        sim = sim[1:10:end]
     end
 
-    # Return (possibly subset) data
+    # Return (possibly subsetted) data
     if stage == "control"
         # Control onset is messed up a bit because it starts out non-zero, so simply 
-        # zero-padding old control signal isn't viable
-        return orig[2000:end], new[2000:end]
+        # zero-padding old control signal isn't viable and we only want to look at the 
+        # relevant pieces
+        sim = sim[2000:end]
     elseif stage in ["sout1", "sout2", "syn"]
-        # For synapse stuff, we need to avoid the initial few samples (which contain
-        # an artifact due to the powerlaw "settling in") as well as use a more liberal 
-        # relative tolerance, since I make no effort to precisely match the resampling 
-        # strategies used in the model 
-        return orig[50:2000], new[50:2000]
-    else
-        return orig, new
+        # For synapse stuff, we need to avoid the initial few samples because the lack of
+        # a "delaypoint" system in the new model creates onset irregularities
+        sim = sim[50:2000]
     end
+
+    return sim
 end
 
-function test_run_simulations(stage::String)
+"""
+    run_2014_vs_2023_pure_tone(stage, f, l)
+
+Simulates responses for old and new model at a stage for a short pure tone stimulus
+"""
+function run_2014_vs_2023_pure_tone(stage::String, f=1000.0, l=50.0)
     # Create stimulus 
-    x = pt(1000.0, 50.0)
+    x = pt(f, l)
 
     # Simulate original and new responses
-    orig = sim_orig_dict(x, 1000.0)[stage]
-    new = sim_gfc2023_dict(x, 1000.0)[stage]
+    orig = sim_orig_dict(x, f)[stage]
+    new = sim_gfc2023_dict(x, f)[stage]
 
-    postprocess_simulations(orig, new, stage)
+    orig = postprocess_simulations(orig, stage, "zbc2014", f)
+    new = postprocess_simulations(new, stage, "gfc2023", f)
+
+    return orig, new
 end
 
-function test_run_simulations(cf::Vector{Float64}, stage::String)
+function run_2014_vs_2023_pure_tone(cf::Vector{Float64}, stage::String, f=1000.0, l=50.0)
     # Create stimulus 
-    x = pt(1000.0, 50.0)
+    x = pt(f, l)
 
     # Simulate original and new responses
     orig = map(_cf -> sim_orig_dict(x, _cf)[stage], cf)
     new = sim_gfc2023_dict(x, cf)[stage]
 
     # Postprocess all responses
-    map(x -> postprocess_simulations(x[1], x[2], stage, x[3]), zip(orig, new, cf))
+    orig = map(x -> postprocess_simulations(x[1], stage, "zbc2014", x[2]), zip(orig, cf))
+    new = map(x -> postprocess_simulations(x[1], stage, "gfc2023", x[2]), zip(new, cf))
+
+    return orig, new
+end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Configure and define
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+# Stages to test
+# Note: we currently omit sout2, which is difficult to match exactly due to 
+# resampling issues and small numerical discrepancies. Both outputs are still analyzed 
+# visually in other testing code
+stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
+
+# Define function to set relative tolerance for comparisons at each stage
+function get_rtol(stage)
+    if stage in ["sout1", "sout2", "syn"]
+        return 0.10
+    else
+        return 0.001
+    end
 end
 
 # ==========================================================================================
@@ -115,7 +142,7 @@ end
     # Check response to 1 kHz pure tone at every filter output
     # ======================================================================================
     @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages
-        orig, new = test_run_simulations(stage)
+        orig, new = run_2014_vs_2023_pure_tone(stage)
         @test isapprox(orig, new; rtol=get_rtol(stage))
     end
 end
@@ -125,7 +152,8 @@ end
     # Check response to 1 kHz pure tone at 1 kHz and 2 kHz CFs
     # ======================================================================================
     @testset "1-kHz pure tone, 50 dB SPL, multichannel, stage: $stage" for stage in stages
-        pairs = test_run_simulations([1000.0, 2000.0], stage)
+        orig, new = run_2014_vs_2023_pure_tone([1000.0, 2000.0], stage)
+        pairs = zip(orig, new)
         @test all(map(pair -> isapprox(pair[1], pair[2]; rtol=get_rtol(stage)), pairs))
     end
 end
