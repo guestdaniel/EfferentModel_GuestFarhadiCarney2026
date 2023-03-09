@@ -25,6 +25,7 @@ function model!(
     sout2::Vector{Vector{Float64}},
     synout::Vector{Vector{Float64}},
     cnout::Vector{Vector{Float64}},
+    anrateout::Vector{Vector{Float64}},
 )
     ccall(
             (:model, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"), 
@@ -54,6 +55,7 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # sout2
                 Ptr{Ptr{Cdouble}}, # synout
                 Ptr{Ptr{Cdouble}}, # cnout
+                Ptr{Ptr{Cdouble}}, # anrateout
             ),
             px,
             ffGn,
@@ -79,6 +81,7 @@ function model!(
             sout2,
             synout,
             cnout,
+            anrateout,
         )
 end
 

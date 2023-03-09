@@ -69,6 +69,7 @@ function sim_gfc2023(
     sout2 = [zeros(length(x)) for _ in 1:n_chan]
     synout = [zeros(length(x)) for _ in 1:n_chan]
     cnout = [zeros(length(x)) for _ in 1:n_chan]
+    anrateout = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -95,11 +96,12 @@ function sim_gfc2023(
         sout1,
         sout2,
         synout,
+        anrateout,
         cnout,
     )
 
     # Return
-    return controlout, c1out, c2out, ihcout, exponout, sout1, sout2, synout, cnout
+    return controlout, c1out, c2out, ihcout, exponout, sout1, sout2, synout, anrateout, cnout
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
@@ -107,7 +109,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, cn = sim_gfc2023(args..., kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, anrate, cn = sim_gfc2023(args..., kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -118,6 +120,7 @@ function sim_gfc2023_dict(args...; kwargs...)
         "sout2" => sout2,
         "syn" => syn,
         "cn" => cn,
+        "anrate" => anrate,
     )
 end
 

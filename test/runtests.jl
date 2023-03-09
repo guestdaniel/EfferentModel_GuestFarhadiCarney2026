@@ -15,7 +15,7 @@ using Helios
 pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs), l)
 
 # Stages to test
-# Note: we currently omit synapse and sout2, which are difficult to match exactly due to 
+# Note: we currently omit sout2, which is difficult to match exactly due to 
 # resampling issues and small numerical discrepancies. Both outputs are still analyzed 
 # visually in other testing code
 stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
