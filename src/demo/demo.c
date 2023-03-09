@@ -135,3 +135,16 @@ void allocate_3d_array() {
     }
     printf("Val: %d\n", test[1][2][3]);
 }
+
+void modify_vector_of_matrix_inplace() {
+    double* tmp[10];
+    for (int i = 0; i < 10; i++) {
+        tmp[i] = (double*) calloc(500, sizeof(double));
+    }
+    modify(tmp[3]);
+    printf("Modified value is %f\n", tmp[3][3]);
+}
+
+void modify(double *x) {
+    x[3] = 3.0;
+}

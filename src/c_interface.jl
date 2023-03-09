@@ -11,6 +11,11 @@ function model!(
     cihc::Float64,
     species::Int64,
     spont::Float64,
+    cn_tau_e::Float64,
+    cn_tau_i::Float64,
+    cn_delay::Float64,
+    cn_amp::Float64,
+    cn_inh::Float64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -19,6 +24,7 @@ function model!(
     sout1::Vector{Vector{Float64}},
     sout2::Vector{Vector{Float64}},
     synout::Vector{Vector{Float64}},
+    cnout::Vector{Vector{Float64}},
 )
     ccall(
             (:model, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"), 
@@ -34,6 +40,11 @@ function model!(
                 Cdouble,      # cihc
                 Cint,         # species
                 Cdouble,      # spont
+                Cdouble,      # cn_tau_e
+                Cdouble,      # cn_tau_i,
+                Cdouble,      # cn_delay
+                Cdouble,      # cn_amp
+                Cdouble,      # cn_inh
                 Ptr{Ptr{Cdouble}}, # control
                 Ptr{Ptr{Cdouble}}, # c1 
                 Ptr{Ptr{Cdouble}}, # c2 
@@ -42,6 +53,7 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # sout1
                 Ptr{Ptr{Cdouble}}, # sout2
                 Ptr{Ptr{Cdouble}}, # synout
+                Ptr{Ptr{Cdouble}}, # cnout
             ),
             px,
             ffGn,
@@ -53,6 +65,11 @@ function model!(
             cihc, 
             species, 
             spont,
+            cn_tau_e,
+            cn_tau_i,
+            cn_delay,
+            cn_amp,
+            cn_inh,
             controlout, 
             c1out, 
             c2out, 
@@ -61,6 +78,7 @@ function model!(
             sout1,
             sout2,
             synout,
+            cnout,
         )
 end
 

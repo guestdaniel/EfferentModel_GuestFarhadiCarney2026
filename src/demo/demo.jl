@@ -30,3 +30,9 @@ ccall(
     Cvoid,
     (),
 )
+
+ccall(
+    (:modify_vector_of_matrix_inplace, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\demo\\demo.so"),
+    Cvoid,
+    (),
+)

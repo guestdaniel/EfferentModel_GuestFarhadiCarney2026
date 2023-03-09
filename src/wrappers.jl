@@ -68,6 +68,7 @@ function sim_gfc2023(
     sout1 = [zeros(length(x)) for _ in 1:n_chan]
     sout2 = [zeros(length(x)) for _ in 1:n_chan]
     synout = [zeros(length(x)) for _ in 1:n_chan]
+    cnout = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -81,6 +82,11 @@ function sim_gfc2023(
         cihc, 
         species_flag, 
         spont,
+        0.5e-3,
+        2.0e-3,
+        1e-3,
+        1.5,
+        0.6,
         controlout, 
         c1out, 
         c2out, 
@@ -89,10 +95,11 @@ function sim_gfc2023(
         sout1,
         sout2,
         synout,
+        cnout,
     )
 
     # Return
-    return controlout, c1out, c2out, ihcout, exponout, sout1, sout2, synout
+    return controlout, c1out, c2out, ihcout, exponout, sout1, sout2, synout, cnout
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
@@ -100,7 +107,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn = sim_gfc2023(args..., kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, cn = sim_gfc2023(args..., kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -110,6 +117,7 @@ function sim_gfc2023_dict(args...; kwargs...)
         "sout1" => sout1,
         "sout2" => sout2,
         "syn" => syn,
+        "cn" => cn,
     )
 end
 
