@@ -16,6 +16,11 @@ function model!(
     cn_delay::Float64,
     cn_amp::Float64,
     cn_inh::Float64,
+    ic_tau_e::Float64,
+    ic_tau_i::Float64,
+    ic_delay::Float64,
+    ic_amp::Float64,
+    ic_inh::Float64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -24,8 +29,9 @@ function model!(
     sout1::Vector{Vector{Float64}},
     sout2::Vector{Vector{Float64}},
     synout::Vector{Vector{Float64}},
-    cnout::Vector{Vector{Float64}},
     anrateout::Vector{Vector{Float64}},
+    cnout::Vector{Vector{Float64}},
+    icout::Vector{Vector{Float64}},
 )
     ccall(
             (:model, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"), 
@@ -46,6 +52,11 @@ function model!(
                 Cdouble,      # cn_delay
                 Cdouble,      # cn_amp
                 Cdouble,      # cn_inh
+                Cdouble,      # ic_tau_e
+                Cdouble,      # ic_tau_i,
+                Cdouble,      # ic_delay
+                Cdouble,      # ic_amp
+                Cdouble,      # ic_inh
                 Ptr{Ptr{Cdouble}}, # control
                 Ptr{Ptr{Cdouble}}, # c1 
                 Ptr{Ptr{Cdouble}}, # c2 
@@ -54,8 +65,9 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # sout1
                 Ptr{Ptr{Cdouble}}, # sout2
                 Ptr{Ptr{Cdouble}}, # synout
-                Ptr{Ptr{Cdouble}}, # cnout
                 Ptr{Ptr{Cdouble}}, # anrateout
+                Ptr{Ptr{Cdouble}}, # cnout
+                Ptr{Ptr{Cdouble}}, # icout
             ),
             px,
             ffGn,
@@ -72,6 +84,11 @@ function model!(
             cn_delay,
             cn_amp,
             cn_inh,
+            ic_tau_e,
+            ic_tau_i,
+            ic_delay,
+            ic_amp,
+            ic_inh,
             controlout, 
             c1out, 
             c2out, 
@@ -80,8 +97,9 @@ function model!(
             sout1,
             sout2,
             synout,
-            cnout,
             anrateout,
+            cnout,
+            icout,
         )
 end
 

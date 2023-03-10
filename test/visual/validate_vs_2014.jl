@@ -6,7 +6,7 @@ using CairoMakie
 using DSP
 
 pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs), l)
-update_theme!(fontsize=70)
+update_theme!(fontsize=20)
 
 # Create function to plot models easily
 function plot_model!(name; xlims=(5000, 7000))
