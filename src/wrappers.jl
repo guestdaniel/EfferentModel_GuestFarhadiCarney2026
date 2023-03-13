@@ -38,17 +38,27 @@ function sim_gfc2023(
 
     # Synthesize ffGn
     if fractional
-        ffGn = map(1:n_chan) do _
+        ffGn_hsr = map(1:n_chan) do _
             ffGn_native(
                 Int(ceil(length(x))),
                 1/fs,
                 0.9,
                 1.0,
-                spont,
+                100.0,
+            )
+        end
+        ffGn_lsr = map(1:n_chan) do _
+            ffGn_native(
+                Int(ceil(length(x))),
+                1/fs,
+                0.9,
+                1.0,
+                0.1,
             )
         end
     else
-        ffGn = [zeros(Int(ceil(length(x)))) for _ in 1:n_chan]
+        ffGn_hsr = [zeros(Int(ceil(length(x)))) for _ in 1:n_chan]
+        ffGn_lsr = [zeros(Int(ceil(length(x)))) for _ in 1:n_chan]
     end
 
     # Pre-allocate memory
@@ -70,7 +80,8 @@ function sim_gfc2023(
     # Run model
     model!(
         x, 
-        ffGn,
+        ffGn_hsr,
+        ffGn_lsr,
         cf,
         n_chan,
         1/fs, 
@@ -153,7 +164,7 @@ function sim_orig(
             1/fs_synapse,
             0.9,
             noiseType,
-            spont,
+            100.0,
         )
     else
         ffGn = zeros(Int(ceil((length(x) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3)))
@@ -220,6 +231,17 @@ function sim_orig(
         ihcout, ffGn, 1/fs, cf, length(ihcout), 1, 100.0, noiseType, implnt, 10e3, synout, exponout, powerlawin, sout1, sout2, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
     )
 
+    if noiseType == 1.0
+        ffGn = ffGn_native(
+            Int(ceil((length(x) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3)),
+            1/fs_synapse,
+            0.9,
+            noiseType,
+            0.1,
+        )
+    else
+        ffGn = zeros(Int(ceil((length(x) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3)))
+    end
     synout_lsr = zeros(length(ihcout))
     exponout_lsr = zeros(length(x))
     powerlawin_lsr = zeros(length(x) + delaypoint*3)

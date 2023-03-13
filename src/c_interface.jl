@@ -2,7 +2,8 @@ export model!
 
 function model!(
     px::Vector{Float64},
-    ffGn::Vector{Vector{Float64}},
+    ffGn_hsr::Vector{Vector{Float64}},
+    ffGn_lsr::Vector{Vector{Float64}},
     cf::Vector{Float64},
     n_chan::Int64,
     tdres::Float64,
@@ -31,7 +32,8 @@ function model!(
             Cvoid, # return type
             (
                 Ptr{Cdouble}, # px
-                Ptr{Ptr{Cdouble}}, # ffGn
+                Ptr{Ptr{Cdouble}}, # ffGn_hsr
+                Ptr{Ptr{Cdouble}}, # ffGn_lsr
                 Ptr{Cdouble}, # cf
                 Cint,         # nchan
                 Cdouble,      # tdres
@@ -56,7 +58,8 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # lsrout
             ),
             px,
-            ffGn,
+            ffGn_hsr,
+            ffGn_lsr,
             cf, 
             n_chan,
             tdres, 
