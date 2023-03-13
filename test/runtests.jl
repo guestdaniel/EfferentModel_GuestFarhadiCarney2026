@@ -18,7 +18,7 @@ Postprocesses a simulation based on which model produced it to allow for testing
 # Arguments
 - `sim`: Vector containing some simulation result for a given stage
 - `stage`: String indicating which stage this stage corresponds to, from ["control", "c1", \
-    "c2", "ihc", "expon", "sout1", "syn", "cn"]
+    "c2", "ihc", "expon", "sout1", "syn", "hsr", "lsr", "cn"]
 - `model`: Which model the response came from, from ["zbc2014", "gfc2023"]
 - `cf`: Characteristic frequency (Hz)
 """
@@ -55,11 +55,11 @@ function postprocess_simulations(sim, stage, model, cf=1000.0)
         sim = sim[(1:(length(sim) - delaypoint*2)) .+ delaypoint]
     end
 
-    # If we're looking at the synapse, we need to get every 10th sample (this is because 
+    # If we're looking at the synapse/rate, we need to get every 10th sample (this is because 
     # the original code used a linear interpolation to upsample back to the stimulus 
     # sampling rate, but the new code is actually simulated at 100 kHz, producing large
     # disparities between sample points)
-    if stage == "syn"
+    if stage in ["syn", "hsr", "lsr"]
         sim = sim[1:10:end]
     end
 
@@ -69,7 +69,7 @@ function postprocess_simulations(sim, stage, model, cf=1000.0)
         # zero-padding old control signal isn't viable and we only want to look at the 
         # relevant pieces
         sim = sim[2000:end]
-    elseif stage in ["sout1", "sout2", "syn"]
+    elseif stage in ["sout1", "sout2", "syn", "hsr", "lsr"]
         # For synapse stuff, we need to avoid the initial few samples because the lack of
         # a "delaypoint" system in the new model creates onset irregularities
         sim = sim[50:2000]
@@ -121,11 +121,11 @@ end
 # Note: we currently omit sout2, which is difficult to match exactly due to 
 # resampling issues and small numerical discrepancies. Both outputs are still analyzed 
 # visually in other testing code
-stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
+stages = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn", "hsr", "lsr"]
 
 # Define function to set relative tolerance for comparisons at each stage
 function get_rtol(stage)
-    if stage in ["sout1", "sout2", "syn"]
+    if stage in ["sout1", "sout2", "syn", "hsr", "lsr"]
         return 0.10
     else
         return 0.001

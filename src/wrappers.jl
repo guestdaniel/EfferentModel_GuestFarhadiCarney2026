@@ -1,7 +1,7 @@
 export sim_anrate_gfc2023, sim_gfc2023, sim_gfc2023_dict, sim_orig, sim_orig_dict
 
 """
-    sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, fiber_type="high", power_law="approximate", fractional=false, n_rep=1)
+    sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
 Simulates full model output for sound-pressure input
 
@@ -12,7 +12,6 @@ Simulates full model output for sound-pressure input
 - `cohc::Float64`:
 - `cihc::Float64`:
 - `species::String`:
-- `fiber_type::String`: fiber type, one of ("low", "medium", "high") spontaneous rate
 - `fractional::Bool`: 
 
 # Returns
@@ -25,7 +24,6 @@ function sim_gfc2023(
     cohc::Float64=1.0,
     cihc::Float64=1.0,
     species::String="human",
-    fiber_type::String="high", 
     fractional=false,
 )
     # Calculate n_chan
@@ -37,12 +35,6 @@ function sim_gfc2023(
         "human" => 2,
         "human_glasberg" => 3
     )[species]
-
-    spont = Dict(
-        "low" => 0.1,
-        "medium" => 4.0,
-        "high" => 100.0
-    )[fiber_type]
 
     # Synthesize ffGn
     if fractional
@@ -64,11 +56,16 @@ function sim_gfc2023(
     c1out = [zeros(length(x)) for _ in 1:n_chan]
     c2out = [zeros(length(x)) for _ in 1:n_chan]
     ihcout = [zeros(length(x)) for _ in 1:n_chan]
-    exponout = [zeros(length(x)) for _ in 1:n_chan]
-    sout1 = [zeros(length(x)) for _ in 1:n_chan]
-    sout2 = [zeros(length(x)) for _ in 1:n_chan]
-    synout = [zeros(length(x)) for _ in 1:n_chan]
-    anrateout = [zeros(length(x)) for _ in 1:n_chan]
+    expout_hsr = [zeros(length(x)) for _ in 1:n_chan]
+    sout1_hsr = [zeros(length(x)) for _ in 1:n_chan]
+    sout2_hsr = [zeros(length(x)) for _ in 1:n_chan]
+    synout_hsr = [zeros(length(x)) for _ in 1:n_chan]
+    expout_lsr = [zeros(length(x)) for _ in 1:n_chan]
+    sout1_lsr = [zeros(length(x)) for _ in 1:n_chan]
+    sout2_lsr = [zeros(length(x)) for _ in 1:n_chan]
+    synout_lsr = [zeros(length(x)) for _ in 1:n_chan]
+    hsrout = [zeros(length(x)) for _ in 1:n_chan]
+    lsrout = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -81,20 +78,25 @@ function sim_gfc2023(
         cohc, 
         cihc, 
         species_flag, 
-        spont,
+        100.0,
         controlout, 
         c1out, 
         c2out, 
         ihcout,
-        exponout,
-        sout1,
-        sout2,
-        synout,
-        anrateout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
     )
 
     # Return
-    return controlout, c1out, c2out, ihcout, exponout, sout1, sout2, synout, anrateout
+    return controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr, hsrout, lsrout 
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
@@ -102,7 +104,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, anrate = sim_gfc2023(args..., kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr = sim_gfc2023(args..., kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -112,18 +114,9 @@ function sim_gfc2023_dict(args...; kwargs...)
         "sout1" => sout1,
         "sout2" => sout2,
         "syn" => syn,
-        "anrate" => anrate,
+        "hsr" => hsr,
+        "lsr" => lsr,
     )
-end
-
-function sim_anrate_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
-    _, _, _, _, _, _, _, synout, _, _, _ = sim_gfc2023(x, cf; kwargs...)
-    synout ./ (1.0 .+ 0.75e-3 .* synout)
-end
-
-function sim_anrate_gfc2023(x::Vector{Float64}, cf::Vector{Float64}; kwargs...)
-    _, _, _, _, _, _, _, synout, _, _, _ = sim_gfc2023(x, cf; kwargs...)
-    map(x -> x ./ (1.0 .+ 0.75e-3 .* x), synout)
 end
 
 function sim_orig(
@@ -133,7 +126,6 @@ function sim_orig(
     cohc::Float64=1.0,
     cihc::Float64=1.0,
     species::String="human",
-    fiber_type::String="high", 
     power_law::String="actual", 
     fractional::Bool=false,
 )
@@ -143,12 +135,6 @@ function sim_orig(
         "human" => 2,
         "human_glasberg" => 3
     )[species]
-
-    spont = Dict(
-        "low" => 0.1,
-        "medium" => 4.0,
-        "high" => 100.0
-    )[fiber_type]
 
     implnt = Dict(
         "actual" => 1.0,
@@ -210,7 +196,6 @@ function sim_orig(
     sout2 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
     len_noise = Int(ceil((length(ihcout) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3))
     ffGn = zeros(len_noise)
-
     ccall(
         (:SYNAPSEDEBUG, "C:\\Users\\dguest2\\cl_code\\Helios\\external\\julia\\libzbc2014debug.so"),
         Cvoid,                   # return type
@@ -232,15 +217,47 @@ function sim_orig(
             Ptr{Cdouble},        # sout2
             Ptr{Cvoid},          # decimate function handle
         ),
-        ihcout, ffGn, 1/fs, cf, length(ihcout), 1, spont, noiseType, implnt, 10e3, synout, exponout, powerlawin, sout1, sout2, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
+        ihcout, ffGn, 1/fs, cf, length(ihcout), 1, 100.0, noiseType, implnt, 10e3, synout, exponout, powerlawin, sout1, sout2, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
     )
 
+    synout_lsr = zeros(length(ihcout))
+    exponout_lsr = zeros(length(x))
+    powerlawin_lsr = zeros(length(x) + delaypoint*3)
+    sout1_lsr = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
+    sout2_lsr = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
+    ccall(
+        (:SYNAPSEDEBUG, "C:\\Users\\dguest2\\cl_code\\Helios\\external\\julia\\libzbc2014debug.so"),
+        Cvoid,                   # return type
+        (                        # arg types
+            Ptr{Cdouble},        # px
+            Ptr{Cdouble},        # randNums
+            Cdouble,             # tdres
+            Cdouble,             # cf
+            Cint,                # totalstim
+            Cint,                # nrep
+            Cdouble,             # spont
+            Cdouble,             # noisetype
+            Cdouble,             # implementation
+            Cdouble,             # sampFreq
+            Ptr{Cdouble},        # synout
+            Ptr{Cdouble},        # exponout
+            Ptr{Cdouble},        # powerlawin
+            Ptr{Cdouble},        # sout1
+            Ptr{Cdouble},        # sout2
+            Ptr{Cvoid},          # decimate function handle
+        ),
+        ihcout, ffGn, 1/fs, cf, length(ihcout), 1, 0.1, noiseType, implnt, 10e3, synout_lsr, exponout_lsr, powerlawin_lsr, sout1_lsr, sout2_lsr, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
+    )
+
+    hsr = synout ./ (1.0 .+ 0.75e-3 .^ synout)
+    lsr = synout_lsr ./ (1.0 .+ 0.75e-3 .^ synout_lsr)
+
     # Return
-    return controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2
+    return controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2, hsr, lsr
 end
 
 function sim_orig_dict(args...; kwargs...)
-    control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw, sout1, sout2 = sim_orig(args..., kwargs...)
+    control, c1, c1vihc, c2, c2vihc, ihc, syn, expon, powerlaw, sout1, sout2, hsr, lsr = sim_orig(args..., kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -253,5 +270,7 @@ function sim_orig_dict(args...; kwargs...)
         "powerlaw" => powerlaw,
         "sout1" => sout1,
         "sout2" => sout2,
+        "hsr" => hsr,
+        "lsr" => lsr,
     )
 end
