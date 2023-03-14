@@ -2,7 +2,8 @@ export model!
 
 function model!(
     px::Vector{Float64},
-    ffGn::Vector{Vector{Float64}},
+    ffGn_hsr::Vector{Vector{Float64}},
+    ffGn_lsr::Vector{Vector{Float64}},
     cf::Vector{Float64},
     n_chan::Int64,
     tdres::Float64,
@@ -25,11 +26,16 @@ function model!(
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
     ihcout::Vector{Vector{Float64}},
-    exponout::Vector{Vector{Float64}},
-    sout1::Vector{Vector{Float64}},
-    sout2::Vector{Vector{Float64}},
-    synout::Vector{Vector{Float64}},
-    anrateout::Vector{Vector{Float64}},
+    expout_hsr::Vector{Vector{Float64}},
+    sout1_hsr::Vector{Vector{Float64}},
+    sout2_hsr::Vector{Vector{Float64}},
+    synout_hsr::Vector{Vector{Float64}},
+    expout_lsr::Vector{Vector{Float64}},
+    sout1_lsr::Vector{Vector{Float64}},
+    sout2_lsr::Vector{Vector{Float64}},
+    synout_lsr::Vector{Vector{Float64}},
+    hsrout::Vector{Vector{Float64}},
+    lsrout::Vector{Vector{Float64}},
     cnout::Vector{Vector{Float64}},
     icout::Vector{Vector{Float64}},
 )
@@ -38,7 +44,8 @@ function model!(
             Cvoid, # return type
             (
                 Ptr{Cdouble}, # px
-                Ptr{Ptr{Cdouble}}, # ffGn
+                Ptr{Ptr{Cdouble}}, # ffGn_hsr
+                Ptr{Ptr{Cdouble}}, # ffGn_lsr
                 Ptr{Cdouble}, # cf
                 Cint,         # nchan
                 Cdouble,      # tdres
@@ -61,16 +68,22 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # c1 
                 Ptr{Ptr{Cdouble}}, # c2 
                 Ptr{Ptr{Cdouble}}, # ihcout
-                Ptr{Ptr{Cdouble}}, # exponOut
-                Ptr{Ptr{Cdouble}}, # sout1
-                Ptr{Ptr{Cdouble}}, # sout2
-                Ptr{Ptr{Cdouble}}, # synout
-                Ptr{Ptr{Cdouble}}, # anrateout
+                Ptr{Ptr{Cdouble}}, # expout_hsr
+                Ptr{Ptr{Cdouble}}, # sout1_hsr
+                Ptr{Ptr{Cdouble}}, # sout2_hsr
+                Ptr{Ptr{Cdouble}}, # synout_hsr
+                Ptr{Ptr{Cdouble}}, # expout_lsr
+                Ptr{Ptr{Cdouble}}, # sout1_lsr
+                Ptr{Ptr{Cdouble}}, # sout2_lsr
+                Ptr{Ptr{Cdouble}}, # synout_lsr
+                Ptr{Ptr{Cdouble}}, # hsrout
+                Ptr{Ptr{Cdouble}}, # lsrout
                 Ptr{Ptr{Cdouble}}, # cnout
                 Ptr{Ptr{Cdouble}}, # icout
             ),
             px,
-            ffGn,
+            ffGn_hsr,
+            ffGn_lsr,
             cf, 
             n_chan,
             tdres, 
@@ -93,11 +106,16 @@ function model!(
             c1out, 
             c2out, 
             ihcout,
-            exponout,
-            sout1,
-            sout2,
-            synout,
-            anrateout,
+            expout_hsr,
+            sout1_hsr,
+            sout2_hsr,
+            synout_hsr,
+            expout_lsr,
+            sout1_lsr,
+            sout2_lsr,
+            synout_lsr,
+            hsrout,
+            lsrout,
             cnout,
             icout,
         )

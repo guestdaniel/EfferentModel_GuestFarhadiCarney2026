@@ -19,7 +19,7 @@ Postprocesses a simulation based on which model produced it to allow for testing
 # Arguments
 - `sim`: Vector containing some simulation result for a given stage
 - `stage`: String indicating which stage this stage corresponds to, from ["control", "c1", \
-    "c2", "ihc", "expon", "sout1", "syn", "cn"]
+    "c2", "ihc", "expon", "sout1", "syn", "hsr", "lsr", "cn"]
 - `model`: Which model the response came from, from ["zbc2014", "gfc2023"]
 - `cf`: Characteristic frequency (Hz)
 """
@@ -56,11 +56,11 @@ function postprocess_simulations(sim, stage, model, cf=1000.0)
         sim = sim[(1:(length(sim) - delaypoint*2)) .+ delaypoint]
     end
 
-    # If we're looking at the synapse, we need to get every 10th sample (this is because 
+    # If we're looking at the synapse/rate, we need to get every 10th sample (this is because 
     # the original code used a linear interpolation to upsample back to the stimulus 
     # sampling rate, but the new code is actually simulated at 100 kHz, producing large
     # disparities between sample points)
-    if stage == "syn"
+    if stage in ["syn", "hsr", "lsr"]
         sim = sim[1:10:end]
     end
 
@@ -70,7 +70,7 @@ function postprocess_simulations(sim, stage, model, cf=1000.0)
         # zero-padding old control signal isn't viable and we only want to look at the 
         # relevant pieces
         sim = sim[2000:end]
-    elseif stage in ["sout1", "sout2", "syn"]
+    elseif stage in ["sout1", "sout2", "syn", "hsr", "lsr"]
         # For synapse stuff, we need to avoid the initial few samples because the lack of
         # a "delaypoint" system in the new model creates onset irregularities
         sim = sim[50:2000]
@@ -122,7 +122,7 @@ end
 # Note: we currently omit sout2, which is difficult to match exactly due to 
 # resampling issues and small numerical discrepancies. Both outputs are still analyzed 
 # visually in other testing code
-stages_peripheral = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn"]
+stages_peripheral = ["control", "c1", "c2", "ihc", "expon", "sout1", "syn", "hsr", "lsr"]
 
 # Stages to test, subcortical
 stages_subcortical = ["cn", "ic"]
@@ -135,7 +135,7 @@ params_sfie = [
 
 # Define function to set relative tolerance for comparisons at each stage
 function get_rtol(stage)
-    if stage in ["sout1", "sout2", "syn"]
+    if stage in ["sout1", "sout2", "syn", "hsr", "lsr"]
         return 0.10
     else
         return 0.001
@@ -261,7 +261,7 @@ end
 
         # Simulate response from AuditoryMidbrain.jl for cochlear nucleus stage
         old = sim_sfie_nc2004(
-            out["anrate"], 
+            out["hsr"], 
             τ_e=τ_e,
             τ_i=τ_i,
             d_i=d,
@@ -296,7 +296,7 @@ end
 
         # Simulate response from AuditoryMidbrain.jl for cochlear nucleus stage
         old = sim_sfie_nc2004(
-            out["anrate"], 
+            out["hsr"], 
             τ_e=0.5e-3,
             τ_i=2.0e-3,
             d_i=1.0e-3,
@@ -341,7 +341,7 @@ end
         new = out["ic"]
 
         # Simulate response from AuditoryMidbrain.jl for cochlear nucleus stage
-        old = map(out["anrate"]) do x 
+        old = map(out["hsr"]) do x 
             cn = sim_sfie_nc2004(
                 x, 
                 τ_e=0.5e-3,
