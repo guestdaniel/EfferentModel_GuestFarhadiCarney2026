@@ -23,6 +23,10 @@ function model!(
     ic_amp::Float64,
     ic_inh::Float64,
     moc_cutoff::Float64,
+    moc_beta::Float64,
+    moc_offset::Float64,
+    moc_minrate::Float64,
+    moc_maxrate::Float64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -39,6 +43,7 @@ function model!(
     lsrout::Vector{Vector{Float64}},
     cnout::Vector{Vector{Float64}},
     icout::Vector{Vector{Float64}},
+    mocwdrin::Vector{Vector{Float64}},
     mocout::Vector{Vector{Float64}},
 )
     ccall(
@@ -67,6 +72,10 @@ function model!(
                 Cdouble,      # ic_amp
                 Cdouble,      # ic_inh
                 Cdouble,      # moc_cutoff
+                Cdouble,      # moc_beta
+                Cdouble,      # moc_offset
+                Cdouble,      # moc_minrate
+                Cdouble,      # moc_maxrate
                 Ptr{Ptr{Cdouble}}, # control
                 Ptr{Ptr{Cdouble}}, # c1 
                 Ptr{Ptr{Cdouble}}, # c2 
@@ -83,6 +92,7 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # lsrout
                 Ptr{Ptr{Cdouble}}, # cnout
                 Ptr{Ptr{Cdouble}}, # icout
+                Ptr{Ptr{Cdouble}}, # mocwdrin
                 Ptr{Ptr{Cdouble}}, # mocout
             ),
             px,
@@ -107,6 +117,10 @@ function model!(
             ic_amp,
             ic_inh,
             moc_cutoff,
+            moc_beta,
+            moc_offset,
+            moc_minrate,
+            moc_maxrate,
             controlout, 
             c1out, 
             c2out, 
@@ -123,6 +137,7 @@ function model!(
             lsrout,
             cnout,
             icout,
+            mocwdrin,
             mocout,
         )
 end
