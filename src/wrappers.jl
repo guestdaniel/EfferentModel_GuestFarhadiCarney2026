@@ -35,6 +35,7 @@ function sim_gfc2023(
     ic_delay=1.0e-3,
     ic_amp=1.5,
     ic_inh=0.6,
+    moc_cutoff=0.5,
 )
     # Calculate n_chan
     n_chan = length(cf)
@@ -88,6 +89,7 @@ function sim_gfc2023(
     lsrout = [zeros(length(x)) for _ in 1:n_chan]
     cnout = [zeros(length(x)) for _ in 1:n_chan]
     icout = [zeros(length(x)) for _ in 1:n_chan]
+    mocout = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -112,6 +114,7 @@ function sim_gfc2023(
         ic_delay,
         ic_amp,
         ic_inh,
+        moc_cutoff,
         controlout, 
         c1out, 
         c2out, 
@@ -128,10 +131,12 @@ function sim_gfc2023(
         lsrout,
         cnout,
         icout,
+        mocout,
     )
 
     # Return
-    return controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr, hsrout, lsrout, cnout, icout
+    return controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr, 
+           hsrout, lsrout, cnout, icout, mocout
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
@@ -139,7 +144,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic = sim_gfc2023(args...; kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, moc = sim_gfc2023(args...; kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -153,6 +158,7 @@ function sim_gfc2023_dict(args...; kwargs...)
         "lsr" => lsr,
         "cn" => cn,
         "ic" => ic,
+        "moc" => moc,
     )
 end
 
