@@ -13,12 +13,12 @@ update_theme!(fontsize=20)
 # Simulate MOC response to 1-kHz pure tone
 resp = sim_gfc2023_dict(
     pt(1000.0, 50.0, 0.2), 
-#    zeros(20_000),
     1000.0; 
     moc_cutoff=1.0,
     moc_beta=0.01,
     moc_offset=0.0,
-    moc_maxrate=50.0,
+    moc_minrate=0.0,
+    moc_maxrate=100.0,
 );
 
 # Plot response
@@ -36,7 +36,6 @@ fig
 # Simulate MOC response to 1-kHz SAM tone
 resp = sim_gfc2023_dict(
     sam(1000.0, 20.0, -0.0, 50.0, 0.3), 
-#    zeros(20_000),
     1000.0; 
     moc_cutoff=1.0,
     moc_beta=0.01,
