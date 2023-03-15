@@ -27,6 +27,8 @@ function model!(
     moc_offset::Float64,
     moc_minrate::Float64,
     moc_maxrate::Float64,
+    moc_weight_wdr::Float64,
+    moc_weight_ic::Float64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -44,6 +46,7 @@ function model!(
     cnout::Vector{Vector{Float64}},
     icout::Vector{Vector{Float64}},
     mocwdrin::Vector{Vector{Float64}},
+    mocicin::Vector{Vector{Float64}},
     mocout::Vector{Vector{Float64}},
 )
     ccall(
@@ -76,6 +79,8 @@ function model!(
                 Cdouble,      # moc_offset
                 Cdouble,      # moc_minrate
                 Cdouble,      # moc_maxrate
+                Cdouble,      # moc_weight_wdr
+                Cdouble,      # moc_weight_ic
                 Ptr{Ptr{Cdouble}}, # control
                 Ptr{Ptr{Cdouble}}, # c1 
                 Ptr{Ptr{Cdouble}}, # c2 
@@ -93,6 +98,7 @@ function model!(
                 Ptr{Ptr{Cdouble}}, # cnout
                 Ptr{Ptr{Cdouble}}, # icout
                 Ptr{Ptr{Cdouble}}, # mocwdrin
+                Ptr{Ptr{Cdouble}}, # mocicin
                 Ptr{Ptr{Cdouble}}, # mocout
             ),
             px,
@@ -121,6 +127,8 @@ function model!(
             moc_offset,
             moc_minrate,
             moc_maxrate,
+            moc_weight_wdr,
+            moc_weight_ic,
             controlout, 
             c1out, 
             c2out, 
@@ -138,6 +146,7 @@ function model!(
             cnout,
             icout,
             mocwdrin,
+            mocicin,
             mocout,
         )
 end

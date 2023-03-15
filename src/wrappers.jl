@@ -30,16 +30,18 @@ function sim_gfc2023(
     cn_delay=1.0e-3,
     cn_amp=1.5,
     cn_inh=0.6,
-    ic_tau_e=0.5e-3,
+    ic_tau_e=1.0e-3,
     ic_tau_i=2.0e-3,
     ic_delay=1.0e-3,
-    ic_amp=1.5,
-    ic_inh=0.6,
+    ic_amp=4.0,
+    ic_inh=0.9,
     moc_cutoff=1.0,
     moc_beta=0.01,
     moc_offset=0.0,
     moc_minrate=0.001,
     moc_maxrate=1.0,
+    moc_weight_wdr=1.0,
+    moc_weight_ic=1.0,
 )
     # Calculate n_chan
     n_chan = length(cf)
@@ -94,6 +96,7 @@ function sim_gfc2023(
     cnout = [zeros(length(x)) for _ in 1:n_chan]
     icout = [zeros(length(x)) for _ in 1:n_chan]
     mocwdrin = [zeros(length(x)) for _ in 1:n_chan]
+    mocicin = [zeros(length(x)) for _ in 1:n_chan]
     mocout = [zeros(length(x)) for _ in 1:n_chan]
 
     # Run model
@@ -124,6 +127,8 @@ function sim_gfc2023(
         moc_offset,
         moc_minrate,
         moc_maxrate,
+        moc_weight_wdr,
+        moc_weight_ic,
         controlout, 
         c1out, 
         c2out, 
@@ -141,12 +146,13 @@ function sim_gfc2023(
         cnout,
         icout,
         mocwdrin,
+        mocicin,
         mocout,
     )
 
     # Return
     return controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr, 
-           hsrout, lsrout, cnout, icout, mocwdrin, mocout
+           hsrout, lsrout, cnout, icout, mocwdrin, mocicin, mocout
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
@@ -154,7 +160,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, wdr, moc = sim_gfc2023(args...; kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, wdr, icin, moc = sim_gfc2023(args...; kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -169,6 +175,7 @@ function sim_gfc2023_dict(args...; kwargs...)
         "cn" => cn,
         "ic" => ic,
         "wdr" => wdr,
+        "icin" => icin,
         "moc" => moc,
     )
 end
