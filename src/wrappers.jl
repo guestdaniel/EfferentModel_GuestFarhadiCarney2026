@@ -42,10 +42,10 @@ function sim_gfc2023(
     moc_maxrate=1.0,
     moc_weight_wdr=0.0,
     moc_weight_ic=0.0,
-    dur_pad_left=0.1,
-    clip_left=true,
+    dur_pad_left=0.05,
+    clip_left=dur_pad_left == 0.0 ? false : true,
     dur_pad_right=0.0,
-    clip_right=false,
+    clip_right=dur_pad_right == 0.0 ? false : true,
 )
     # Calculate pad sizes in samples
     len_pad_left = Int(floor(dur_pad_left*fs))
@@ -166,10 +166,12 @@ function sim_gfc2023(
     # Return
     outputs = [controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr,
                hsrout, lsrout, cnout, icout, mocwdrin, mocicin, mocout]
-    if clip_left
+    if clip_left | clip_right
         outputs = map(outputs) do output
             output = map(output) do channel
-                channel = channel[(len_pad_left+1):end]
+                idx_left = clip_left ? (len_pad_left+1) : 1
+                idx_right = clip_right ? length(channel) - len_pad_right : length(channel)
+                channel = channel[idx_left:idx_right]
             end
         end
     end
