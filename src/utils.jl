@@ -1,7 +1,7 @@
 export pt, sam, moc_nonlinearity
 
 # Utility function to synthesize pure tone quickly
-pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(pure_tone(f, 0.0, dur, fs), l)
+pt(f=1000.0, l=50.0, dur=0.2, fs=100e3) = scale_dbspl(cosine_ramp(pure_tone(f, 0.0, dur, fs), 0.01, fs), l)
 
 # Utility function to synthesize SAM tone quickly
 function sam(f=1000.0, fm=1.0, d=0.0, l=50.0, dur=0.2, fs=100e3)

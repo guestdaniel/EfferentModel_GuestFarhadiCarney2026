@@ -40,9 +40,22 @@ function sim_gfc2023(
     moc_offset=0.0,
     moc_minrate=0.001,
     moc_maxrate=1.0,
-    moc_weight_wdr=1.0,
-    moc_weight_ic=1.0,
+    moc_weight_wdr=0.0,
+    moc_weight_ic=0.0,
+    dur_pad_left=0.1,
+    clip_left=true,
+    dur_pad_right=0.0,
+    clip_right=false,
 )
+    # Calculate pad sizes in samples
+    len_pad_left = Int(floor(dur_pad_left*fs))
+    len_pad_right = Int(floor(dur_pad_right*fs))
+    len_stim = length(x)
+    len_total = len_pad_left + len_stim + len_pad_right
+
+    # Pad x
+    stim = vcat(zeros(len_pad_left), x, zeros(len_pad_right))
+
     # Calculate n_chan
     n_chan = length(cf)
 
@@ -57,7 +70,7 @@ function sim_gfc2023(
     if fractional
         ffGn_hsr = map(1:n_chan) do _
             ffGn_native(
-                Int(ceil(length(x))),
+                len_total,
                 1/fs,
                 0.9,
                 1.0,
@@ -66,7 +79,7 @@ function sim_gfc2023(
         end
         ffGn_lsr = map(1:n_chan) do _
             ffGn_native(
-                Int(ceil(length(x))),
+                len_total,
                 1/fs,
                 0.9,
                 1.0,
@@ -74,40 +87,40 @@ function sim_gfc2023(
             )
         end
     else
-        ffGn_hsr = [zeros(Int(ceil(length(x)))) for _ in 1:n_chan]
-        ffGn_lsr = [zeros(Int(ceil(length(x)))) for _ in 1:n_chan]
+        ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
+        ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
     end
 
     # Pre-allocate memory
-    controlout = [zeros(length(x)) for _ in 1:n_chan]
-    c1out = [zeros(length(x)) for _ in 1:n_chan]
-    c2out = [zeros(length(x)) for _ in 1:n_chan]
-    ihcout = [zeros(length(x)) for _ in 1:n_chan]
-    expout_hsr = [zeros(length(x)) for _ in 1:n_chan]
-    sout1_hsr = [zeros(length(x)) for _ in 1:n_chan]
-    sout2_hsr = [zeros(length(x)) for _ in 1:n_chan]
-    synout_hsr = [zeros(length(x)) for _ in 1:n_chan]
-    expout_lsr = [zeros(length(x)) for _ in 1:n_chan]
-    sout1_lsr = [zeros(length(x)) for _ in 1:n_chan]
-    sout2_lsr = [zeros(length(x)) for _ in 1:n_chan]
-    synout_lsr = [zeros(length(x)) for _ in 1:n_chan]
-    hsrout = [zeros(length(x)) for _ in 1:n_chan]
-    lsrout = [zeros(length(x)) for _ in 1:n_chan]
-    cnout = [zeros(length(x)) for _ in 1:n_chan]
-    icout = [zeros(length(x)) for _ in 1:n_chan]
-    mocwdrin = [zeros(length(x)) for _ in 1:n_chan]
-    mocicin = [zeros(length(x)) for _ in 1:n_chan]
-    mocout = [zeros(length(x)) for _ in 1:n_chan]
+    controlout = [zeros(len_total) for _ in 1:n_chan]
+    c1out = [zeros(len_total) for _ in 1:n_chan]
+    c2out = [zeros(len_total) for _ in 1:n_chan]
+    ihcout = [zeros(len_total) for _ in 1:n_chan]
+    expout_hsr = [zeros(len_total) for _ in 1:n_chan]
+    sout1_hsr = [zeros(len_total) for _ in 1:n_chan]
+    sout2_hsr = [zeros(len_total) for _ in 1:n_chan]
+    synout_hsr = [zeros(len_total) for _ in 1:n_chan]
+    expout_lsr = [zeros(len_total) for _ in 1:n_chan]
+    sout1_lsr = [zeros(len_total) for _ in 1:n_chan]
+    sout2_lsr = [zeros(len_total) for _ in 1:n_chan]
+    synout_lsr = [zeros(len_total) for _ in 1:n_chan]
+    hsrout = [zeros(len_total) for _ in 1:n_chan]
+    lsrout = [zeros(len_total) for _ in 1:n_chan]
+    cnout = [zeros(len_total) for _ in 1:n_chan]
+    icout = [zeros(len_total) for _ in 1:n_chan]
+    mocwdrin = [zeros(len_total) for _ in 1:n_chan]
+    mocicin = [zeros(len_total) for _ in 1:n_chan]
+    mocout = [zeros(len_total) for _ in 1:n_chan]
 
     # Run model
     model!(
-        x, 
+        stim, 
         ffGn_hsr,
         ffGn_lsr,
         cf,
         n_chan,
         1/fs, 
-        length(x), 
+        len_total, 
         cohc, 
         cihc, 
         species_flag, 
@@ -151,8 +164,16 @@ function sim_gfc2023(
     )
 
     # Return
-    return controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr, 
-           hsrout, lsrout, cnout, icout, mocwdrin, mocicin, mocout
+    outputs = [controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr,
+               hsrout, lsrout, cnout, icout, mocwdrin, mocicin, mocout]
+    if clip_left
+        outputs = map(outputs) do output
+            output = map(output) do channel
+                channel = channel[(len_pad_left+1):end]
+            end
+        end
+    end
+    return outputs
 end
 
 function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
@@ -321,8 +342,8 @@ function sim_orig(
         ihcout, ffGn, 1/fs, cf, length(ihcout), 1, 0.1, noiseType, implnt, 10e3, synout_lsr, exponout_lsr, powerlawin_lsr, sout1_lsr, sout2_lsr, @cfunction(decimate, Ptr{Cdouble}, (Ptr{Cdouble}, Cint, Cint)),
     )
 
-    hsr = synout ./ (1.0 .+ 0.75e-3 .^ synout)
-    lsr = synout_lsr ./ (1.0 .+ 0.75e-3 .^ synout_lsr)
+    hsr = synout ./ (1.0 .+ 0.75e-3 .* synout)
+    lsr = synout_lsr ./ (1.0 .+ 0.75e-3 .* synout_lsr)
 
     # Return
     return controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2, hsr, lsr
