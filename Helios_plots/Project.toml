@@ -1,0 +1,10 @@
+name = "Helios_plots"
+uuid = "12d4420d-e596-4591-9382-104973912daa"
+authors = ["Daniel Guest <guest121@umn.edu>"]
+version = "0.1.0"
+
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+CarneyLabUtils2 = "02fe02ef-05cc-41d0-b3bd-aeded1b8169b"
+Helios = "bd60d82c-a384-44fa-b544-3af1e39361be"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
