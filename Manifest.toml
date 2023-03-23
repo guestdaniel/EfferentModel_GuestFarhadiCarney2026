@@ -216,7 +216,7 @@ uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.1"
 
 [[deps.CarneyLabUtils2]]
-deps = ["AuditoryMidbrain", "AuditoryNerveFiber", "AuditorySignalUtils", "CairoMakie", "ColorSchemes", "Colors", "DSP", "DrWatson", "FFTW", "ImageFiltering", "Interpolations", "LinearAlgebra", "Loess", "MAT", "Parameters", "Printf", "Revise", "SHA", "Statistics"]
+deps = ["AuditoryMidbrain", "AuditoryNerveFiber", "AuditorySignalUtils", "CairoMakie", "ColorSchemes", "Colors", "DSP", "Distributed", "DrWatson", "FFTW", "ImageFiltering", "Interpolations", "LinearAlgebra", "Loess", "MAT", "Parameters", "Printf", "Revise", "SHA", "Statistics"]
 path = "../CarneyLabUtils2"
 uuid = "02fe02ef-05cc-41d0-b3bd-aeded1b8169b"
 version = "0.1.0"
@@ -689,8 +689,14 @@ git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
 uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "2.8.1+1"
 
+[[deps.Helios]]
+deps = ["AuditoryMidbrain", "AuditoryNerveFiber", "AuditorySignalUtils", "CairoMakie", "DSP", "DrWatson", "FFTW", "Helios_plots", "ProfileView", "Revise", "Statistics", "Test", "UnicodePlots"]
+path = "C:\\Users\\dguest2\\cl_code\\Helios"
+uuid = "bd60d82c-a384-44fa-b544-3af1e39361be"
+version = "0.1.0"
+
 [[deps.Helios_plots]]
-deps = ["CairoMakie", "CarneyLabUtils2", "Revise"]
+deps = ["AuditorySignalUtils", "CairoMakie", "CarneyLabUtils2", "DrWatson", "Helios", "Parameters", "Revise"]
 path = "Helios_plots"
 uuid = "12d4420d-e596-4591-9382-104973912daa"
 version = "0.1.0"
