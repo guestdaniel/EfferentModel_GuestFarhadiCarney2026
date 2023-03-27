@@ -42,6 +42,7 @@ function sim_gfc2023(
     moc_maxrate=1.0,
     moc_weight_wdr=0.0,
     moc_weight_ic=0.0,
+    moc_len_integ=2,
     dur_pad_left=0.05,
     clip_left=dur_pad_left == 0.0 ? false : true,
     dur_pad_right=0.0,
@@ -108,9 +109,9 @@ function sim_gfc2023(
     lsrout = [zeros(len_total) for _ in 1:n_chan]
     cnout = [zeros(len_total) for _ in 1:n_chan]
     icout = [zeros(len_total) for _ in 1:n_chan]
-    mocwdrin = [zeros(len_total) for _ in 1:n_chan]
-    mocicin = [zeros(len_total) for _ in 1:n_chan]
-    mocout = [zeros(len_total) for _ in 1:n_chan]
+    mocwdr = [zeros(len_total) for _ in 1:n_chan]
+    mocic = [zeros(len_total) for _ in 1:n_chan]
+    gain = [zeros(len_total) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -142,6 +143,7 @@ function sim_gfc2023(
         moc_maxrate,
         moc_weight_wdr,
         moc_weight_ic,
+        moc_len_integ,
         controlout, 
         c1out, 
         c2out, 
@@ -158,14 +160,14 @@ function sim_gfc2023(
         lsrout,
         cnout,
         icout,
-        mocwdrin,
-        mocicin,
-        mocout,
+        mocwdr,
+        mocic,
+        gain,
     )
 
     # Return
     outputs = [controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr,
-               hsrout, lsrout, cnout, icout, mocwdrin, mocicin, mocout]
+               hsrout, lsrout, cnout, icout, mocwdr, mocic, gain]
     if clip_left | clip_right
         outputs = map(outputs) do output
             output = map(output) do channel
@@ -183,7 +185,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, wdr, icin, moc = sim_gfc2023(args...; kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, mocwdr, mocic, gain = sim_gfc2023(args...; kwargs...)
     return Dict(
         "stim" => args[1],
         "control" => control,
@@ -198,9 +200,9 @@ function sim_gfc2023_dict(args...; kwargs...)
         "lsr" => lsr,
         "cn" => cn,
         "ic" => ic,
-        "wdr" => wdr,
-        "icin" => icin,
-        "moc" => moc,
+        "mocwdr" => mocwdr,
+        "mocic" => mocic,
+        "gain" => gain,
     )
 end
 
