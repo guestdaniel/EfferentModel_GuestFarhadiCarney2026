@@ -11,7 +11,7 @@ resp = sim_gfc2023_dict(
     dur_pad_right=0.02, 
     clip_right=false, 
     moc_cutoff=0.2,
-    moc_weight_wdr=2.0,
+    moc_weight_wdr=3.0,
     moc_weight_ic=2.0,
     ic_amp=2.0,
 )
@@ -25,7 +25,7 @@ resp = sim_gfc2023_dict(
     dur_pad_right=0.02, 
     clip_right=false, 
     moc_cutoff=0.2,
-    moc_weight_wdr=2.0,
+    moc_weight_wdr=3.0,
     moc_weight_ic=2.0,
     ic_amp=2.0,
 )

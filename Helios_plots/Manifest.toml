@@ -2,7 +2,7 @@
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "93eb2a8954c5a4a139b0e5001747a8362776a753"
+project_hash = "86afce29ae1c76d91b9fe31b57eb4ec38d4422db"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -214,7 +214,7 @@ uuid = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 version = "0.5.1"
 
 [[deps.CarneyLabUtils2]]
-deps = ["AuditoryMidbrain", "AuditoryNerveFiber", "AuditorySignalUtils", "CairoMakie", "ColorSchemes", "Colors", "DSP", "DrWatson", "FFTW", "ImageFiltering", "Interpolations", "LinearAlgebra", "Loess", "MAT", "Parameters", "Printf", "Revise", "SHA", "Statistics"]
+deps = ["AuditoryMidbrain", "AuditoryNerveFiber", "AuditorySignalUtils", "CairoMakie", "ColorSchemes", "Colors", "DSP", "Distributed", "DrWatson", "FFTW", "ImageFiltering", "Interpolations", "LinearAlgebra", "Loess", "MAT", "Parameters", "Printf", "Revise", "SHA", "Statistics"]
 path = "../../CarneyLabUtils2"
 uuid = "02fe02ef-05cc-41d0-b3bd-aeded1b8169b"
 version = "0.1.0"
@@ -694,7 +694,7 @@ uuid = "bd60d82c-a384-44fa-b544-3af1e39361be"
 version = "0.1.0"
 
 [[deps.Helios_plots]]
-deps = ["AuditorySignalUtils", "CairoMakie", "CarneyLabUtils2", "DrWatson", "Helios", "Parameters", "Revise"]
+deps = ["AuditoryNerveFiber", "AuditorySignalUtils", "CairoMakie", "CarneyLabUtils2", "DSP", "DrWatson", "FFTW", "Helios", "Parameters", "Revise"]
 path = "C:\\Users\\dguest2\\cl_code\\Helios\\Helios_plots"
 uuid = "12d4420d-e596-4591-9382-104973912daa"
 version = "0.1.0"
