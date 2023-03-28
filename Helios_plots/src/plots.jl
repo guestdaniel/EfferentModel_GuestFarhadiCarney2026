@@ -1,15 +1,5 @@
 export plot_timecourse!, plot_timecourse_stack!
 
-function setylim(output::String)
-    if     output == "hsr"
-        return 1000.0
-    elseif output == "lsr"
-        return 100.0
-    elseif output == "ic"
-        return 1250.0
-    end
-end
-
 function plot_timecourse!(
     resp::Dict, 
     channel::Int, 
@@ -40,7 +30,7 @@ function plot_timecourse!(
     if autoylim
         ylims!.(ax, 0.0, 1.2 * maximum(resp[output][channel]))
     else
-        ylims!.(ax, 0.0, setylim(output))
+        ylims!.(ax, getylim(output)...)
     end
 
     # Adjust xlimits
