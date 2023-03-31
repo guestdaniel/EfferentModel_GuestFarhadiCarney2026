@@ -113,6 +113,26 @@ function run_2014_vs_2023_pure_tone(cf::Vector{Float64}, stage::String, f=1000.0
     return orig, new
 end
 
+"""
+    run_full_vs_simple_pure_tone(stage, f, l)
+
+Simulates responses for full vs simplified model funcs at a stage for a short pure tone stimulus
+"""
+function run_full_vs_simple_pure_tone(stage::String, f=1000.0, l=50.0)
+    # Crestimulus 
+    x = pt(f, l)
+
+    # Simulate original and new responses
+    full = sim_gfc2023_dict(x, f; dur_pad_left=0.0, clip_left=false)[stage]
+    simp = sim_gfc2023_wrapper_dict(x, f; dur_pad_left=0.0, clip_left=false)[stage]
+
+    full = postprocess_simulations(full, stage, "gfc2023", f)
+    simp = postprocess_simulations(simp, stage, "gfc2023", f)
+
+    return full, simp
+end
+
+
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~ Configure and define
@@ -139,48 +159,6 @@ function get_rtol(stage)
         return 0.10
     else
         return 0.001
-    end
-end
-
-# ==========================================================================================
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~ Check whether new model outputs match 2014 model outputs
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ==========================================================================================
-@testset "Regression vs 2014 --- single channel" begin
-    # ======================================================================================
-    # Check response to 1 kHz pure tone at every filter output
-    # ======================================================================================
-    @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages_peripheral
-        orig, new = run_2014_vs_2023_pure_tone(stage)
-        @test isapprox(orig, new; rtol=get_rtol(stage))
-    end
-end
-
-@testset "Regression vs 2014 --- multichannel" begin
-    # ======================================================================================
-    # Check response to 1 kHz pure tone at 1 kHz and 2 kHz CFs
-    # ======================================================================================
-    @testset "1-kHz pure tone, 50 dB SPL, multichannel, stage: $stage" for stage in stages_peripheral
-        orig, new = run_2014_vs_2023_pure_tone([1000.0, 2000.0], stage)
-        pairs = zip(orig, new)
-        @test all(map(pair -> isapprox(pair[1], pair[2]; rtol=get_rtol(stage)), pairs))
-    end
-end
-
-# ==========================================================================================
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ~~~~ Check wrapper features
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# ==========================================================================================
-@testset "Wrapper features" begin
-    # ======================================================================================
-    # Check that right clipping doesnt affect results
-    # ======================================================================================
-    @test begin
-        unpadded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.0, clip_right=false)["hsr"]
-        padded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.1, clip_right=true)["hsr"]
-        all(unpadded .== padded)
     end
 end
 
@@ -244,6 +222,65 @@ end
 
         # Compare
         y_c ≈ y_julia
+    end
+end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Check wrapper features
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+@testset "Wrapper features" begin
+    # ======================================================================================
+    # Check that right clipping doesnt affect results
+    # ======================================================================================
+    @test begin
+        unpadded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.0, clip_right=false)["hsr"]
+        padded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.1, clip_right=true)["hsr"]
+        all(unpadded .== padded)
+    end
+end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Check whether full and simple model functions yield same outputs
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+@testset "Full vs wrapper model" begin
+    @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in ["ihc", "hsr", "lsr", "ic"]
+        full, simp = run_full_vs_simple_pure_tone(stage)
+        @test isapprox(full, simp; rtol=get_rtol(stage))
+    end
+end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Check whether new model outputs match 2014 model outputs (single channel)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+@testset "Regression vs 2014 --- single channel" begin
+    # ======================================================================================
+    # Check response to 1 kHz pure tone at every filter output
+    # ======================================================================================
+    @testset "1-kHz pure tone, 50 dB SPL, stage: $stage" for stage in stages_peripheral
+        orig, new = run_2014_vs_2023_pure_tone(stage)
+        @test isapprox(orig, new; rtol=get_rtol(stage))
+    end
+end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Check whether new model outputs match 2014 model outputs (multichannel)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+@testset "Regression vs 2014 --- multichannel" begin
+    # ======================================================================================
+    # Check response to 1 kHz pure tone at 1 kHz and 2 kHz CFs
+    # ======================================================================================
+    @testset "1-kHz pure tone, 50 dB SPL, multichannel, stage: $stage" for stage in stages_peripheral
+        orig, new = run_2014_vs_2023_pure_tone([1000.0, 2000.0], stage)
+        pairs = zip(orig, new)
+        @test all(map(pair -> isapprox(pair[1], pair[2]; rtol=get_rtol(stage)), pairs))
     end
 end
 

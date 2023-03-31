@@ -1,4 +1,96 @@
-export model!
+export model!, model_wrapper!
+
+function model_wrapper!(
+    px::Vector{Float64},
+    ffGn_hsr::Vector{Vector{Float64}},
+    ffGn_lsr::Vector{Vector{Float64}},
+    cf::Vector{Float64},
+    n_chan::Int64,
+    tdres::Float64,
+    totalstim::Int64, 
+    cohc::Float64,
+    cihc::Float64,
+    species::Int64,
+    ic_tau_e::Float64,
+    ic_tau_i::Float64,
+    ic_delay::Float64,
+    ic_amp::Float64,
+    ic_inh::Float64,
+    moc_beta_wdr::Float64,
+    moc_offset_wdr::Float64,
+    moc_beta_ic::Float64,
+    moc_offset_ic::Float64,
+    moc_weight_wdr::Float64,
+    moc_weight_ic::Float64,
+    moc_len_integ::Int64,
+    ihcout::Vector{Vector{Float64}},
+    hsrout::Vector{Vector{Float64}},
+    lsrout::Vector{Vector{Float64}},
+    icout::Vector{Vector{Float64}},
+    gain::Vector{Vector{Float64}},
+)
+    ccall(
+            (:model_efferent_wrapper, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"), 
+            Cvoid, # return type
+            (
+                Ptr{Cdouble}, # px
+                Ptr{Ptr{Cdouble}}, # ffGn_hsr
+                Ptr{Ptr{Cdouble}}, # ffGn_lsr
+                Ptr{Cdouble}, # cf
+                Cint,         # nchan
+                Cdouble,      # tdres
+                Cint,         # totalstim
+                Cdouble,      # cohc
+                Cdouble,      # cihc
+                Cint,         # species
+                Cdouble,      # ic_tau_e
+                Cdouble,      # ic_tau_i,
+                Cdouble,      # ic_delay
+                Cdouble,      # ic_amp
+                Cdouble,      # ic_inh
+                Cdouble,      # moc_beta
+                Cdouble,      # moc_offset
+                Cdouble,      # moc_beta
+                Cdouble,      # moc_offset
+                Cdouble,      # moc_weight_wdr
+                Cdouble,      # moc_weight_ic
+                Cint,         # moc_len_integ
+                Ptr{Ptr{Cdouble}}, # ihcout
+                Ptr{Ptr{Cdouble}}, # hsrout
+                Ptr{Ptr{Cdouble}}, # lsrout
+                Ptr{Ptr{Cdouble}}, # icout
+                Ptr{Ptr{Cdouble}}, # gain
+            ),
+            px,
+            ffGn_hsr,
+            ffGn_lsr,
+            cf, 
+            n_chan,
+            tdres, 
+            totalstim, 
+            cohc, 
+            cihc, 
+            species, 
+            ic_tau_e,
+            ic_tau_i,
+            ic_delay,
+            ic_amp,
+            ic_inh,
+            moc_beta_wdr,
+            moc_offset_wdr,
+            moc_beta_ic,
+            moc_offset_ic,
+            moc_weight_wdr,
+            moc_weight_ic,
+            moc_len_integ,
+            ihcout,
+            hsrout,
+            lsrout,
+            icout,
+            gain,
+        )
+end
+
 
 function model!(
     px::Vector{Float64},
