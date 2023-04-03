@@ -22,7 +22,7 @@ function model_wrapper!(
     moc_offset_ic::Float64,
     moc_weight_wdr::Float64,
     moc_weight_ic::Float64,
-    moc_len_integ::Int64,
+    moc_width_wdr::Float64,
     ihcout::Vector{Vector{Float64}},
     hsrout::Vector{Vector{Float64}},
     lsrout::Vector{Vector{Float64}},
@@ -54,7 +54,7 @@ function model_wrapper!(
                 Cdouble,      # moc_offset
                 Cdouble,      # moc_weight_wdr
                 Cdouble,      # moc_weight_ic
-                Cint,         # moc_len_integ
+                Cdouble,      # moc_width_wdr
                 Ptr{Ptr{Cdouble}}, # ihcout
                 Ptr{Ptr{Cdouble}}, # hsrout
                 Ptr{Ptr{Cdouble}}, # lsrout
@@ -82,7 +82,7 @@ function model_wrapper!(
             moc_offset_ic,
             moc_weight_wdr,
             moc_weight_ic,
-            moc_len_integ,
+            moc_width_wdr,
             ihcout,
             hsrout,
             lsrout,
@@ -125,7 +125,7 @@ function model!(
     moc_maxrate_ic::Float64,
     moc_weight_wdr::Float64,
     moc_weight_ic::Float64,
-    moc_len_integ::Int64,
+    moc_width_wdr::Float64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -182,7 +182,7 @@ function model!(
                 Cdouble,      # moc_maxrate
                 Cdouble,      # moc_weight_wdr
                 Cdouble,      # moc_weight_ic
-                Cint,         # moc_len_integ
+                Cdouble,      # moc_width_wdr
                 Ptr{Ptr{Cdouble}}, # control
                 Ptr{Ptr{Cdouble}}, # c1 
                 Ptr{Ptr{Cdouble}}, # c2 
@@ -235,7 +235,7 @@ function model!(
             moc_maxrate_ic,
             moc_weight_wdr,
             moc_weight_ic,
-            moc_len_integ,
+            moc_width_wdr,
             controlout, 
             c1out, 
             c2out, 
