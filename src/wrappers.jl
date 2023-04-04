@@ -196,7 +196,6 @@ end
 function sim_gfc2023_dict(args...; kwargs...)
     control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, mocwdr, mocic, gain = sim_gfc2023(args...; kwargs...)
     return Dict(
-        "stim" => args[1],
         "control" => control,
         "c1" => c1,
         "c2" => c2,
@@ -343,7 +342,6 @@ end
 function sim_gfc2023_wrapper_dict(args...; kwargs...)
     ihc, hsr, lsr, ic, gain = sim_gfc2023_wrapper(args...; kwargs...)
     return Dict(
-        "stim" => args[1],
         "ihc" => ihc,
         "hsr" => hsr,
         "lsr" => lsr,
