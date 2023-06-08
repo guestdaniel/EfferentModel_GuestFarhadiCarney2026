@@ -156,6 +156,8 @@ params_sfie = [
 function get_rtol(stage)
     if stage in ["sout1", "sout2", "syn", "hsr", "lsr"]
         return 0.10
+    elseif stage == "gain"
+        return 0.01
     else
         return 0.001
     end
@@ -424,3 +426,61 @@ end
         @test all(map(pair -> isapprox(pair[1], pair[2]), pairs))
     end
 end
+
+# ==========================================================================================
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ~~~~ Check whether Julia and Mex wrappers provide same outputs
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# ==========================================================================================
+@testset "Julia vs Mex" begin
+    # First, we'll compare the Julia wrapper to the Mex wrapper by simulating responses to a
+    # pure tone with gain control disabled and verifying that responses at each output stage
+    # available in the Mex wrapper (ihc, hsr, lsr, ic, and gain) produce matched outputs for
+    # a single-CF response
+    @testset "1-kHz pure tone, 50 dB SPL, gain control disabled, single channel, stage: $stage" for stage in ["ihc", "hsr", "lsr", "ic", "gain"]
+        # Synthesize pure tone
+        x = scale_dbspl(cosine_ramp(pure_tone(1000.0, 0.0, 0.3, 100e3), 0.01, 100e3), 50.0)
+
+        # Run both models with gain control disabled
+        julia = sim_gfc2023_dict(
+            x, 
+            1000.0; 
+            dur_pad_left=0.0, 
+            dur_pad_right=0.0,
+            moc_weight_ic=0.0,
+            moc_weight_wdr=0.0,
+        )[stage]
+        matlab = sim_gfc2023_wrapper_dict_mex(
+            x, 
+            1000.0;
+            moc_weight_ic=0.0,
+            moc_weight_wdr=0.0,
+        )[stage]
+        @test isapprox(julia, matlab; rtol=get_rtol(stage))
+    end
+
+    # Next, we'll repeat the same simulations above except that we will turn gain control 
+    # on with very typical parameter values
+    @testset "1-kHz pure tone, 50 dB SPL, gain control enabled, single channel, stage: $stage" for stage in ["ihc", "hsr", "lsr", "ic", "gain"]
+        # Synthesize pure tone
+        x = scale_dbspl(cosine_ramp(pure_tone(1000.0, 0.0, 0.3, 100e3), 0.01, 100e3), 50.0)
+
+        # Run both models with gain control disabled
+        julia = sim_gfc2023_dict(
+            x, 
+            1000.0; 
+            dur_pad_left=0.0, 
+            dur_pad_right=0.0,
+            moc_weight_ic=1.0,
+            moc_weight_wdr=1.0,
+        )[stage]
+        matlab = sim_gfc2023_wrapper_dict_mex(
+            x, 
+            1000.0;
+            moc_weight_ic=1.0,
+            moc_weight_wdr=1.0,
+        )[stage]
+        @test isapprox(julia, matlab; rtol=get_rtol(stage))
+    end
+end
+

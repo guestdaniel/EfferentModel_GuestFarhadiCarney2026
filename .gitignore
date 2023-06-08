@@ -7,3 +7,6 @@ outputs
 model_temp
 test/performance/tracking_untracked.jl
 Helios_plots
+*.asv
+*.mexw64
+*.obj
