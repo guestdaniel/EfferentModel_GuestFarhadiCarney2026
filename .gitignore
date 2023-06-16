@@ -10,3 +10,5 @@ Helios_plots
 *.asv
 *.mexw64
 *.obj
+*.zip
+scripts

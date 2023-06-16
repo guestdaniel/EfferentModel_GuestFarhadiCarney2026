@@ -11,6 +11,7 @@ function model_wrapper!(
     cohc::Float64,
     cihc::Float64,
     species::Int64,
+    fastmode::Int64,
     ic_tau_e::Float64,
     ic_tau_i::Float64,
     ic_delay::Float64,
@@ -43,6 +44,7 @@ function model_wrapper!(
                 Cdouble,      # cohc
                 Cdouble,      # cihc
                 Cint,         # species
+                Cint,         # fastmode
                 Cdouble,      # ic_tau_e
                 Cdouble,      # ic_tau_i,
                 Cdouble,      # ic_delay
@@ -71,6 +73,7 @@ function model_wrapper!(
             cohc, 
             cihc, 
             species, 
+            fastmode,
             ic_tau_e,
             ic_tau_i,
             ic_delay,
@@ -104,6 +107,8 @@ function model!(
     cihc::Float64,
     species::Int64,
     spont::Float64,
+    powerlaw_include_fast::Int64,
+    powerlaw_len_memory::Int64,
     cn_tau_e::Float64,
     cn_tau_i::Float64,
     cn_delay::Float64,
@@ -161,6 +166,8 @@ function model!(
                 Cdouble,      # cihc
                 Cint,         # species
                 Cdouble,      # spont
+                Cint,         # powerlaw_include_fast
+                Cint,         # powerlawn_len_memory
                 Cdouble,      # cn_tau_e
                 Cdouble,      # cn_tau_i,
                 Cdouble,      # cn_delay
@@ -214,6 +221,8 @@ function model!(
             cihc, 
             species, 
             spont,
+            powerlaw_include_fast,
+            powerlaw_len_memory,
             cn_tau_e,
             cn_tau_i,
             cn_delay,
