@@ -143,7 +143,6 @@ void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums
         free(cnout[i]);
         free(mocwdr[i]);
         free(mocic[i]);
-
     }
 }
 

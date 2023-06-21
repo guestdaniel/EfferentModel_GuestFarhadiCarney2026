@@ -221,10 +221,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	*gaintmp++=gain[indexcf][indextime];
 	}
 
-	/*for (int i = 0; i < n_chan; i++) {
-	mxFree(randNums_hsr[i]);
-	mxFree(randNums_lsr[i]);
+	mxFree(px);
+	mxFree(cf);
+	for (int i = 0; i < n_chan; i++) {
+		free(randNums_hsr[i]);
+		free(randNums_lsr[i]);
+		free(ihcout[i]);
+		free(anrateout_hsr[i]);
+		free(anrateout_lsr[i]);
+		free(icout[i]);
+		free(gain[i]);
 	}
-	*/
-
+	mxFree(randNums_hsrarray);
+	mxFree(randNums_lsrarray);
 }
