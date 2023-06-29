@@ -38,7 +38,7 @@ function sim_gfc2023(
     ic_delay=1.0e-3,
     ic_amp=4.0,
     ic_inh=0.9,
-    moc_cutoff=0.2,
+    moc_cutoff=0.64,
     moc_beta_wdr=0.01,
     moc_offset_wdr=0.0,
     moc_minrate_wdr=0.001,
