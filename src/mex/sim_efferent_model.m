@@ -48,7 +48,10 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % - args.ic_amp: Excitatory strength in IC stage
 % - args.ic_inh: Inhibitory strength in IC stage 
 % - args.moc_cutoff: Cutoff of the lowpass filter used in the MOC stage
-%   (Hz)
+%   (Hz). The default value of 0.64 Hz yields a filter that matches that
+%   used in the older single-channel efferent model (i.e., it produces a
+%   "decay constant" of exp(-2pi * 0.64/100e3) ~= 1-3.9998e-5, which 
+%   matches the constant used in the old code).
 % - args.moc_beta_wdr: "beta" parameter in the MOC input-output
 %   nonlinearity for the wide-dynamic-range MOC pathway (a.u.)
 % - args.moc_offset_wdr: "offset" parameter in the MOC input-output
@@ -85,7 +88,7 @@ arguments
     args.ic_delay = 1e-3
     args.ic_amp = 1.0
     args.ic_inh = 1.0
-    args.moc_cutoff = 0.2  % may need to tweak this default to match old model time constant, ask Afagh (5/15/2023 D.R.G.)
+    args.moc_cutoff = 0.64
     args.moc_beta_wdr = 0.01
     args.moc_offset_wdr = 0.0
     args.moc_beta_ic = 0.01

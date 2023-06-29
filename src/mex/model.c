@@ -546,8 +546,7 @@ void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf,
     get_alpha_norm(ic_tau_i, 1/tdres, 1.0, ic_B_i, ic_A_i);
 
     /* Calculate variables for the MOC stage */
-    double nyquist = (1/tdres)/2;
-    double moc_d = exp(-TWOPI * (moc_cutoff/nyquist));
+    double moc_d = exp(-TWOPI * (moc_cutoff/(1/tdres)));
     double gain_ic = 0.0;
     double gain_wdr = 0.0;
     int n_chan_incl = 0;
@@ -783,6 +782,8 @@ void delay_signal(double *input, int n, int len_delay, double *output) {
  * 
  * Note that decay value (d) is related to time constant (tau) by:
  *   d = exp(-1/tau)
+ * or to the cutoff frequency (f) by:
+ *   d = exp(-2pi/f)
  * 
  * Note also that d is related to the (normalized) cutoff frequency (f) by
  *   f = -ln(d)/(2*pi)
