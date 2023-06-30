@@ -41,5 +41,9 @@ control.
 # Notes
 
 # Changelog
+- 6/29/2021: New version of model code and `sim_efferent_model.m` that adjusts default
+  parameter values for MOC lowpass filter
+- 6/21/2021: New version of `sim_efferent_model_mex.c` that fixes bugs related to freeing of
+  dynamically allocated memory
 - 6/8/2023: New version of `sim_efferent_model_mex.c` that fixes a bug wherein passed values
   for `moc_width_wdr` were ignored and replaced with zeros
