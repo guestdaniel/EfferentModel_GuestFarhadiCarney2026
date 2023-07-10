@@ -71,9 +71,12 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   wide-dynamic-range MOC signal will "spread" to all channels that have
 %   CFs that fall within a band centered on the CF with a width of one
 %   octave (within +/- one-half octave)
-% - args.noiseType: Boolean value determining whether we use empty matrices
-%   (noiseType == 0) or matrices of fractional Gaussian noise for the input
-%   noise governing the stochastic behavior of the power-law synapse 
+% - args.noiseType: Integer value determining whether we use empty matrices
+%   (noiseType == -1), matrices of "frozen" fractional Gaussian noise 
+%   (noiseType == 0), or matrices of "fresh" fractional Gaussian noise based
+%   on the current global RNG state (noiseType == 1) as inputs for the
+%   noise governing the stochastic behavior of the power-law synapse in the
+%   auditory-nerve model. 
 
 % Set arguments and defaults
 arguments
@@ -103,16 +106,18 @@ end
 n_chan = length(cf);
 n_sample = length(x);
 
-% Synthesize fractional Gaussian noise (if noiseType == 1)
-if args.noiseType == 0
-    ffGn_hsr = zeros(n_chan, n_sample);
+% Synthesize fractional Gaussian noise
+if args.noiseType == -1     
+	% Use matrix of zeros
     ffGn_lsr = zeros(n_chan, n_sample);
-else
     ffGn_hsr = zeros(n_chan, n_sample);
+else                    
+	% Synthesize noise based on noiseType switch
     ffGn_lsr = zeros(n_chan, n_sample);
+    ffGn_hsr = zeros(n_chan, n_sample);
     for ii=1:n_chan
-        ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, 1.0, 0.1);
-        ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, 1.0, 100.0);
+        ffGn_lsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 1.0, 0.1);
+        ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 1.0, 100.0);
     end
 end
 

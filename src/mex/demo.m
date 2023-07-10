@@ -140,3 +140,79 @@ xlabel('Modulation frequency (Hz)');
 ylabel('Firing rate (sp/s)');
 legend(["Without efferent", "With efferent"])
 ylim([0.0, 50.0]);
+
+%% Example #3: Distribution of instantaneous spontaneous rates with ffGn settings
+figure;
+
+% Plot with "fresh" ffGn (noiseType == 1)
+subplot(1, 2, 1);
+hold on;
+subtitle('Fresh ffGn (noiseType==1)');
+for ii = 1:10
+	[~, hsr, ~, ~, ~] = sim_efferent_model( ...
+		zeros(1, 50000), ...
+		[1000.0], ...
+		noiseType=1 ...
+	);
+	t = 0.0:(1/100e3):(0.5-1/100e3);
+	plot(t, hsr);
+end
+xlabel('Time (s)');
+ylabel('Firing rate (sp/s)');
+hold off;
+
+% Plot with "frozen" ffGn (noiseType == 0)
+subplot(1, 2, 2);
+subtitle('Frozen ffGn (noiseType==0)');
+hold on;
+for ii = 1:10
+	[~, hsr, ~, ~, ~] = sim_efferent_model( ...
+		zeros(1, 50000), ...
+		[1000.0], ...
+		noiseType=0 ...
+	);
+	t = 0.0:(1/100e3):(0.5-1/100e3);
+	plot(t, hsr);
+end
+hold off;
+xlabel('Time (s)');
+ylabel('Firing rate (sp/s)');
+
+%% Example #4: Driven rates with fresh/frozen ffGn
+figure;
+fs = 100e3;                                      % sample rate (Hz)
+dur = 0.5;                                       % duration (seconds)
+t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
+x = 20e-6 * 10^(50.0/20.0) * sin(2*pi * 1000.0 * t)*sqrt(2);
+
+% Plot with "fresh" ffGn (noiseType == 1)
+subplot(1, 2, 1);
+hold on;
+subtitle('Fresh ffGn (noiseType==1)');
+for ii = 1:10
+	[~, hsr, ~, ~, ~] = sim_efferent_model( ...
+		x, ...
+		[1000.0], ...
+		noiseType=1 ...
+	);
+	plot(t, hsr);
+end
+xlabel('Time (s)');
+ylabel('Firing rate (sp/s)');
+hold off;
+
+% Plot with "frozen" ffGn (noiseType == 0)
+subplot(1, 2, 2);
+subtitle('Frozen ffGn (noiseType==0)');
+hold on;
+for ii = 1:10
+	[~, hsr, ~, ~, ~] = sim_efferent_model( ...
+		x, ...
+		[1000.0], ...
+		noiseType=0 ...
+	);
+	plot(t, hsr);
+end
+hold off;
+xlabel('Time (s)');
+ylabel('Firing rate (sp/s)');

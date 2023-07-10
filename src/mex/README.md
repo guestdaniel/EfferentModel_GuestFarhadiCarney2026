@@ -41,6 +41,9 @@ control.
 # Notes
 
 # Changelog
+- 7/6/2021: Modified `ffGn.m` and `sim_efferent_model.m` to better handle the `noiseType`
+  argument. Now, global RNG state should be unaffected by selecting the "frozen" (i.e.,
+  `noiseType==0`) ffGn.
 - 6/29/2021: New version of model code and `sim_efferent_model.m` that adjusts default
   parameter values for MOC lowpass filter
 - 6/21/2021: New version of `sim_efferent_model_mex.c` that fixes bugs related to freeing of
