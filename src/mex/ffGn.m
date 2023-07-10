@@ -164,16 +164,13 @@ y = resample(y,resamp,1);  % Resampling to match with the AN model
 
 % define standard deviation
 if (nargin < 6)
-
-    if mu<0.2
-        sigma = 1;%5  
+    if mu<0.5
+        sigma = 3;%5  
     else
-
-        if mu<20
-
-            sigma = 10;
+        if mu<18
+            sigma = 30;%50   % 7 when added after powerlaw
         else
-             sigma = mu/2;
+            sigma = 200;  % 40 when added after powerlaw        
         end
     end
 end

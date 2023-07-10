@@ -41,12 +41,14 @@ control.
 # Notes
 
 # Changelog
-- 7/6/2021: Modified `ffGn.m` and `sim_efferent_model.m` to better handle the `noiseType`
+- 7/10/2023: Corrected bug in `sim_efferent_model.m` whereby ffGN was synthesized with
+  incorrect parameter values for the `sigma` parameter
+- 7/6/2023: Modified `ffGn.m` and `sim_efferent_model.m` to better handle the `noiseType`
   argument. Now, global RNG state should be unaffected by selecting the "frozen" (i.e.,
   `noiseType==0`) ffGn.
-- 6/29/2021: New version of model code and `sim_efferent_model.m` that adjusts default
+- 6/29/2023: New version of model code and `sim_efferent_model.m` that adjusts default
   parameter values for MOC lowpass filter
-- 6/21/2021: New version of `sim_efferent_model_mex.c` that fixes bugs related to freeing of
+- 6/21/2023: New version of `sim_efferent_model_mex.c` that fixes bugs related to freeing of
   dynamically allocated memory
 - 6/8/2023: New version of `sim_efferent_model_mex.c` that fixes a bug wherein passed values
   for `moc_width_wdr` were ignored and replaced with zeros

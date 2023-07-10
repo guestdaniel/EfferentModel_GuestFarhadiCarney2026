@@ -116,8 +116,8 @@ else
     ffGn_lsr = zeros(n_chan, n_sample);
     ffGn_hsr = zeros(n_chan, n_sample);
     for ii=1:n_chan
-        ffGn_lsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 1.0, 0.1);
-        ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 1.0, 100.0);
+        ffGn_lsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 0.1, 3.0);
+        ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 100.0, 200.0);
     end
 end
 
