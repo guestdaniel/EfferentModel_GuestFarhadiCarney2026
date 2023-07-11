@@ -10,6 +10,7 @@ include("c_interface.jl")
 include("wrappers.jl")
 include("wrappers_matlab.jl")
 include("utils.jl")
+include("adaptation.jl")  # temporary file for analyzing approximate power law implnt
 
 end # module Helios
 
