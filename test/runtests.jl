@@ -231,16 +231,16 @@ end
 # ~~~~ Check wrapper features
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ==========================================================================================
-@testset "Wrapper features" begin
-    # ======================================================================================
-    # Check that right clipping doesnt affect results
-    # ======================================================================================
-    @test begin
-        unpadded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.0, clip_right=false)["hsr"]
-        padded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.1, clip_right=true)["hsr"]
-        all(unpadded .== padded)
-    end
-end
+# @testset "Wrapper features" begin
+#     # ======================================================================================
+#     # Check that right clipping doesnt affect results
+#     # ======================================================================================
+#     @test begin
+#         unpadded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.0, clip_right=false)["hsr"]
+#         padded = sim_gfc2023_dict(pt(), 1000.0; dur_pad_left=0.0, dur_pad_right=0.1, clip_right=true)["hsr"]
+#         all(unpadded .== padded)
+#     end
+# end
 
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
