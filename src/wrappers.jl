@@ -26,8 +26,7 @@ function sim_gfc2023(
     cihc::Float64=1.0,
     species::String="human",
     fractional=false,
-    powerlaw_include_fast=false,
-    powerlaw_len_memory=5000,
+    powerlaw_mode=1,
     cn_tau_e=0.5e-3,
     cn_tau_i=2.0e-3,
     cn_delay=1.0e-3,
@@ -50,7 +49,7 @@ function sim_gfc2023(
     moc_weight_wdr=0.0,
     moc_weight_ic=0.0,
     moc_width_wdr=0.0,
-    dur_pad_left=0.05,
+    dur_pad_left=0.0,
     clip_left=dur_pad_left == 0.0 ? false : true,
     dur_pad_right=0.0,
     clip_right=dur_pad_right == 0.0 ? false : true,
@@ -100,7 +99,7 @@ function sim_gfc2023(
     end
 
     # Convert bool powerlaw_include_fast to integer
-    powerlaw_include_fast = Int64(powerlaw_include_fast)
+#    powerlaw_include_fast = Int64(powerlaw_include_fast)
 
     # Pre-allocate memory
     controlout = [zeros(len_total) for _ in 1:n_chan]
@@ -136,8 +135,7 @@ function sim_gfc2023(
         cihc, 
         species_flag, 
         100.0,
-        powerlaw_include_fast, 
-        powerlaw_len_memory,
+        powerlaw_mode,
         cn_tau_e,
         cn_tau_i,
         cn_delay,

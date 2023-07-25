@@ -107,8 +107,7 @@ function model!(
     cihc::Float64,
     species::Int64,
     spont::Float64,
-    powerlaw_include_fast::Int64,
-    powerlaw_len_memory::Int64,
+    powerlaw_mode::Int64,
     cn_tau_e::Float64,
     cn_tau_i::Float64,
     cn_delay::Float64,
@@ -166,8 +165,7 @@ function model!(
                 Cdouble,      # cihc
                 Cint,         # species
                 Cdouble,      # spont
-                Cint,         # powerlaw_include_fast
-                Cint,         # powerlawn_len_memory
+                Cint,         # powerlaw_mode
                 Cdouble,      # cn_tau_e
                 Cdouble,      # cn_tau_i,
                 Cdouble,      # cn_delay
@@ -221,8 +219,7 @@ function model!(
             cihc, 
             species, 
             spont,
-            powerlaw_include_fast,
-            powerlaw_len_memory,
+            powerlaw_mode,
             cn_tau_e,
             cn_tau_i,
             cn_delay,
