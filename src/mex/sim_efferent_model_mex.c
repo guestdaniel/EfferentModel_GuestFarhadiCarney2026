@@ -23,13 +23,13 @@
 /* This function is the MEX "wrapper", to pass the input and output variables between the .dll or .mexglx file and Matlab */						
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/* Declare variables for this function */
-	double *px  , tdres,cohc,cihc, ic_tau_e, ic_tau_i, ic_delay, ic_amp, ic_inh, moc_cutoff,  moc_beta_wdr, moc_offset_wdr,moc_beta_ic;
-	double moc_offset_ic, moc_weight_wdr, moc_weight_ic, moc_len_integ;
+	double *px, *cf, tdres, cohc, cihc, ic_tau_e, ic_tau_i, ic_delay, ic_amp, 
+	        ic_inh, moc_cutoff, moc_beta_wdr, moc_offset_wdr, moc_beta_ic,
+	        moc_offset_ic, moc_weight_wdr, moc_weight_ic, moc_len_integ;
 	double *randNums_hsrarray;
 	double *randNums_lsrarray;
-	double *cf;
 	int indexcf, indextime;
-	int  fc, i, lp, l1, l2, n_chan, totalstim, pxbins,species,cfbins;
+	int fc, i, lp, l1, l2, n_chan, totalstim, pxbins,species,cfbins;
         mwSize ihcoutsize[2], anrateout_hsrsize[2], anrateout_lsrsize[2], icoutsize[2], gainoutsize[2];
 	 mwSize total_num_of_elements_hsr, total_num_of_elements_lsr, index;	
 	double *randNums_hsrtmp, *randNums_lsrtmp, *pxtmp, *cftmp, *tdrestmp, *nchantmp, *cohctmp, *cihctmp,  *speciestmp, *ic_tau_etmp, *ic_tau_itmp;
@@ -37,20 +37,42 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
 	/* Declare the signature for the C function we call to actually 
 	   implement the model --- TODO: move to separate file */
-	void model_efferent_wrapper(double *, double **, double **, 
-                            double *, int , double , int , double , 
-                            double , int , double , double , 
-                            double , double , double , double,
-                            double , double , double , 
-                            double , double , 
-                            double , double , double **, 
-                            double **, double **, double **,
-                            double **);
+	void model_efferent_wrapper(
+		double *,   // px
+		double **,  // randNums_hsr
+		double **,  // randNums_lsr
+        double *,   // cf
+		int,        // n_chan
+		double,     // tdres
+		int,        // totalstim
+		double,     // cohc
+        double,     // cihc
+		int,        // species
+		int,        // powerlaw_mode
+		double,     // ic_tau_e
+ 		double,     // ic_tau_i
+        double,     // ic_delay
+		double,     // ic_amp
+		double,     // ic_inh
+		double,     // moc_cutoff
+        double,     // moc_beta_wdr
+		double,     // moc_offset_wdr
+		double,     // moc_beta_ic
+        double,     // moc_offset_ic
+		double,     // moc_weight_wdr
+        double,     // moc_weight_ic
+		double,     // moc_width_wdr
+		double **,  // ihcout
+        double **,  // anrateout_hsr
+		double **,  // anrateout_lsr
+		double **,  // icout
+        double **   // gain
+	);
 							
 	/* Check for proper number of arguments */
-	if (nrhs != 22) 
+	if (nrhs != 23) 
 	{
-		mexErrMsgTxt("model requires 22 input arguments.");
+		mexErrMsgTxt("model requires 23 input arguments.");
 	}; 
 
 	if (nlhs != 5)  
@@ -81,6 +103,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	moc_weight_wdrtmp   = mxGetPr(prhs[19]);
 	moc_weight_ictmp    = mxGetPr(prhs[20]);
 	moc_len_integtmp    = mxGetPr(prhs[21]);
+	int powerlaw_mode = mxGetPr(prhs[22])[0];
 
 	/* Check with individual input arguments */
 	pxbins = mxGetN(prhs[0]);
@@ -202,15 +225,37 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	
 	//mexPrintf("ANmodel: Zilany, Bruce, Ibrahim, and Carney : Auditory Nerve Model\n");
 	/* run the model */
-	model_efferent_wrapper(px, randNums_hsr, randNums_lsr, 
-                            cf,  n_chan,  tdres,  totalstim,  cohc, 
-                             cihc,  species,  ic_tau_e,  ic_tau_i, 
-                             ic_delay,  ic_amp,  ic_inh, moc_cutoff,
-                             moc_beta_wdr,  moc_offset_wdr,  moc_beta_ic, 
-                             moc_offset_ic,  moc_weight_wdr, 
-                             moc_weight_ic,  moc_len_integ,  ihcout, 
-                             anrateout_hsr, anrateout_lsr,  icout,
-                             gain); 
+	model_efferent_wrapper(
+		px, 
+		randNums_hsr,
+		randNums_lsr,
+		cf,
+		n_chan,
+		tdres,
+		totalstim,
+		cohc,
+		cihc,
+		species,
+		powerlaw_mode,
+		ic_tau_e,
+		ic_tau_i,
+		ic_delay,
+		ic_amp,
+		ic_inh,
+		moc_cutoff,
+		moc_beta_wdr,
+		moc_offset_wdr,
+		moc_beta_ic,
+		moc_offset_ic,
+		moc_weight_wdr,
+		moc_weight_ic,
+		moc_len_integ,
+		ihcout,
+		anrateout_hsr,
+		anrateout_lsr,
+		icout,
+		gain
+	); 
    	for (index=0; index<total_num_of_elements_hsr; index++){
 	indexcf = (int) (fmod(index,cfbins));
 	indextime = (int) (index/cfbins);	

@@ -10,7 +10,11 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   2) High-spontaneous-rate auditory-nerve instantaneous rate
 %   3) Low-spontaneous-rate auditory-nerve instantaneous rate
 %   4) Inferior-colliculus (IC) band-enhanced rate
-%   5) Time-varying cochlear gain (in [0, 1], where 0==no gain, 1==max gain)
+%   5) Time-varying cochlear gain factor (in [0, 1], where 0==no gain, 1==max gain)
+%
+% SIM_EFFERENT_MODEL(x, cf) passes inputs, after some minor calculations 
+% and preprocessing, to `sim_efferent_model_mex`, a Mex wrapper to the C
+% implementation of the efferent model. 
 %
 % SIM_EFFERENT_MODEL(x, cf, species=2) runs the simulation for a 
 % species value of 2 (which corresponds to human tuning based on data from 
@@ -20,18 +24,6 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % 0.5 ms, or moc_cutoff=2.0 would set the MOC lowpass cutoff to 2 Hz). See
 % below for more details about available parameters and their default
 % values.
-% 
-% [WARNING!] Fast power-law adaptation is disabled (4/19/2023 D.R.G.)
-% [WARNING!] Power-law memory is limited to 5000 samples (4/19/2023 D.R.G.)
-%
-% SIM_EFFERENT_MODEL(x, cf) passes inputs, after some minor calculations 
-% and preprocessing, to `sim_efferent_model_mex`, a Mex wrapper to the C
-% implementation of the efferent model. Note that Mex is inherently
-% "unsafe", in that passing erroneous inputs to the Mex wrapper (e.g.,
-% inputs of the wrong length) can cause very bad behavior (e.g., crash to
-% desktop, memory corruption). If this happens, let us know and we can
-% add "guard rails" to this function to prevent the same crash from being
-% repeated in the future!
 %
 % Arguments:
 % - x: Row vector containing input sound-pressure waveform
@@ -42,6 +34,15 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % - args.cihc: Inner-hair-cell "count/health" (in [0, 1])
 % - args.species: Which species to simulate in the basilar membrane/inner 
 %   hair cell stage, 1==cat, 2==human[Shera], 3==human[Glasberg]
+% - args.powerlaw_mode: Whether to use true power-law adaptation
+%   (powerlaw_mode == 1) or an approximate power-law implementation using a
+%   set of 100 parallel exponential adaptation processes with time
+%   constants fit computationally to match true power-law adaptation
+%   (powerlaw_mode == 2). The approximation is not comprehensively tested,
+%   but appears to be very good for short responses (< 1 s) at moderate CFs
+%   (<= ~3-4 kHz). The `demo.m` script bundled with this code includes a
+%   demo validation of the approximation in response to pure tones at
+%   various frequencies.
 % - args.ic_tau_e: Excitatory time constant in IC stage (s)
 % - args.ic_tau_i: Inhibitory time constant in IC stage (s)
 % - args.ic_delay: Inhibitory delay time in IC stage (s)
@@ -51,7 +52,8 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   (Hz). The default value of 0.64 Hz yields a filter that matches that
 %   used in the older single-channel efferent model (i.e., it produces a
 %   "decay constant" of exp(-2pi * 0.64/100e3) ~= 1-3.9998e-5, which 
-%   matches the constant used in the old code).
+%   matches the constant used in the "old efferent" code, see Farhadi et 
+%   al. 2023).
 % - args.moc_beta_wdr: "beta" parameter in the MOC input-output
 %   nonlinearity for the wide-dynamic-range MOC pathway (a.u.)
 % - args.moc_offset_wdr: "offset" parameter in the MOC input-output
@@ -86,6 +88,7 @@ arguments
     args.cohc = 1.0
     args.cihc = 1.0
     args.species = 1
+	args.powerlaw_mode = 2
     args.ic_tau_e = 1e-3
     args.ic_tau_i = 2e-3
     args.ic_delay = 1e-3
@@ -112,7 +115,7 @@ if args.noiseType == -1
     ffGn_lsr = zeros(n_chan, n_sample);
     ffGn_hsr = zeros(n_chan, n_sample);
 else                    
-	% Synthesize noise based on noiseType switch
+	% Synthesize fGn noise
     ffGn_lsr = zeros(n_chan, n_sample);
     ffGn_hsr = zeros(n_chan, n_sample);
     for ii=1:n_chan
@@ -144,6 +147,7 @@ end
     args.moc_offset_ic, ...
     args.moc_weight_wdr, ...
     args.moc_weight_ic, ...
-    args.moc_width_wdr ...
+    args.moc_width_wdr, ...
+	args.powerlaw_mode ...
     );
 end

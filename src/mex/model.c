@@ -1,5 +1,5 @@
  /*
-  This is v4.1 of the code for subcortical auditory model model of:
+  This is v5.1 of the code for subcortical auditory model model of:
 
   Guest, D. R., ..., and Carney, L. H. (202x). ...
 
@@ -35,7 +35,7 @@
   any modified versions of this code.
 
   To compare this code to older model versions, please refer to changelog.txt and to the 
-  git commit history. 
+  Git commit history. 
 */
 
 #include <stdio.h>
@@ -43,9 +43,9 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <mex.h>
 
 #include "complex.hpp"
+#include "model.h"
 
 #define MAXSPIKES 1000000
 #ifndef TWOPI
@@ -70,32 +70,37 @@
  * parameter in the function signature below are provided in the docstring for the main
  * model function.
  */
-void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums_lsr, 
-                            double *cf, int n_chan, double tdres, int totalstim, double cohc, 
-                            double cihc, int species, double ic_tau_e, double ic_tau_i, 
-                            double ic_delay, double ic_amp, double ic_inh, double moc_cutoff,
-                            double moc_beta_wdr, double moc_offset_wdr, double moc_beta_ic, 
-                            double moc_offset_ic, double moc_weight_wdr, 
-                            double moc_weight_ic, double moc_width_wdr, double **ihcout, 
-                            double **anrateout_hsr, double **anrateout_lsr, double **icout,
+void model_efferent_wrapper(double *px, 
+							double **randNums_hsr, 
+							double **randNums_lsr, 
+                            double *cf, 
+							int n_chan, 
+							double tdres, 
+							int totalstim, 
+							double cohc, 
+                            double cihc, 
+							int species,
+							int powerlaw_mode,
+                            double ic_tau_e, 
+							double ic_tau_i, 
+                            double ic_delay, 
+							double ic_amp, 
+							double ic_inh, 
+							double moc_cutoff,
+                            double moc_beta_wdr, 
+							double moc_offset_wdr, 
+							double moc_beta_ic, 
+                            double moc_offset_ic, 
+							double moc_weight_wdr, 
+                            double moc_weight_ic, 
+							double moc_width_wdr, 
+							double **ihcout, 
+                            double **anrateout_hsr, 
+							double **anrateout_lsr, 
+							double **icout,
                             double **gain) {
-    /* First, declare functions that will be used in this function */
-    /* TODO Migrate these declarations to a header file */
-    void model(double *, double **, double **, double *, int, 
-           double, int, double, double, int, double, 
-           double, double, double, double, double,
-           double, double, double, double, double,
-           double, 
-           double, double, double, double, 
-           double, double, double, double, 
-           double, double, double,
-           double **, double **, double **, double **, 
-           double **, double **, double **, double **,
-           double **, double **, double **, double **,
-           double **, double **, double **, double **,
-           double **, double **, double **);
 
-    /* Next, allocate memory for all of the extra output matrices */
+    /* First, allocate memory for all of the extra output matrices */
     double *controlout[n_chan], *c1out[n_chan], *c2out[n_chan], 
         *expout_hsr[n_chan], *sout1_hsr[n_chan], *sout2_hsr[n_chan], *synout_hsr[n_chan], 
         *expout_lsr[n_chan], *sout1_lsr[n_chan], *sout2_lsr[n_chan], *synout_lsr[n_chan],
@@ -119,13 +124,18 @@ void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums
     }
 
     /* Call the main model function */
-    model(px, randNums_hsr, randNums_lsr, cf, n_chan, tdres, totalstim, cohc, cihc, species,
-          100.0, 0.5e-3, 2.0e-3, 1.0e-3, 1.5, 0.6, ic_tau_e, ic_tau_i, ic_delay, ic_amp,
-          ic_inh, moc_cutoff, moc_beta_wdr, moc_offset_wdr, 0.0, 1.0, moc_beta_ic, moc_offset_ic, 
-          0.0, 1.0, moc_weight_wdr, moc_weight_ic, moc_width_wdr, controlout, c1out, c2out,
-          ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr, expout_lsr, sout1_lsr, 
-          sout2_lsr, synout_lsr, anrateout_hsr, anrateout_lsr, cnout, icout, mocwdr, mocic,
-          gain);
+    model(px, randNums_hsr, randNums_lsr, cf,                    // principal inputs
+          n_chan, tdres, totalstim, cohc, cihc, species, 100.0,  // IHC/AN parameters
+          powerlaw_mode,                                         // powerlaw parameters
+          0.5e-3, 2.0e-3, 1.0e-3, 1.5, 0.6,                      // CN parameters
+          ic_tau_e, ic_tau_i, ic_delay, ic_amp, ic_inh,          // IC parameters
+          moc_cutoff, moc_beta_wdr, moc_offset_wdr, 0.0, 1.0,    // MOC parameters
+          moc_beta_ic, moc_offset_ic, 0.0, 1.0, moc_weight_wdr,  // ...
+          moc_weight_ic, moc_width_wdr,                          // ...
+          controlout, c1out, c2out, ihcout, expout_hsr,          // output matrices
+          sout1_hsr, sout2_hsr, synout_hsr, expout_lsr,          // ...
+          sout1_lsr, sout2_lsr, synout_lsr, anrateout_hsr,       // ...
+          anrateout_lsr, cnout, icout, mocwdr, mocic, gain);     // ...
 
     /* Finally, free allocated memory */
     for (int i = 0; i < n_chan; i++) {
@@ -156,22 +166,24 @@ void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums
  * the periphery model of Zilany, Bruce, and Carney (2014) and a new brainstem and midbrain
  * model described in [[cite]].
  *
- * Arguments to the model function are structured in the following way and order:
- * - Inputs are passed as pointers to arrays or matrices of doubles
- * - Parameters are passed as doubles, integers, and arrays of doubles. These parameters
- *   govern the behavior of the model.
+ * Arguments to the model function are structured and ordered in the following way:
+ * - Inputs are passed as pointers to arrays or matrices of double-precision floating-point
+ *   numbers
+ * - Parameters are next passed as doubles, integers, and pointers to arrays of doubles.
+ *   These parameters govern the behavior of the model.
  * - Outputs are passed as pointers to matrices of doubles. These matrices are modified
- *   in-place by the model function (i.e., changes will be visible to the caller)
+ *   in-place by the model function (i.e., changes will be visible to the caller) and are
+ *   treated as "returns"
  *
  * Below, the arguments of the model function are described in more detail. For each
  * argument, information is presented in the following format:
  *
  *     @param [in/out] name (N, M) (unit)
  *
- * ... where [in/out] indicates whether the argument is treated as an input ([in]) or an
- * output ([out]), name is the name of the argument in the model code, (N, M) indicates the
- * size (if a vector or a matrix), and (unit) indicates the unit of the argument (e.g., Hz)
- * if it has a unit.  
+ * ... where [in/out] indicates whether the argument is treated as an input (i.e., [in]) or
+ * an output (i.e., [out]), name is the name of the argument in the model code, (N, M)
+ * indicates the size (if a vector or a matrix), and (unit) indicates the unit of the
+ * argument (e.g., Hz) if it has a unit.  
  *
  * In all cases, matrices should have their first dimension equal in length to the number of
  * simulated channels (n_chan) and their second dimension equal to the number of simulated
@@ -187,21 +199,31 @@ void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums
  *
  * @param [in] px (totalstim, ) (Pa) Vector containing sound-pressure waveform
  * @param [in] randNums_hsr (n_chan, totalstim) Matrix of fractional Gaussian noise for the
- * high-spontaneous-rate signal path, see 2014 paper for details on how this noise should be
- * synthesized 
+ * high-spontaneous-rate signal path, see 2014 paper above for details on how this noise
+ * should be synthesized 
  * @param [in] randNums_lsr (n_chan, totalstim) Matrix of fractional Gaussian noise for the
- * low-spontaneous-rate signal path, see 2014 paper for details on how this noise should be
- * synthesized 
+ * low-spontaneous-rate signal path, see 2014 paper above for details on how this noise
+ * should be synthesized 
  * @param [in] cf (n_chan, ) (Hz) Vector containing characteristic frequencies for each
- * channel. CFs should be within the range of [X, Y] for cats and [X, Y] for humans
+ * channel. CFs should be within the range of [[vals]] for cats and [[vals]] for humans
  * @param [in] tdres (s) Sample time resolution, i.e., reciprocal of the sampling rate.
  * Suitable sampling rates are ~100 kHz for human simulations and 200 kHz for cat
  * simulations.
  * @param [in] totalstim Number of samples in the simulation
- * @param [in] cohc Scalar in [0, 1] controlling the maximum amount of cochlear gain
- * @param [in] cihc Scalar in [0, 1] controlling the output of the inner hair cells
+ * @param [in] cohc Scalar in [0, 1] controlling the "gain factor", which enters into the
+ * equations determining how to set the cochlear filter time constants and (therefore) the
+ * cochlear gain. A value of 0 makes the model fully "hearing-impaired" and efferent gain
+ * control will have no impact on responses. A value of 1 with the efferent gain control
+ * disabled results in "normal-hearing" responses designed to emulate physiological
+ * auditory-nerve data.
+ * @param [in] cihc Scalar in [0, 1] controlling the output amplitude of the inner hair
+ * cells
  * @param [in] species Integer indicating which species to simulate (1==cat, 2=human[shera],
  * 3==human[glasberg])
+ * @param [in] powerlaw_include_fast Integer indicating whether to include or exclude the
+ * fast power law adaptation stage in the auditory-nerve model
+ * @param [in] powerlaw_len_memory Integer determining the length of the "memory" of the
+ * power-law adpatation stage in the auditory-nerve model
  * @param [in] cn_tau_e (s) Excitatory time constant for SFIE cochlear nucleus stage,
  * reasonable values are in the range of [0.5e-3, 8e-3], default value is 0.5e-3
  * @param [in] cn_tau_i (s) Inhibitory time constant for SFIE cochlear nucleus stage,
@@ -226,7 +248,7 @@ void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums
  * values are in the range of [0.5, 2.0], default value is 0.9
  * @param [in] moc_cutoff (Hz) Cutoff value for the simple IIR lowpass filter that is used
  * to lowpass filter MOC input signals before applying the MOC nonlinearity, default value
- * is 0.2 Hz
+ * is 0.64 Hz
  * @param [in] moc_beta_wdr Control parameter in the WDR-MOC nonlinearity, governs the slope
  * of the nonlinearity such that smaller values yield more gradual slopes between MOC rate
  * and MOC output gain while larger values yield sharper slopes between MOC rate and MOC
@@ -256,89 +278,99 @@ void model_efferent_wrapper(double *px, double **randNums_hsr, double **randNums
  * through the IC-MOC nonlinearity and converted into a gain value. Setting this value to
  * 0.0 disables IC-driven gain control, default is 1.0.
  * @param [in] moc_width_wdr (oct) Range of CFs over which WDR-MOC gain control signal from
- * a single channel is sent to OHCs. For example, if moc_width_wdr is set to 1.0, then
- * for a given CF, the WDR-MOC gain control signal for that CF will be applied to the
- * total gain of channels within the range of [-1/2, 1/2] octaves around CF.
+ * a single channel is sent to OHCs. For example, if moc_width_wdr is set to 1.0, then for a
+ * given CF, the WDR-MOC gain control signal for that CF will be applied to the total gain
+ * of channels within the range of [-1/2, 1/2] octaves around CF.
  * @param [out] controlout (n_chan, totalstim) Matrix to store output of control-path filter
  * @param [out] c1out (n_chan, totalstim) Matrix to store output of signal-path C1 filter
  * @param [out] c2out (n_chan, totalstim) Matrix to store output of signal-path C2 filter
  * @param [out] ihcout (n_chan, totalstim) Matrix to store output of inner hair cell
- * @param [out] expout_hsr (n_chan, totalstim) Matrix to store output of exponential adaptation
- * stage for high-spontaneous-rate auditory-nerve fiber
- * @param [out] sout1_hsr (n_chan, totalstim) Matrix to store output of slow power-law adaptation
- * stage for high-spontaneousrate auditory-nerve fiber
- * @param [out] sout2_hsr (n_chan, totalstim) Matrix to store output of fast power-law adaptation
- * stage for high-spontaneous-rate auditory-nerve fiber
+ * @param [out] expout_hsr (n_chan, totalstim) Matrix to store output of exponential
+ * adaptation stage for high-spontaneous-rate auditory-nerve fiber
+ * @param [out] sout1_hsr (n_chan, totalstim) Matrix to store output of slow power-law
+ * adaptation stage for high-spontaneousrate auditory-nerve fiber
+ * @param [out] sout2_hsr (n_chan, totalstim) Matrix to store output of fast power-law
+ * adaptation stage for high-spontaneous-rate auditory-nerve fiber
  * @param [out] synout_hsr (n_chan, totalstim) Matrix to store output of synapse for
  * high-spontaneous-rate auditory-nerve fiber
- * @param [out] expout_lsr (n_chan, totalstim) Matrix to store output of exponential adaptation
- * stage for low-spontaneous-rate auditory-nerve fiber
- * @param [out] sout1_lsr (n_chan, totalstim) Matrix to store output of slow power-law adaptation
- * stage for low-spontaneousrate auditory-nerve fiber
- * @param [out] sout2_lsr (n_chan, totalstim) Matrix to store output of fast power-law adaptation
- * stage for low-spontaneous-rate auditory-nerve fiber
+ * @param [out] expout_lsr (n_chan, totalstim) Matrix to store output of exponential
+ * adaptation stage for low-spontaneous-rate auditory-nerve fiber
+ * @param [out] sout1_lsr (n_chan, totalstim) Matrix to store output of slow power-law
+ * adaptation stage for low-spontaneousrate auditory-nerve fiber
+ * @param [out] sout2_lsr (n_chan, totalstim) Matrix to store output of fast power-law
+ * adaptation stage for low-spontaneous-rate auditory-nerve fiber
  * @param [out] synout_lsr (n_chan, totalstim) Matrix to store output of synapse for
  * low-spontaneous-rate auditory-nerve fiber
- * @param [out] anrateout_lsr (n_chan, totalstim) (sp/s) Matrix to store output instantaneous
- * firing rate of low-spontaneous-rate auditory-nerve fiber
- * @param [out] anrateout_hsr (n_chan, totalstim) (sp/s) Matrix to store output instantaneous
- * firing rate of high-spontaneous-rate auditory-nerve fiber
- * @param [out] cnout (n_chan, totalstim) (sp/s) Matrix to store output of cochlear nucleus stage
- * @param [out] icout (n_chan, totalstim) (sp/s) Matrix to store output of inferior colliculus
- * stage totalstim)
- * @param [out] mocwdr (n_chan, totalstim) (sp/s) Matrix to store the WDR-MOC rates, which are 
- * lowpass-filtered LSR rates
- * @param [out] mocic (n_chan, totalstim) (sp/s) Matrix to store the IC-MOC rates, which are 
+ * @param [out] anrateout_lsr (n_chan, totalstim) (sp/s) Matrix to store output
+ * instantaneous firing rate of low-spontaneous-rate auditory-nerve fiber
+ * @param [out] anrateout_hsr (n_chan, totalstim) (sp/s) Matrix to store output
+ * instantaneous firing rate of high-spontaneous-rate auditory-nerve fiber
+ * @param [out] cnout (n_chan, totalstim) (sp/s) Matrix to store output of cochlear nucleus
+ * stage
+ * @param [out] icout (n_chan, totalstim) (sp/s) Matrix to store output of inferior
+ * colliculus stage totalstim)
+ * @param [out] mocwdr (n_chan, totalstim) (sp/s) Matrix to store the WDR-MOC rates, which
+ * are lowpass-filtered LSR rates
+ * @param [out] mocic (n_chan, totalstim) (sp/s) Matrix to store the IC-MOC rates, which are
  * lowpass-filtered IC rates
  * @param [out] gain (n_chan, totalstim) Matrix to store time-varying "gain" value in [0, 1]
  */
-void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf, int n_chan, 
-           double tdres, int totalstim, double cohc, double cihc, int species, double spont, 
-           double cn_tau_e, double cn_tau_i, double cn_delay, double cn_amp, double cn_inh,
-           double ic_tau_e, double ic_tau_i, double ic_delay, double ic_amp, double ic_inh,
-           double moc_cutoff, 
-           double moc_beta_wdr, double moc_offset_wdr, double moc_minrate_wdr, double moc_maxrate_wdr, 
-           double moc_beta_ic, double moc_offset_ic, double moc_minrate_ic, double moc_maxrate_ic, 
-           double moc_weight_wdr, double moc_weight_ic, double moc_width_wdr,
-           double **controlout, double **c1out, double **c2out, double **ihcout, 
-           double **expout_hsr, double **sout1_hsr, double **sout2_hsr, double **synout_hsr,
-           double **expout_lsr, double **sout1_lsr, double **sout2_lsr, double **synout_lsr,
-           double **anrateout_hsr, double **anrateout_lsr, double **cnout, double **icout,
-           double **mocwdr, double **mocic, double **gain) {
-    /* Declare functions used in model */
-	void middle_ear(double *, double, int, int, double *);
-    void Get_tauwb(int, double *, int, int, double *, double *);
-	void Get_taubm(int, double *, int, double *, double *, double *, double *);
-    double gain_groupdelay(double, double, double, double, int *);
-    double WbGammaTone(double, double, double, int, double, double, int, double *, 
-                       COMPLEX *, COMPLEX *);
-	double Boltzman(double, double, double, double, double);
-    double NLafterohc(double, double, double, double);
-    double OhcLowPass(double, double, double, int, double, int, double *, double *);
-	double C1ChirpFilt(double, double,double, int, double, double, double *, double *, 
-                       double **, double **);
-	double C2ChirpFilt(double, double,double, int, double, double, double *, double *, 
-                       double **, double **);
-    double NLogarithm(double, double, double, double);
-    double IhcLowPass(double, double, double, int, double, int, double *, double *);
-    double delay_cat(double);
-    double delay_human(double);
-    void get_alpha_norm(double, double, double, double *, double *);
-    void filter_alpha(double *, int, double, double *, double *, double *);
-    double hw_rectify(double);
-    void delay_signal(double *, int, int, double*);
-    void initialize_ws1988_adaptation(double, double, double *, double *, double *,
-                                        double *, double *, double *, double *, double *,
-                                        double *);
-    void apply_ws1988_adaptation(double *, int, double, double, double, double, double,
-                                   double, double, double, double *, double *, double *,
-                                   double *);
-    void apply_powerlaw_adaptation(double *, double *, double *, double *, int, int, double,
-                                     double, double, double, double, double *, double *);
-    void filter_lowpass_iir(double *, int, double, double *);
-    double moc_nonlinearity(double, double, double, double, double);
-
-    /* Declare variables that allow us to easily reference LSR/HSR paths */
+void model(
+    double *px, 
+    double **randNums_hsr, 
+    double **randNums_lsr, 
+    double *cf, 
+    int n_chan, 
+    double tdres, 
+    int totalstim, 
+    double cohc, 
+    double cihc, 
+    int species, 
+    double spont, 
+    int powerlaw_mode,
+    double cn_tau_e, 
+    double cn_tau_i, 
+    double cn_delay, 
+    double cn_amp, 
+    double cn_inh,
+    double ic_tau_e, 
+    double ic_tau_i, 
+    double ic_delay, 
+    double ic_amp, 
+    double ic_inh,
+    double moc_cutoff, 
+    double moc_beta_wdr, 
+    double moc_offset_wdr, 
+    double moc_minrate_wdr, 
+    double moc_maxrate_wdr, 
+    double moc_beta_ic, 
+    double moc_offset_ic, 
+    double moc_minrate_ic, 
+    double moc_maxrate_ic, 
+    double moc_weight_wdr, 
+    double moc_weight_ic, 
+    double moc_width_wdr,
+    double **controlout, 
+    double **c1out, 
+    double **c2out, 
+    double **ihcout, 
+    double **expout_hsr, 
+    double **sout1_hsr, 
+    double **sout2_hsr, 
+    double **synout_hsr,
+    double **expout_lsr, 
+    double **sout1_lsr, 
+    double **sout2_lsr, 
+    double **synout_lsr,
+    double **anrateout_hsr, 
+    double **anrateout_lsr, 
+    double **cnout, 
+    double **icout,
+    double **mocwdr, 
+    double **mocic, 
+    double **gain
+) {
+    /* Declare pointers to store convenient references to LSR/HSR pathway stages */
     double** randNums[2] = {randNums_hsr, randNums_lsr};
     double** expout[2] = {expout_hsr, expout_lsr};
     double** sout1[2] = {sout1_hsr, sout1_lsr};
@@ -346,11 +378,11 @@ void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf,
     double** synout[2] = {synout_hsr, synout_lsr};
     double** anrateout[2] = {anrateout_hsr, anrateout_lsr};
 
-    /* Declare variables for the BM/IHC stage to temporarily store outputs */
+    /* Declare temporary variables for the BM/IHC stage outputs */
     double wbout1, wbout, ohcnonlinout, ohcout, tauc1, rsigma, wb_gain, c1vihctmp, 
            c2vihctmp, me_curr;
 
-    /* Declare parameters in the BM/IHC stage (all vary by channel) */
+    /* Declare parameters in the BM/IHC stage (all varying by channel) */
     double bmplace[n_chan], centerfreq[n_chan], Taumin[n_chan], Taumax[n_chan], 
            bmTaumin[n_chan], bmTaumax[n_chan], ratiobm[n_chan], bmTaubm[n_chan], 
            TauWBMax[n_chan], TauWBMin[n_chan], tauwb[n_chan], wbgain[n_chan],
@@ -453,7 +485,19 @@ void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf,
     }
 
     /* Declare variables used in the AN stage that are fixed across channels or reused */
-    double alpha1, beta1, alpha2, beta2;
+    double alpha1 = 2.5e-6*100e3; 
+    double beta1  = 5e-4; 
+    double alpha2 = 1e-2*100e3; 
+    double beta2  = 1e-1;
+
+    /* Declare variables used in PLA approximation system */
+    int n_process = 100;             // how many exponential processes in approx for PLA
+    double coef_slow = 0.031159;     // scalar coefficient used in approx for sout1
+    double tau_short_slow = 5.993231e-4;  // short time constant used in approx for sout1
+    double tau_long_slow = 4.391408e2;   // long time constant used in approx for sout1
+    double coef_fast = 52.383874;    // scalar coefficient used in approx for sout1
+    double tau_short_fast = 5.985333e-2;  // short time constant used in approx for sout2
+    double tau_long_fast = 5.195767e2;  // long time constant used in approx for sout2
 
     /* Declare other variables used in the AN stage (all vary by channel/fiber type) */
     int n_fiber_type = 2;  // HSR==0, LSR==1
@@ -461,7 +505,10 @@ void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf,
     double synstrength[n_fiber_type][n_chan], synslope[n_fiber_type][n_chan], 
            VI[n_fiber_type][n_chan], PG[n_fiber_type][n_chan], CG[n_fiber_type][n_chan],
            VL[n_fiber_type][n_chan], PL[n_fiber_type][n_chan], I1[n_fiber_type][n_chan], 
-           I2[n_fiber_type][n_chan], CI[n_fiber_type][n_chan], CL[n_fiber_type][n_chan], 
+           I2[n_fiber_type][n_chan], 
+           E1[n_fiber_type][n_chan][n_process], E2[n_fiber_type][n_chan][n_process], 
+           D1[n_fiber_type][n_chan][n_process], D2[n_fiber_type][n_chan][n_process],
+           CI[n_fiber_type][n_chan], CL[n_fiber_type][n_chan], 
            CIlast[n_fiber_type][n_chan];
 
     /* Loop over channels to calculate parameters, coefficients, etc. for each channel */
@@ -494,23 +541,51 @@ void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf,
         delay_latency[c] = delay_cat(cf[c]);  /* Delay time in s */
         len_delay_latency[c] = __max(0, (int) ceil(delay_latency[c]/tdres));  /* Delay time in samples*/
 
-        /* Set parameters for power-law adaptation */
-        alpha1 = 2.5e-6*100e3; 
-        beta1  = 5e-4; 
-        alpha2 = 1e-2*100e3; 
-        beta2  = 1e-1;
-        for (int t = 0; t < n_fiber_type; t++) {
-            for (int i = 0; i < n_chan; i++) {
-                I1[t][i] = 0.0;
-                I2[t][i] = 0.0;
-            }
-        }
-
         /* Set parameters for double-exponential adaptation (based on fiber type / spont) */
         for (int t = 0; t < n_fiber_type; t++) {
             initialize_ws1988_adaptation(cf[c], sponts[t], &synstrength[t][c], 
                                          &synslope[t][c], &VI[t][c], &PG[t][c], &VL[t][c], 
                                          &PL[t][c], &CG[t][c], &CI[t][c], &CL[t][c]);
+        }
+    }
+
+    /* Set parameters for power-law adaptation */
+    for (int t = 0; t < n_fiber_type; t++) {
+        for (int i = 0; i < n_chan; i++) {
+            I1[t][i] = 0.0;
+            I2[t][i] = 0.0;
+        }
+    }
+
+    /* Calculate parameters for approximate power-law adaptation (sout1) */
+    double delta = (log(tau_long_slow) - log(tau_short_slow)) / (n_process - 1);
+    double tau_temp = 0.0;
+    for (int t = 0; t < n_fiber_type; t++) {
+        for (int i = 0; i < n_chan; i++) {
+            for (int p = 0; p < n_process; p++) {
+                // Initialize exponential process states at 0
+                E1[t][i][p] = 0.0;
+
+                // Determine time constant for this step, convert to decay coef and save
+                tau_temp = exp(log(tau_short_slow) + delta * p);
+                D1[t][i][p] = exp(-(1/(1/tdres)) / tau_temp);
+            }
+        }
+    }
+
+    /* Calculate parameters for approximate power-law adaptation (sout2) */
+    delta = (log(tau_long_fast) - log(tau_short_fast)) / (n_process - 1);
+    tau_temp = 0.0;
+    for (int t = 0; t < n_fiber_type; t++) {
+        for (int i = 0; i < n_chan; i++) {
+            for (int p = 0; p < n_process; p++) {
+                // Initialize exponential process states at 0
+                E2[t][i][p] = 0.0;
+
+                // Determine time constant for this step, convert to decay coef and save
+                tau_temp = exp(log(tau_short_fast) + delta * p);
+                D2[t][i][p] = exp(-(1/(1/tdres)) / tau_temp);
+            }
         }
     }
 
@@ -640,9 +715,15 @@ void model(double *px, double **randNums_hsr, double **randNums_lsr, double *cf,
                                         expout[t][c]);
 
                 /* Apply power-law adaptation */
-                apply_powerlaw_adaptation(expout[t][c], randNums[t][c], &I1[t][c], 
-                                          &I2[t][c], n, 5000, alpha1, beta1, alpha2, beta2, tdres,
-                                          sout1[t][c], sout2[t][c]);
+                if (powerlaw_mode == 1) {
+                    apply_powerlaw_adaptation(expout[t][c], randNums[t][c], &I1[t][c], 
+                                            &I2[t][c], n, alpha1, beta1, alpha2, beta2, tdres,
+                                            sout1[t][c], sout2[t][c]);
+                } else if (powerlaw_mode == 2) {
+                    apply_powerlaw_adaptation_iir(expout[t][c], randNums[t][c], &I1[t][c],
+                        &I2[t][c], E1[t][c], E2[t][c], D1[t][c], D2[t][c], n_process, n,
+                        coef_slow, coef_fast, tdres, sout1[t][c], sout2[t][c]);
+                }
                 synout[t][c][n] = sout1[t][c][n] + sout2[t][c][n];
 
                 /* Compute instantaneous rate from synapse output */
@@ -761,8 +842,6 @@ double hw_rectify(double x) {
  * @param len_delay Length of delay in samples
  * @param output Vector containing output signal
  * 
- * @note Standard warnings apply --- don't pass indices that exceed the lengths of the 
- *   arrays! There's no manual bounds checks!!!
  */
 void delay_signal(double *input, int n, int len_delay, double *output) {
     if ((n - len_delay) < 0) {
@@ -782,8 +861,6 @@ void delay_signal(double *input, int n, int len_delay, double *output) {
  * 
  * Note that decay value (d) is related to time constant (tau) by:
  *   d = exp(-1/tau)
- * or to the cutoff frequency (f) by:
- *   d = exp(-2pi/f)
  * 
  * Note also that d is related to the (normalized) cutoff frequency (f) by
  *   f = -ln(d)/(2*pi)

@@ -25,7 +25,8 @@ end
 	cf,...
 	moc_weight_wdr=16.0,...
 	moc_weight_ic=8.0,...
-	moc_width_wdr=0.5...
+	moc_width_wdr=0.5,...
+	powerlaw_mode=2 ...
 );
 
 % Resample responses down to lower sampling rate for plotting
@@ -216,3 +217,104 @@ end
 hold off;
 xlabel('Time (s)');
 ylabel('Firing rate (sp/s)');
+
+%% Example #5: Comparison of true vs approximate power law for 1 kHz pure tone
+fs = 100e3;                                      % sample rate (Hz)
+dur = 0.5;                                       % duration (seconds)
+t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
+x = 20e-6 * 10^(50.0/20.0) * sin(2*pi * 1000.0 * t)*sqrt(2);
+
+% Get simulations
+[~, true, ~, ~, ~] = sim_efferent_model(x, [1000.0], powerlaw_mode=1, noiseType=0);
+[~, approx, ~, ~, ~] = sim_efferent_model(x, [1000.0], powerlaw_mode=2, noiseType=0);
+
+% Plot over very short time scale
+subplot(1, 2, 1);
+plot(t, true); hold on;
+plot(t, approx); hold off;
+xlim([0.0, 0.001]);
+xlabel("Time (s)");
+ylabel("Firing rate (sp/s)");
+% Plot over longer time scale
+subplot(1, 2, 2);
+plot(t, true); hold on;
+plot(t, approx); hold off;
+xlim([0.0, 0.1]);
+xlabel("Time (s)");
+ylabel("Firing rate (sp/s)");
+legend(["True power law adaptation", "Approximate power law adaptation"]);
+
+%% Example #6: Comparison of true vs approximate power law for many pure tones
+fs = 100e3;                                      % sample rate (Hz)
+dur = 0.2;                                       % duration (s)
+dur_post = 0.1;                                  % duration of post-stimulus simulation time (s)
+t = 0.0:(1/fs):(dur+dur_post - 1/fs);            % sample times (s)
+freqs = [500.0, 1000.0, 2000.0, 4000.0, 8000.0];
+
+% Pre-allocate storage
+true = zeros(length(t), length(freqs));
+approx = zeros(length(t), length(freqs));
+
+% Loop over stimuli and do calculations (if you encounter errors, replace
+% parfor with for!)idx_freq
+parfor idx_freq = 1:length(freqs)
+	stim = 20e-6 * 10^(50.0/20.0) * sin(2*pi * freqs(idx_freq) * (0.0:(1/fs):(dur - 1/fs))) * sqrt(2);
+	stim = [stim zeros(1, round(dur_post*fs))];
+	[~, true(:, idx_freq), ~, ~, ~] = sim_efferent_model(stim, freqs(idx_freq), powerlaw_mode=1, noiseType=0);
+	[~, approx(:, idx_freq), ~, ~, ~] = sim_efferent_model(stim, freqs(idx_freq), powerlaw_mode=2, noiseType=0);	
+end
+
+% Create figure
+time_windows = {[0.0, 0.001], [0.05, 0.06], [0.1, 0.3]};
+figure;
+for idx_freq = 1:length(freqs)
+	for idx_tw = 1:length(time_windows)
+		% Plot over very short time scale
+		subplot( ...
+			length(freqs), ...
+			length(time_windows), ...
+			length(time_windows)*(idx_freq-1) + idx_tw ...
+		);
+		plot(t, true(:, idx_freq)); hold on;
+		plot(t, approx(:, idx_freq)); hold off;
+		xlim(time_windows{idx_tw});
+		xlabel("Time (s)");
+		ylabel("Firing rate (sp/s)");
+		title(sprintf( ...
+			"Freq = %4.2f, time window = [%4.2f, %4.2f] s", ...
+			freqs(idx_freq), ...
+			time_windows{idx_tw}(1), ...
+			time_windows{idx_tw}(2) ...
+		));
+	end
+end
+legend(["True power law adaptation", "Approximate power law adaptation"]);
+
+%% Example #7: Performance benefits of approximate power-law implementation
+durs = logspace(log(0.05), log(1.0), 20);
+durs_true = zeros(length(durs), 1);
+durs_approx = zeros(length(durs), 1);
+for ii = 1:length(durs)
+	% Run model with real power-law adaptation
+	tic;
+	sim_efferent_model(zeros(1, round(durs(ii)*100e3)), [1000.0], powerlaw_mode=1);
+	durs_true(ii) = toc;
+
+	% Run model with approximate power-law adaptation
+	tic;
+	sim_efferent_model(zeros(1, round(durs(ii)*100e3)), [1000.0], powerlaw_mode=2);
+	durs_approx(ii) = toc;
+end
+
+figure;
+plot(durs, durs_true, 'k');
+hold on;
+plot(durs, durs_approx, 'r');
+set(gca, "xscale", "log");
+set(gca, "yscale", "log");
+ylim([1e-2, 1e2]);
+xlim([2e-2, 2e0]);
+legend(["True power law adaptation", "Approximate power law adaptation"]);
+xlabel("Stimulus duration (s)");
+ylabel("Compute time (s)");
+hold off;
