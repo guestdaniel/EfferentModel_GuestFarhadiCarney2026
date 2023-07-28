@@ -218,33 +218,7 @@ hold off;
 xlabel('Time (s)');
 ylabel('Firing rate (sp/s)');
 
-%% Example #5: Comparison of true vs approximate power law for 1 kHz pure tone
-fs = 100e3;                                      % sample rate (Hz)
-dur = 0.5;                                       % duration (seconds)
-t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
-x = 20e-6 * 10^(50.0/20.0) * sin(2*pi * 1000.0 * t)*sqrt(2);
-
-% Get simulations
-[~, true, ~, ~, ~] = sim_efferent_model(x, [1000.0], powerlaw_mode=1, noiseType=0);
-[~, approx, ~, ~, ~] = sim_efferent_model(x, [1000.0], powerlaw_mode=2, noiseType=0);
-
-% Plot over very short time scale
-subplot(1, 2, 1);
-plot(t, true); hold on;
-plot(t, approx); hold off;
-xlim([0.0, 0.001]);
-xlabel("Time (s)");
-ylabel("Firing rate (sp/s)");
-% Plot over longer time scale
-subplot(1, 2, 2);
-plot(t, true); hold on;
-plot(t, approx); hold off;
-xlim([0.0, 0.1]);
-xlabel("Time (s)");
-ylabel("Firing rate (sp/s)");
-legend(["True power law adaptation", "Approximate power law adaptation"]);
-
-%% Example #6: Comparison of true vs approximate power law for many pure tones
+%% Example #5: Comparison of true vs approximate power law for many pure tones
 fs = 100e3;                                      % sample rate (Hz)
 dur = 0.2;                                       % duration (s)
 dur_post = 0.1;                                  % duration of post-stimulus simulation time (s)
@@ -290,7 +264,7 @@ for idx_freq = 1:length(freqs)
 end
 legend(["True power law adaptation", "Approximate power law adaptation"]);
 
-%% Example #7: Performance benefits of approximate power-law implementation
+%% Example #6: Performance benefits of approximate power-law implementation
 durs = logspace(log(0.05), log(1.0), 20);
 durs_true = zeros(length(durs), 1);
 durs_approx = zeros(length(durs), 1);
