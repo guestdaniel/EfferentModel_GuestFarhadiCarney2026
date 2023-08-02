@@ -84,6 +84,7 @@ function sim_gfc2023(
                 100.0,
             )
         end
+        ffGn_hsr = [ffGn_hsr]  # wrap in array to make 3D array
         ffGn_lsr = map(1:n_chan) do _
             ffGn_native(
                 len_total,
@@ -93,9 +94,10 @@ function sim_gfc2023(
                 0.1,
             )
         end
+        ffGn_lsr = [ffGn_lsr]  # wrap in array to make 3D array
     else
-        ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
-        ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
+        ffGn_hsr = [[zeros(len_total) for _ in 1:n_chan]]
+        ffGn_lsr = [[zeros(len_total) for _ in 1:n_chan]]
     end
 
     # Convert bool powerlaw_include_fast to integer
