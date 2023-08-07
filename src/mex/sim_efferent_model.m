@@ -87,7 +87,7 @@ arguments
     args.fs = 100e3
     args.cohc = 1.0
     args.cihc = 1.0
-    args.species = 1
+    args.species = 1 
 	args.powerlaw_mode = 2
     args.ic_tau_e = 1e-3
     args.ic_tau_i = 2e-3

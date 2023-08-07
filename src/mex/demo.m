@@ -6,8 +6,8 @@
 fs = 100e3;                                      % sample rate (Hz)
 fs_down = 10e3;                                  % sample rate for plot (Hz)
 dur = 0.5;                                       % duration (seconds)
-t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
-n_cf = 41;                                       % number of channels (#)
+t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)  
+n_cf = 41;                                       % number of channels (#) % TODO CHANGE BACK!!!!!!!!
 cf = exp(linspace(log(500.0), log(10e3), n_cf)); % CFs (Hz)
 f0 = 200.0;                                      % F0 (Hz)
 x = zeros(size(t));
