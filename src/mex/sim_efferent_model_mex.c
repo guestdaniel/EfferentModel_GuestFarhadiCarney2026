@@ -74,9 +74,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	);
 							
 	/* Declare pointers we need for handling input arrays (px, cf, randNums) */
-	double *px, *cf, *randNums_hsrarray, *randNums_lsrarray;
+	double *randNums_hsrarray, *randNums_lsrarray;
  	int indexcf, indextime;
-	int fc, i, lp, l1, l2, totalstim, pxbins,cfbins;
+	int fc, i, lp, l1, l2, pxbins,cfbins;
         mwSize ihcoutsize[2], anrateout_hsrsize[2], anrateout_lsrsize[2], icoutsize[2], gainoutsize[2];
 	 mwSize total_num_of_elements_hsr, total_num_of_elements_lsr, index;	
    
@@ -90,6 +90,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	{
 		mexErrMsgTxt("model requires 5 output argument.");
 	};
+
+	/* Get sizes of inputs as necessary */
+	int totalstim = mxGetN(prhs[0]);
 
 	/* De-reference (and, where needed, cast to int) scalar input values */
 	int n_chan = (int) *mxGetPr(prhs[4]);
@@ -111,29 +114,34 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double moc_weight_ic = *mxGetPr(prhs[20]);
 	double moc_width_wdr = *mxGetPr(prhs[21]);
 	int powerlaw_mode = (int) *mxGetPr(prhs[22]);
+
+	/* Handle pressure vector (px) */
+	double *px_mex = mxGetPr(prhs[0]);
+	double *px = (double*) mxCalloc(totalstim, sizeof(double));
+	for (int i = 0; i < totalstim; i++) {
+		px[i] = px_mex[i];
+	}
+
+	/* Handle CF vector (cf) */
+	double *cf_mex = mxGetPr(prhs[3]);
+	double *cf = (double*) mxCalloc(n_chan, sizeof(double));
+	for (int i = 0; i < n_chan; i++) {
+		cf[i] = cf_mex[i];
+	}
 	
 	/* Assign pointers to the inputs */
-	double *pxtmp				= mxGetPr(prhs[0]);
 	double *randNums_hsrtmp		= mxGetPr(prhs[1]);
 	double *randNums_lsrtmp     = mxGetPr(prhs[2]);
-	double *cftmp  				= mxGetPr(prhs[3]);
 
 	/* Check with individual input arguments */
 	pxbins = mxGetN(prhs[0]);
-	totalstim = pxbins;  
 	
-	px = (double*)mxCalloc(totalstim,sizeof(double)); 
-	for (lp=0; lp<pxbins; lp++)
-		px[lp] = pxtmp[lp];
+	// px = (double*)mxCalloc(totalstim,sizeof(double)); 
+	// for (lp=0; lp<pxbins; lp++)
+	// 	px[lp] = pxtmp[lp];
+	// double *px = mxGetPr(prhs[0]);
 			
-	if (pxbins==1)
-		mexErrMsgTxt("px must be a row vector\n");
-	
 	cfbins = mxGetN(prhs[3]);
-	
-	cf = (double*)mxCalloc(cfbins,sizeof(double)); 
-	for (fc=0; fc <n_chan; fc++)
-		cf[fc] = cftmp[fc];
 	
 	total_num_of_elements_hsr = mxGetNumberOfElements(prhs[1]);
 	total_num_of_elements_lsr = mxGetNumberOfElements(prhs[2]);
