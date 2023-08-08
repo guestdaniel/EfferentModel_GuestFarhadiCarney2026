@@ -77,12 +77,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         double **   // gain
 	);
 							
-	/* todo remove */
- 	int indexcf, indextime;
-	int fc, i, lp, l1, l2;
-        mwSize ihcoutsize[2], anrateout_hsrsize[2], anrateout_lsrsize[2], icoutsize[2], gainoutsize[2];
-	 mwSize index;	
-   
 	/* Check for proper number of arguments */
 	if (nrhs != 23) 
 	{
@@ -144,6 +138,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	 * while C expects a row-major order, we must reorder the elements in memory before 
 	 * passing to C.
 	 */
+	// Grab input pointers and allocate memory for row-major ordered noise matrices
 	double *randNums_hsrtmp	= mxGetPr(prhs[1]);
 	double *randNums_lsrtmp = mxGetPr(prhs[2]);
 	double *randNums_hsr[n_chan];
@@ -152,57 +147,50 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         randNums_hsr[i] = (double*) calloc(totalstim, sizeof(double));
         randNums_lsr[i] = (double*) calloc(totalstim, sizeof(double));
     }
-	
-	for (int i = 0; i < (totalstim * n_chan); i++) {
-		/* Determine Cartesian indices for linear index i given C-style row-major order */
-		indexcf = (int) fmod(index, n_chan);
-		indextime = (int) (index/n_chan);
 
-		/* Store i-th element in corresponding location in randNums matrices */
-		randNums_hsr[indexcf][indextime] = randNums_hsrtmp[i];
-		randNums_lsr[indexcf][indextime] = randNums_lsrtmp[i];
+	// Loop through elements via linear indexing, store	elements in row-major order
+	int idx_cf, idx_t;
+	for (int i = 0; i < (totalstim * n_chan); i++) {
+		// Determine Cartesian indices for linear index i given C-style row-major order
+		idx_cf = (int) fmod(i, n_chan);  // index into channels
+		idx_t = (int) (i/n_chan);        // index into time/samples
+
+		// Store i-th element in corresponding location in randNums matrices
+		randNums_hsr[idx_cf][idx_t] = randNums_hsrtmp[i];
+		randNums_lsr[idx_cf][idx_t] = randNums_lsrtmp[i];
 	}
-		
-	/* Create an array for the return argument */
+
+	/* todo remove */
+	int fc, i, lp, l1, l2;
+	mwSize index, indexcf, indextime;	
+
+	/* 
+	 * Handle return matrices. ALl return matrices are size of (n_chan, totalstim). These 
+	 * are dynamically allocated and passed to the C routine as pointers. Then, below,
+	 * the data stored in these matrices will be extracted and reformatted into an mxArray
+	 * for return as a pointer to MATLAB.
+	 */	
+	// Allocate output matrices
 	double *ihcout[n_chan];
 	double *anrateout_hsr[n_chan];
 	double *anrateout_lsr[n_chan];
 	double *icout[n_chan];
 	double *gain[n_chan];
-    
-    ihcoutsize[0] = n_chan;
-	ihcoutsize[1] = totalstim;
-
-	plhs[0] = mxCreateNumericArray(2, ihcoutsize, mxDOUBLE_CLASS, mxREAL);    
-    plhs[1] = mxCreateNumericArray(2, ihcoutsize, mxDOUBLE_CLASS, mxREAL); 
-    plhs[2] = mxCreateNumericArray(2, ihcoutsize, mxDOUBLE_CLASS, mxREAL);  
-	plhs[3] = mxCreateNumericArray(2, ihcoutsize, mxDOUBLE_CLASS, mxREAL);    
-    plhs[4] = mxCreateNumericArray(2, ihcoutsize, mxDOUBLE_CLASS, mxREAL); 
-     	
-    
-	/* Assign pointers to the outputs */
-	for (int i = 0; i < n_chan; i++) {
+ 	for (int i = 0; i < n_chan; i++) {
     	ihcout[i] = (double*) calloc(totalstim, sizeof(double));
 		anrateout_hsr[i] = (double*) calloc(totalstim, sizeof(double));
 		anrateout_lsr[i] = (double*) calloc(totalstim, sizeof(double));
 		icout[i] = (double*) calloc(totalstim, sizeof(double));
 		gain[i] = (double*) calloc(totalstim, sizeof(double));
 	}
-	
-	double *ihcouttmp;
-	double *anrateout_hsrtmp;
-	double *anrateout_lsrtmp;
-	double *icouttmp;
-	double *gaintmp;
-	
-	ihcouttmp	  = mxGetPr(plhs[0]);   
-	anrateout_hsrtmp= mxGetPr(plhs[1]);  
-	anrateout_lsrtmp	= mxGetPr(plhs[2]);  		
-	icouttmp	= mxGetPr(plhs[3]);  
-	gaintmp= mxGetPr(plhs[4]);  
-	
-	//mexPrintf("ANmodel: Zilany, Bruce, Ibrahim, and Carney : Auditory Nerve Model\n");
-	/* run the model */
+
+	/* 
+	 * Run the efferent model.
+	 * The first four arguments (px, randNums_hsr, randNums_lsr, and cf) are pointers to 
+	 * input arrays or matrices, the last five arguments (ihcout, anrateour_hsr, 
+	 * anrateour_lsr, icout, and gain) are pointers to output matrices, and the remaining
+	 * arguments are floating-point or integer values.
+	 */
 	model_efferent_wrapper(
 		px, 
 		randNums_hsr,
@@ -234,16 +222,41 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		icout,
 		gain
 	); 
-   	for (index=0; index< (n_chan * totalstim); index++){
-	indexcf = (int) (fmod(index,n_chan));
-	indextime = (int) (index/n_chan);	
-	*ihcouttmp++=ihcout[indexcf][indextime];
-	*anrateout_hsrtmp++=anrateout_hsr[indexcf][indextime];
-	*anrateout_lsrtmp++=anrateout_lsr[indexcf][indextime];
-	*icouttmp++=icout[indexcf][indextime];
-	*gaintmp++=gain[indexcf][indextime];
+
+	/*
+	 * Handle returning results to MATLAB. First, we use mxCreateNumericArray to create
+	 * appropriately sized output mxArrays. 
+	 */
+	// Create arrays for output
+    mwSize size_output[2] = {n_chan, totalstim};
+	plhs[0] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL);    
+    plhs[1] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL); 
+    plhs[2] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL);  
+	plhs[3] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL);    
+    plhs[4] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL); 
+
+	// Obtain pointers to said arrays
+	double *ihcouttmp = mxGetPr(plhs[0]);
+	double *anrateout_hsrtmp = mxGetPr(plhs[1]);
+	double *anrateout_lsrtmp = mxGetPr(plhs[2]);
+	double *icouttmp = mxGetPr(plhs[3]);
+	double *gaintmp = mxGetPr(plhs[4]);
+
+	// Loop through elements via linear indexing, store	elements in column-major order
+   	for (int i = 0; i < (n_chan * totalstim); i++) {
+		// Determine Cartesian indices for linear index i given C-style row-major order
+		idx_cf = (int) fmod(i, n_chan);  // index into channels
+		idx_t = (int) (i/n_chan);        // index into time/samples
+
+		// Store element at [idx_cf, idx_t] in i-th position in output matrix
+		ihcouttmp[i] = ihcout[idx_cf][idx_t];
+		anrateout_hsrtmp[i] = anrateout_hsr[idx_cf][idx_t];
+		anrateout_lsrtmp[i] = anrateout_lsr[idx_cf][idx_t];
+		icouttmp[i] = icout[idx_cf][idx_t];
+		gaintmp[i] = gain[idx_cf][idx_t];
 	}
 
+	// Free all dynamically allocated memory
 	for (int i = 0; i < n_chan; i++) {
 		free(randNums_hsr[i]);
 		free(randNums_lsr[i]);
@@ -255,6 +268,4 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	}
 	free(px);
 	free(cf);
-	// free(randNums_hsrarray);
-	// free(randNums_lsrarray);
 }
