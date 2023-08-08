@@ -76,7 +76,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/* Declare pointers we need for handling input arrays (px, cf, randNums) */
 	double *randNums_hsrarray, *randNums_lsrarray;
  	int indexcf, indextime;
-	int fc, i, lp, l1, l2, pxbins,cfbins;
+	int fc, i, lp, l1, l2;
         mwSize ihcoutsize[2], anrateout_hsrsize[2], anrateout_lsrsize[2], icoutsize[2], gainoutsize[2];
 	 mwSize total_num_of_elements_hsr, total_num_of_elements_lsr, index;	
    
@@ -117,46 +117,34 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
 	/* Handle pressure vector (px) */
 	double *px_mex = mxGetPr(prhs[0]);
-	double *px = (double*) mxCalloc(totalstim, sizeof(double));
+	double *px = (double*) calloc(totalstim, sizeof(double));
 	for (int i = 0; i < totalstim; i++) {
 		px[i] = px_mex[i];
 	}
 
 	/* Handle CF vector (cf) */
 	double *cf_mex = mxGetPr(prhs[3]);
-	double *cf = (double*) mxCalloc(n_chan, sizeof(double));
+	double *cf = (double*) calloc(n_chan, sizeof(double));
 	for (int i = 0; i < n_chan; i++) {
 		cf[i] = cf_mex[i];
 	}
 	
 	/* Assign pointers to the inputs */
-	double *randNums_hsrtmp		= mxGetPr(prhs[1]);
-	double *randNums_lsrtmp     = mxGetPr(prhs[2]);
-
-	/* Check with individual input arguments */
-	pxbins = mxGetN(prhs[0]);
-	
-	// px = (double*)mxCalloc(totalstim,sizeof(double)); 
-	// for (lp=0; lp<pxbins; lp++)
-	// 	px[lp] = pxtmp[lp];
-	// double *px = mxGetPr(prhs[0]);
-			
-	cfbins = mxGetN(prhs[3]);
-	
-	total_num_of_elements_hsr = mxGetNumberOfElements(prhs[1]);
-	total_num_of_elements_lsr = mxGetNumberOfElements(prhs[2]);
-	
-	 double *randNums_hsr[n_chan];
-	 double *randNums_lsr[n_chan];
-	 
-	randNums_hsrarray = (double*)mxCalloc(cfbins*totalstim,sizeof(double)); 
-    randNums_lsrarray = (double*)mxCalloc(cfbins*totalstim,sizeof(double)); 
-	
+	double *randNums_hsrtmp	= mxGetPr(prhs[1]);
+	double *randNums_lsrtmp = mxGetPr(prhs[2]);
+	double *randNums_hsr[n_chan];
+	double *randNums_lsr[n_chan];
+	randNums_hsrarray = (double*) calloc(n_chan*totalstim,sizeof(double)); 
+    randNums_lsrarray = (double*) calloc(n_chan*totalstim,sizeof(double)); 
 	for (int i = 0; i < n_chan; i++) {
         randNums_hsr[i] = (double*) calloc(totalstim, sizeof(double));
         randNums_lsr[i] = (double*) calloc(totalstim, sizeof(double));
     }
 
+	/* Check with individual input arguments */
+	total_num_of_elements_hsr = mxGetNumberOfElements(prhs[1]);
+	total_num_of_elements_lsr = mxGetNumberOfElements(prhs[2]);
+	
 	// randNums_hsrarray column major order 
 	for (index=0; index<total_num_of_elements_hsr; index++){
 
@@ -166,8 +154,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	}
 	
 	for (index=0; index<total_num_of_elements_hsr; index++){
-			indexcf = (int) (fmod(index,cfbins));
-	indextime = (int) (index/cfbins);
+			indexcf = (int) (fmod(index,n_chan));
+	indextime = (int) (index/n_chan);
 		
 		
 	randNums_hsr[indexcf][indextime]=randNums_hsrarray[index];
@@ -246,8 +234,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		gain
 	); 
    	for (index=0; index<total_num_of_elements_hsr; index++){
-	indexcf = (int) (fmod(index,cfbins));
-	indextime = (int) (index/cfbins);	
+	indexcf = (int) (fmod(index,n_chan));
+	indextime = (int) (index/n_chan);	
 	*ihcouttmp++=ihcout[indexcf][indextime];
 	*anrateout_hsrtmp++=anrateout_hsr[indexcf][indextime];
 	*anrateout_lsrtmp++=anrateout_lsr[indexcf][indextime];
@@ -255,8 +243,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	*gaintmp++=gain[indexcf][indextime];
 	}
 
-	mxFree(px);
-	mxFree(cf);
 	for (int i = 0; i < n_chan; i++) {
 		free(randNums_hsr[i]);
 		free(randNums_lsr[i]);
@@ -266,6 +252,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		free(icout[i]);
 		free(gain[i]);
 	}
-	mxFree(randNums_hsrarray);
-	mxFree(randNums_lsrarray);
+	free(px);
+	free(cf);
+	free(randNums_hsrarray);
+	free(randNums_lsrarray);
 }
