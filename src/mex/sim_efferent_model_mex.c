@@ -24,10 +24,9 @@
  *
  * Mex function for `sim_efferent_model`
  *
- * Mex function that parses MATLAB inputs and appropriately converts them into formats/types
- * suitable for passing to a simplified wrapper around the full efferent model,
- * `sim_efferent_model`, calls the efferent model, and then handles converting outputs into
- * a format for return to MATLAB.
+ * Mex function that parses MATLAB inputs, appropriately converts them into a form 
+ * suitable for passing to the model C code, calls the model on the converted inputs, and 
+ * then appropriately converts the outputs and passed them back to MATLAB.
  *
  * Note that there are no safety checks built into this function --- all checking should
  * happen in MATLAB before passing to this function.
@@ -40,7 +39,12 @@
  * [s]ide values). Obtain a pointer wiht `mexGetPr`.
  */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-	/* Declare signature for `model_efferent_wrapper`, our entry point to the model */
+	/* 
+	 * Declare signature for `model_efferent_wrapper`, our entry point to the model.
+	 * This function is defined in `model.c`, and is a simplified version of the full 
+	 * `model` function with a more stable signature than the full `model` function (making 
+	 * it easier to write the Mex wrapper).
+	 */
 	void model_efferent_wrapper(
 		double *,   // px
 		double **,  // randNums_hsr
@@ -73,12 +77,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         double **   // gain
 	);
 							
-	/* Declare pointers we need for handling input arrays (px, cf, randNums) */
-	double *randNums_hsrarray, *randNums_lsrarray;
+	/* todo remove */
  	int indexcf, indextime;
 	int fc, i, lp, l1, l2;
         mwSize ihcoutsize[2], anrateout_hsrsize[2], anrateout_lsrsize[2], icoutsize[2], gainoutsize[2];
-	 mwSize total_num_of_elements_hsr, total_num_of_elements_lsr, index;	
+	 mwSize index;	
    
 	/* Check for proper number of arguments */
 	if (nrhs != 23) 
@@ -91,7 +94,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		mexErrMsgTxt("model requires 5 output argument.");
 	};
 
-	/* Get sizes of inputs as necessary */
+	/* Get sizes of inputs */
 	int totalstim = mxGetN(prhs[0]);
 
 	/* De-reference (and, where needed, cast to int) scalar input values */
@@ -115,51 +118,49 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double moc_width_wdr = *mxGetPr(prhs[21]);
 	int powerlaw_mode = (int) *mxGetPr(prhs[22]);
 
-	/* Handle pressure vector (px) */
+	/* 
+	 * Handle pressure vector by copying data from MATLAB mxArray pointer to dynamically
+	 * allocated array in C
+	 */
 	double *px_mex = mxGetPr(prhs[0]);
 	double *px = (double*) calloc(totalstim, sizeof(double));
 	for (int i = 0; i < totalstim; i++) {
 		px[i] = px_mex[i];
 	}
 
-	/* Handle CF vector (cf) */
+	/* 
+	 * Handle CF vector by copying data from MATLAB mxArray pointer to dynamically
+	 * allocated array in C
+	 */
 	double *cf_mex = mxGetPr(prhs[3]);
 	double *cf = (double*) calloc(n_chan, sizeof(double));
 	for (int i = 0; i < n_chan; i++) {
 		cf[i] = cf_mex[i];
 	}
-	
-	/* Assign pointers to the inputs */
+
+	/* 
+	 * Handle fGn matrices by copying data from MATLAB mxArray pointer to dynamically
+	 * allocated matrix in C. Note that because MATLAB arrays are in column-major order 
+	 * while C expects a row-major order, we must reorder the elements in memory before 
+	 * passing to C.
+	 */
 	double *randNums_hsrtmp	= mxGetPr(prhs[1]);
 	double *randNums_lsrtmp = mxGetPr(prhs[2]);
 	double *randNums_hsr[n_chan];
 	double *randNums_lsr[n_chan];
-	randNums_hsrarray = (double*) calloc(n_chan*totalstim,sizeof(double)); 
-    randNums_lsrarray = (double*) calloc(n_chan*totalstim,sizeof(double)); 
 	for (int i = 0; i < n_chan; i++) {
         randNums_hsr[i] = (double*) calloc(totalstim, sizeof(double));
         randNums_lsr[i] = (double*) calloc(totalstim, sizeof(double));
     }
-
-	/* Check with individual input arguments */
-	total_num_of_elements_hsr = mxGetNumberOfElements(prhs[1]);
-	total_num_of_elements_lsr = mxGetNumberOfElements(prhs[2]);
 	
-	// randNums_hsrarray column major order 
-	for (index=0; index<total_num_of_elements_hsr; index++){
+	for (int i = 0; i < (totalstim * n_chan); i++) {
+		/* Determine Cartesian indices for linear index i given C-style row-major order */
+		indexcf = (int) fmod(index, n_chan);
+		indextime = (int) (index/n_chan);
 
-		randNums_hsrarray[index]=*randNums_hsrtmp++;
-		randNums_lsrarray[index]=*randNums_lsrtmp++;
-		//mexPrintf("%g\n",randNums_hsrarray[index]);
-	}
-	
-	for (index=0; index<total_num_of_elements_hsr; index++){
-			indexcf = (int) (fmod(index,n_chan));
-	indextime = (int) (index/n_chan);
-		
-		
-	randNums_hsr[indexcf][indextime]=randNums_hsrarray[index];
-	randNums_lsr[indexcf][indextime]=randNums_lsrarray[index];
+		/* Store i-th element in corresponding location in randNums matrices */
+		randNums_hsr[indexcf][indextime] = randNums_hsrtmp[i];
+		randNums_lsr[indexcf][indextime] = randNums_lsrtmp[i];
 	}
 		
 	/* Create an array for the return argument */
@@ -233,7 +234,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		icout,
 		gain
 	); 
-   	for (index=0; index<total_num_of_elements_hsr; index++){
+   	for (index=0; index< (n_chan * totalstim); index++){
 	indexcf = (int) (fmod(index,n_chan));
 	indextime = (int) (index/n_chan);	
 	*ihcouttmp++=ihcout[indexcf][indextime];
@@ -254,6 +255,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	}
 	free(px);
 	free(cf);
-	free(randNums_hsrarray);
-	free(randNums_lsrarray);
+	// free(randNums_hsrarray);
+	// free(randNums_lsrarray);
 }
