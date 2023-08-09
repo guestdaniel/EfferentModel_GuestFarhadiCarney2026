@@ -160,10 +160,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		randNums_lsr[idx_cf][idx_t] = randNums_lsrtmp[i];
 	}
 
-	/* todo remove */
-	int fc, i, lp, l1, l2;
-	mwSize index, indexcf, indextime;	
-
 	/* 
 	 * Handle return matrices. ALl return matrices are size of (n_chan, totalstim). These 
 	 * are dynamically allocated and passed to the C routine as pointers. Then, below,
