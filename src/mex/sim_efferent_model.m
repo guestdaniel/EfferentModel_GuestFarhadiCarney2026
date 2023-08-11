@@ -1,11 +1,14 @@
 function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % SIM_EFFERENT_MODEL(x, cf) simulates efferent-model response to row-vector
-% stimulus x at CFs in vector cf. Output values are matrices of size
-% (n_chan, n_sample), where currently:
-%   - `n_sample=length(x)` 
-%   - `n_chan=length(cf)`
+% stimulus x at CFs in vector cf. 
 % 
-% Returned values are (in order): 
+% See detailed help via `help sim_efferent_model`, including information
+% about input arguments, return values, and changes to the code over time
+% (changelog).
+% 
+% Returned values are matrices of size (n_chan, n_sample), where 
+% `n_sample=length(x)` and `n_chan=length(cf)`. The various output matrices 
+% are described below:
 %   1) Inner hair cell "voltage", in a.u.
 %   2) High-spontaneous-rate auditory-nerve instantaneous rate, in sp/s
 %   3) Low-spontaneous-rate auditory-nerve instantaneous rate, in sp/s
@@ -23,6 +26,33 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % 0.5 ms, or moc_cutoff=2.0 would set the MOC lowpass cutoff to 2 Hz). See
 % below for more details about available parameters and their default
 % values (which are always used unless otherwise specified).
+%
+% Changelog:
+% Changes to the MATLAB/Mex model code are documented here, while changes
+% to the model code itself are documented in a separate changelog file.
+%
+% - 08/11/2023, DRG
+%	Cleaned up Mex files, updated documentation in this file, updated this 
+%   file to include validator functions applied to inputs to ensure that
+%   only inputs within a sensible range can be provided.
+%
+% - 07/27/2023, DRG
+%   Added the fast power-law adaptation approximation based on a parallel
+%   set of exponential adaptation processes. Enabled by passing
+%   `powerlaw_mode=2`.
+%
+% - 07/10/2023, DRG
+%   Corrected synthesis of fractional Gaussian noise, which was previously
+%   using inappropriate values for noise variance from the 2018 model code,
+%   instead of correct values from the 2014 model code.
+%
+% - 06/29/2023, DRG
+%   Adjusted MOC lowpass filter cutoff value to 0.64 Hz, which should more
+%   closely match the value used in the old single-channel efferent model.
+%
+% - 06/21/2023, DRG
+%   Fixed a memory leak in the model due to incorrect freeing of
+%   dynamically allocated memory in the Mex file.
 %
 % Arguments:
 % - x: Vector containing input sound-pressure waveform (Pa)
@@ -47,6 +77,14 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   set of 100 parallel exponential adaptation processes with time
 %   constants fit computationally to match true power-law adaptation
 %   (powerlaw_mode == 2). 
+%
+% - args.dur_settle: How long to simulate responses to silence before
+%   simulating a response to input time-pressure waveform (s). Default of 
+%   0.01 s (10 ms). This duration of time gives the various dynamic stages
+%   of the model (e.g., AN adaptation, efferent gain control) a chance to
+%   "settle in" to a more steady-state response regime before simulating
+%   the stimulus response. If this is set to too short an interval, you may
+%   see some weird response features at simulation onset.
 %
 % - args.ic_tau_e: Excitatory time constant in IC stage (s)
 %
@@ -166,4 +204,5 @@ end
     args.moc_width_wdr, ...
 	args.powerlaw_mode ...
     );
+
 end
