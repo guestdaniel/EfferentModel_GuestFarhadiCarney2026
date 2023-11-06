@@ -26,7 +26,7 @@ function sim_gfc2023(
     cihc::Float64=1.0,
     species::String="human",
     fractional=false,
-    powerlaw_mode=1,
+    powerlaw_mode=2,
     cn_tau_e=0.5e-3,
     cn_tau_i=2.0e-3,
     cn_delay=1.0e-3,

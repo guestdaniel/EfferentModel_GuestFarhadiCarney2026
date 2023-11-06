@@ -350,3 +350,5 @@ ylim([1e0, 1e3]);
 xlim([2e-2, 2e0]);
 xlabel("Stimulus duration (s)");
 ylabel("Performance gain (true/approx compute time)");
+
+%% TODO: add demos about off-CF gain control?
