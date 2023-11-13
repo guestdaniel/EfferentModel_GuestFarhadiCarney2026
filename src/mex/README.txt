@@ -1,19 +1,21 @@
 # Introduction
-This is the Mex wrapepr for Zilany, Bruce, and Carney (2014) auditory-nerve
-model extended to include an efferent gain control system. See XYZ (20xx)
-and ABC (20xx) for more information.
+This is the Mex wrapper for the ??? (202x) auditory-nerve and midbrain model.
 
 # Installation and usage
 1.  Make sure you have a C compiler installed and set up with MATLAB. 
 	Windows users can install "MATLAB Support for MinGW-w64 C/C++ Compiler" 
 	from the Add-on Explorer.
 
-2.  Point MATLAB to this folder, and then run `compile_mex.m` in MATLAB 
+2.  Change your working directory to the folder containing these files.
+    In the command window, `cd("C:\path\to\this\folder")`.
+
+3.  Compile the Mex wrapper running `compile_mex.m` in MATLAB 
 	(either by using the "Run" button in the editor window, or by calling 
 	`compile_mex` in the Command Window). This will compile all of the 
-	necessary `.c` files into a Mex function that MATLAB can use. 
+	necessary `.c` files into a Mex function that MATLAB can use to run
+    the model.
 
-3.  Call `sim_efferent_model` from MATLAB while this folder is on your path 
+4.  Call `sim_efferent_model` from MATLAB while this folder is on your path 
 	to run the model. The pattern is:
 		`[~, hsr, ~, ~, ~] = sim_efferent_model(x, cf, param1=val1, ..., paramN=valN)`
 	- The first two arguments are the (1) row-vector sound waveform and 
@@ -45,7 +47,7 @@ and ABC (20xx) for more information.
 4.  Numerous detailed example simulations and plots are available in another
     m file, `demo.m`. 
 
-# Installation and usage
+# Changelog
 Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
@@ -56,7 +58,7 @@ code in `model_changelog.txt`.
   exponentially adapating processes. This approximation is much faster than
   true PLA but retains most of its key properties. (see model changelog for 
   more information). The wrapper was modified to set this scheme as the 
-  default implementation (i.e., `powerlaw=2`). Also, added the model 
+  default implementation (i.e., `powerlaw_mode=2`). Also, added the model 
   changelog to the release folder (previously, it was confusingly not
   included with these files).
 

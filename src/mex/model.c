@@ -782,7 +782,9 @@ void model(
                                          moc_offset_wdr, moc_maxrate_wdr, moc_minrate_wdr);
                 }
             }
-            gain_wdr = pow(gain_wdr, 1/n_cf_per_oct);
+            gain_wdr = pow(gain_wdr, 1/n_cf_per_oct);  // TODO: 1/n_cf_per_oct -> 1/(n_cf_per_oct*moc_width_wdr)
+			                                           // TODO: if moc_width_wdr==0 -> don't normalize
+													   // TODO: ask paul about these params
 
             /* Store final gain result, which is cohc * gain_wdr * gain_ic */
             gain[c][n] = cohc * gain_wdr * gain_ic;
