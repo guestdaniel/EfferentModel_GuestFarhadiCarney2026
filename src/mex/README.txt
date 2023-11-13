@@ -52,6 +52,13 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
+- 11/13/2023, DRG
+  Updated model code to use vector-valued COHC/CIHC instead of 
+  scalar-valued, so now different channels can have different COHC/CIHC 
+  values in multi-channel simulations. Updated this wrapper file to 
+  reflect these changes. By default, a vector of ones with the same size
+  as the CF vector is passed for both COHC and CIHC. 
+
 - 11/6/2023, DRG
   Updated this document and re-released code with updated model code that
   allows for simulating power-law adaptation with a set of parallel 

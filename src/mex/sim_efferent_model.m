@@ -34,11 +34,13 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % - args.fs: Sampling rate of the simulation (Hz). Note that inputs must be 
 %   sampled at this sampling rate. 
 %
-% - args.cohc: Outer-hair-cell "count/health" (in [0, 1], where 0==no 
-%   contribution of OHCs, 1==maximum contribution of OHCs)
+% - args.cohc: Vector containing values for the Cohc parameter in each
+%   channel (in [0, 1], where 0==no contribution of OHCs, 1==maximum 
+%   contribution of OHCs)
 %
-% - args.cihc: Inner-hair-cell "count/health" (in [0, 1], where 0==no IHC 
-%   amplitude, 1==normal IHC amplitude)
+% - args.cihc: Vector containing values for the Cihc parameter in each
+%   channel (in [0, 1], where 0==zero amplitude from C1-path IHCs, 1==full
+%   amplitude from C1-path IHCs)
 %
 % - args.species: Which species to simulate in the basilar membrane/inner 
 %   hair cell stage, 1==cat, 2==human (Shera), 3== (Moore and Glasberg)
@@ -110,8 +112,8 @@ arguments
     x (1,:)
     cf (1,:) {mustBeGreaterThanOrEqual(cf, 125.0), mustBeLessThanOrEqual(cf, 40e3)}
     args.fs {mustBeGreaterThanOrEqual(args.fs,50e3), mustBeLessThanOrEqual(args.fs,200e3)} = 100e3
-    args.cohc {mustBeGreaterThanOrEqual(args.cohc, 0.0), mustBeLessThanOrEqual(args.cohc, 1.0)} = 1.0
-    args.cihc {mustBeGreaterThanOrEqual(args.cihc, 0.0), mustBeLessThanOrEqual(args.cihc, 1.0)} = 1.0
+    args.cohc {mustBeGreaterThanOrEqual(args.cohc, 0.0), mustBeLessThanOrEqual(args.cohc, 1.0)} = ones(size(cf))
+    args.cihc {mustBeGreaterThanOrEqual(args.cihc, 0.0), mustBeLessThanOrEqual(args.cihc, 1.0)} = ones(size(cf))
     args.species {mustBeMember(args.species, [1, 2, 3])} = 1 
 	args.powerlaw_mode {mustBeMember(args.powerlaw_mode, [1, 2])} = 2
     args.ic_tau_e {mustBeGreaterThan(args.ic_tau_e, 0.0)} = 1e-3

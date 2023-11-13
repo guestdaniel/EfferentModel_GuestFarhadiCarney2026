@@ -8,8 +8,8 @@ function model_wrapper!(
     n_chan::Int64,
     tdres::Float64,
     totalstim::Int64, 
-    cohc::Float64,
-    cihc::Float64,
+    cohc::Vector{Float64},
+    cihc::Vector{Float64},
     species::Int64,
     fastmode::Int64,
     ic_tau_e::Float64,
@@ -41,8 +41,8 @@ function model_wrapper!(
                 Cint,         # nchan
                 Cdouble,      # tdres
                 Cint,         # totalstim
-                Cdouble,      # cohc
-                Cdouble,      # cihc
+                Ptr{Cdouble}, # cohc
+                Ptr{Cdouble}, # cihc
                 Cint,         # species
                 Cint,         # fastmode
                 Cdouble,      # ic_tau_e
@@ -103,8 +103,8 @@ function model!(
     n_chan::Int64,
     tdres::Float64,
     totalstim::Int64, 
-    cohc::Float64,
-    cihc::Float64,
+    cohc::Vector{Float64},
+    cihc::Vector{Float64},
     species::Int64,
     spont::Float64,
     powerlaw_mode::Int64,
@@ -161,8 +161,8 @@ function model!(
                 Cint,         # nchan
                 Cdouble,      # tdres
                 Cint,         # totalstim
-                Cdouble,      # cohc
-                Cdouble,      # cihc
+                Ptr{Cdouble}, # cohc
+                Ptr{Cdouble}, # cihc
                 Cint,         # species
                 Cdouble,      # spont
                 Cint,         # powerlaw_mode

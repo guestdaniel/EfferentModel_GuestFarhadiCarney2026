@@ -53,8 +53,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		int,        // n_chan
 		double,     // tdres
 		int,        // totalstim
-		double,     // cohc
-        double,     // cihc
+		double *,   // cohc
+        double *,   // cihc
 		int,        // species
 		int,        // powerlaw_mode
 		double,     // ic_tau_e
@@ -94,8 +94,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/* De-reference (and, where needed, cast to int) scalar input values */
 	int n_chan = (int) *mxGetPr(prhs[4]);
     double tdres = *mxGetPr(prhs[5]);
-	double cohc	= *mxGetPr(prhs[6]);
-	double cihc	= *mxGetPr(prhs[7]);
 	int species = (int) *mxGetPr(prhs[8]);
 	double ic_tau_e = *mxGetPr(prhs[9]);
 	double ic_tau_i = *mxGetPr(prhs[10]);
@@ -130,6 +128,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double *cf = (double*) calloc(n_chan, sizeof(double));
 	for (int i = 0; i < n_chan; i++) {
 		cf[i] = cf_mex[i];
+	}
+
+	/* 
+	 * Handle COHC/CIHC vectors by copying data from MATLAB mxArray pointer 
+	 * to dynamically allocated array in C
+	 */
+	double *cohc_mex = mxGetPr(prhs[6]);
+	double *cihc_mex = mxGetPr(prhs[7]);
+	double *cohc = (double*) calloc(n_chan, sizeof(double));
+	double *cihc = (double*) calloc(n_chan, sizeof(double));
+	for (int i = 0; i < n_chan; i++) {
+		cohc[i] = cohc_mex[i];
+		cihc[i] = cihc_mex[i];
+		mexPrintf("%f\n", cohc[i]);
+		mexPrintf("%f\n", cohc[i]);
 	}
 
 	/* 
@@ -184,8 +197,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	 * Run the efferent model.
 	 * The first four arguments (px, randNums_hsr, randNums_lsr, and cf) are pointers to 
 	 * input arrays or matrices, the last five arguments (ihcout, anrateour_hsr, 
-	 * anrateour_lsr, icout, and gain) are pointers to output matrices, and the remaining
-	 * arguments are floating-point or integer values.
+	 * anrateour_lsr, icout, and gain) are pointers to output matrices, cohc and cihc
+	 * are pointers to input arrays, and the remaining arguments are 
+	 * floating-point or integer values.
 	 */
 	model_efferent_wrapper(
 		px, 
@@ -264,4 +278,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	}
 	free(px);
 	free(cf);
+	free(cohc);
+	free(cihc);
 }

@@ -351,4 +351,42 @@ xlim([2e-2, 2e0]);
 xlabel("Stimulus duration (s)");
 ylabel("Performance gain (true/approx compute time)");
 
-%% TODO: add demos about off-CF gain control?
+%% Example #6: COHC and CIHC
+% Every channel in the simulation has an associated COHC and CIHC value
+% that governs, respectively, the gain provided by OHCs and the amplitude
+% of IHC responses. Altering these values can simulate different types of
+% hearing loss. Here, we show a simulation of different CFs with
+% different COHCs values in response to a pure tone presented at 4 kHz. 
+% Guidance is available in the literature for how to configure these parameters
+% appropriately based on audiograms. (note: noiseType is fixed at -1 to
+% make differences between NH and HI easier to see in a single simulation).
+
+% Choose parameters
+freq = 4e3;                    % frequency (Hz)
+level = 45.0;                  % level (dB SPL)
+dur = 0.1;                     % duration (s)
+cfs = exp(linspace(log(1e3), log(8e3), 31));    % CFs for each channel
+cohcs_nh = ones(size(cfs));                  % COHC values for each channel, normal-hearing
+cohcs_hi = linspace(0.7, 0.0, length(cfs));  % COHC values for each channel, hearing-impaired
+									         % HL assumed to be gently sloping to 8 kHz
+
+% Synthesize stimulus
+t = 0.0:(1/fs):(dur-1/fs);
+x = sin(2*pi*t * freq);
+x = 10^(level/20)*20e-6 * x/rms(x);
+
+% Simulate responses
+[~, hsr_nh, ~, ~, ~] = sim_efferent_model(x, cfs, cohc=cohcs_nh, noiseType=-1);
+[~, hsr_hi, ~, ~, ~] = sim_efferent_model(x, cfs, cohc=cohcs_hi, noiseType=-1);
+
+% Plot average rate at each CF
+figure;
+plot(cfs, mean(hsr_nh, 2)); hold on;
+set(gca, "Xscale", "log");
+plot(cfs, mean(hsr_hi, 2)); hold off;
+ylim([0.0, 500.0]);
+xticks([1e3, 2e3, 4e3, 8e3]);
+xlim([1e3/sqrt(2), 8e3*sqrt(2)]);
+xlabel("CF (Hz)");
+ylabel("Firing rate (sp/s)");
+legend(["Normal hearing", "Hearing impaired"]);

@@ -22,8 +22,8 @@ function sim_gfc2023(
     x::Vector{Float64}, 
     cf::Vector{Float64}; 
     fs::Float64=100e3,
-    cohc::Float64=1.0,
-    cihc::Float64=1.0,
+    cohc::Vector{Float64}=ones(size(cf)),
+    cihc::Vector{Float64}=ones(size(cf)),
     species::String="human",
     fractional=false,
     powerlaw_mode=2,
@@ -223,8 +223,8 @@ function sim_gfc2023_wrapper(
     x::Vector{Float64}, 
     cf::Vector{Float64}; 
     fs::Float64=100e3,
-    cohc::Float64=1.0,
-    cihc::Float64=1.0,
+    cohc::Vector{Float64}=ones(size(cf)),
+    cihc::Vector{Float64}=ones(size(cf)),
     species::String="human",
     fractional=false,
     fastmode=true,
