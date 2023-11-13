@@ -141,8 +141,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	for (int i = 0; i < n_chan; i++) {
 		cohc[i] = cohc_mex[i];
 		cihc[i] = cihc_mex[i];
-		mexPrintf("%f\n", cohc[i]);
-		mexPrintf("%f\n", cohc[i]);
 	}
 
 	/* 

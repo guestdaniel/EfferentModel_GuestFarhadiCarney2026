@@ -53,6 +53,21 @@ to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
 - 11/13/2023, DRG
+  Changes were made in the normalization scheme for the WDR pathway gain 
+  factors (see details in `model_changelog.txt`). This code and the Mex
+  wrapper were not altered, but these changes are noted here anyway because
+  they have complex effects on single and multichannel simulations and 
+  depending on the type of stimulus used to elicit gain control. In short,
+  the final WDR-driven gain factor in multichannel simulations is now 
+  determined by taking the geometric mean of individual contributing
+  channels' WDR-driven gain factors. For a stimulus with a 
+  relatively flat distribution of energy (e.g., Gaussian noise) that 
+  elicits relatively uniform responses in the LSR model across channels,
+  a single-channel simulation should yield similar gain control as the 
+  matched channel from a multichannel simulation (see
+  `demo.m` for examples).
+
+- 11/13/2023, DRG
   Updated model code to use vector-valued COHC/CIHC instead of 
   scalar-valued, so now different channels can have different COHC/CIHC 
   values in multi-channel simulations. Updated this wrapper file to 

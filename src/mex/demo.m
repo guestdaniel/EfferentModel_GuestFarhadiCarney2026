@@ -390,3 +390,93 @@ xlim([1e3/sqrt(2), 8e3*sqrt(2)]);
 xlabel("CF (Hz)");
 ylabel("Firing rate (sp/s)");
 legend(["Normal hearing", "Hearing impaired"]);
+
+%% Example #7: Single-channel versus multi-channel simulations of gain control
+% The present model of MOC efferent gain control has a parameter that
+% controls how "wide" the WDR-driven efferent projections are,
+% `moc_width_wdr`. When set to a value of zero, each channel's WDR-driven 
+% gain factor is determined only by WDR-pathway responses in that channel. 
+% When set to a value greater than zero, WDR-driven gain factors for a
+% range of channels are geometrically averaged to produce a final
+% WDR-driven gain factor. 
+
+% Set parameters
+cf = 1e3;                                                    % middle CF 
+cfs = exp(linspace(log(1e3 * 2^(-1)), log(1e3 * 2^1), 21));  % range of CFs around middle CF
+dur = 0.5;                                   % duration (dur)
+Nos = [-20.0:10.0:20.0];                     % spectrum levels of noise (dB SPL)
+[b, a] = butter(4, [0.1e3, 10e3] / (fs/2));  % bandpass filter for noise
+t = 0.0:(1/fs):(dur-1/fs);                   % time axis (s)
+
+% Create figure
+figure;
+tiledlayout(1, 4);
+
+% First, we plot results for single-channel simulations
+nexttile; hold(gca, "on");
+for idx_level = 1:length(Nos)
+	level = Nos(idx_level) + 10*log10(fs/2);
+	x = scale_dbspl(randn(1, round(dur*fs)), level);
+	x = filter(b, a, x);
+	[~, hsr, ~, ~, gain] = sim_efferent_model(x, cf, noiseType=-1);
+	plot(t, gain);
+end
+hold(gca, "off");
+ylim([0.0, 1.1]);
+xlabel("Time (s)");
+ylabel("Gain factor");
+legend(string(Nos));
+title("Single-channel")
+
+% Next, we plot results for multi-channel simulations with moc_width_wdr =
+% 0.0, looking only at gain from middle channel (i.e., CF = 1 kHz)
+nexttile; hold(gca, "on");
+for idx_level = 1:length(Nos)
+	level = Nos(idx_level) + 10*log10(fs/2);
+	x = scale_dbspl(randn(1, round(dur*fs)), level);
+	x = filter(b, a, x);
+	[~, hsr, ~, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_width_wdr=0.0);
+	plot(t, gain(11, :));  % target CF is 11th channel
+end
+hold(gca, "off");
+ylim([0.0, 1.1]);
+xlabel("Time (s)");
+ylabel("Gain factor");
+legend(string(Nos));
+title("Multichannel (moc\_width\_wdr = 0.0 octaves)")
+
+% Next, we plot results for multi-channel simulations with moc_width_wdr =
+% 0.5, looking only at gain from middle channel (i.e., CF = 1 kHz)
+nexttile; hold(gca, "on");
+for idx_level = 1:length(Nos)
+	level = Nos(idx_level) + 10*log10(fs/2);
+	x = scale_dbspl(randn(1, round(dur*fs)), level);
+	x = filter(b, a, x);
+	[~, hsr, ~, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_width_wdr=0.5);
+	plot(t, gain(11, :));
+end
+hold(gca, "off");
+ylim([0.0, 1.1]);
+xlabel("Time (s)");
+ylabel("Gain factor");
+legend(string(Nos));
+title("Multichannel (moc\_width\_wdr = 0.5 octaves)")
+
+% Finally, we plot results for multi-channel simulations with moc_width_wdr =
+% 1.0, looking only at gain from middle channel (i.e., CF = 1 kHz)
+nexttile; hold(gca, "on");
+for idx_level = 1:length(Nos)
+	level = Nos(idx_level) + 10*log10(fs/2);
+	x = scale_dbspl(randn(1, round(dur*fs)), level);
+	x = filter(b, a, x);
+	[~, hsr, ~, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_width_wdr=1.0);
+	plot(t, gain(11, :));
+end
+hold(gca, "off");
+ylim([0.0, 1.1]);
+xlabel("Time (s)");
+ylabel("Gain factor");
+legend(string(Nos));
+title("Multichannel (moc\_width\_wdr = 1.0 octaves)")
+
+
