@@ -52,6 +52,10 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
+- 11/21/2023, DRG
+  Modified the default species to be human with Shera tuning (`species=2`)
+  rather than cat (`species=1`)
+
 - 11/13/2023, DRG
   Changes were made in the normalization scheme for the WDR pathway gain 
   factors (see details in `model_changelog.txt`). This code and the Mex
