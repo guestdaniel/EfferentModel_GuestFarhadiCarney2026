@@ -52,6 +52,25 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
+- 2/19/2024 [!!EXPERIMENTAL!!], DRG
+  Modified some efferent model parameters (weights, I/O nonlinearity slope)
+  based on qualitative simulations for the ARO posters. This update 
+  uses these updated parameter values. It also includes a bug fix in 
+  the implementation of the SFIE model inside the C code. Historically,
+  when low CF fibers (i.e. CF/4 < BMF==64 Hz) were simulated using the SFIE
+  model, the time constants are adjusted to be somewhat longer to avoid
+  excessive response to low-frequency temporal fine structure. Previously,
+  this was *not* done in the efferent population responses, but now 
+  *is done*. This should make model IC responses more sensible at low CFs.
+  This update is marked !!EXPERIMENTAL!! to make it clear to users that 
+  these parameter values are in flux and remain to be permanently 
+  determined.
+
+- 1/5/2023, DRG
+  Modified default efferent parameters to match what is being used for SPiN
+  2024 and ARO 2024 presentations (`moc_weight_ic=14.0` and
+  `moc_weight_wdr=5.0`)
+
 - 11/21/2023, DRG
   Modified the default species to be human with Shera tuning (`species=2`)
   rather than cat (`species=1`)

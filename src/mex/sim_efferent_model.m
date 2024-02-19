@@ -116,18 +116,18 @@ arguments
     args.cihc {mustBeGreaterThanOrEqual(args.cihc, 0.0), mustBeLessThanOrEqual(args.cihc, 1.0)} = ones(size(cf))
 	args.species {mustBeMember(args.species, [1, 2, 3])} = 2 
 	args.powerlaw_mode {mustBeMember(args.powerlaw_mode, [1, 2])} = 2
-    args.ic_tau_e {mustBeGreaterThan(args.ic_tau_e, 0.0)} = 1e-3
-    args.ic_tau_i {mustBeGreaterThan(args.ic_tau_i, 0.0)} = 2e-3
-    args.ic_delay {mustBeGreaterThanOrEqual(args.ic_delay, 0.0)} = 1e-3
+    args.ic_tau_e {mustBeGreaterThan(args.ic_tau_e, 0.0)} = 1.0/(10.0 * 64.0);  % BMF == 64 Hz
+    args.ic_tau_i {mustBeGreaterThan(args.ic_tau_i, 0.0)} =  1.0/(10.0 * 64.0)*1.5
+    args.ic_delay {mustBeGreaterThanOrEqual(args.ic_delay, 0.0)} = 1.0/(10.0 * 64.0)*2.0
     args.ic_amp {mustBeGreaterThan(args.ic_amp, 0.0)} = 1.0
-    args.ic_inh {mustBeGreaterThanOrEqual(args.ic_inh, 0.0)} = 1.0
+    args.ic_inh {mustBeGreaterThanOrEqual(args.ic_inh, 0.0)} = 0.9
     args.moc_cutoff {mustBeGreaterThanOrEqual(args.moc_cutoff, 0.0)} = 0.64
-    args.moc_beta_wdr {mustBeGreaterThanOrEqual(args.moc_beta_wdr, 0.0)} = 0.01
-    args.moc_offset_wdr {mustBeGreaterThanOrEqual(args.moc_offset_wdr, 0.0)} = 0.0 
-    args.moc_beta_ic {mustBeGreaterThanOrEqual(args.moc_beta_ic, 0.0)} = 0.01
-    args.moc_offset_ic {mustBeGreaterThanOrEqual(args.moc_offset_ic, 0.0)} = 0.0
-    args.moc_weight_wdr {mustBeGreaterThanOrEqual(args.moc_weight_wdr, 0.0)} = 2.0
-    args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 8.0
+    args.moc_beta_wdr {mustBeGreaterThanOrEqual(args.moc_beta_wdr, 0.0)} = 0.015;
+    args.moc_offset_wdr {mustBeGreaterThanOrEqual(args.moc_offset_wdr, 0.0)} = 10*4.0; 
+    args.moc_beta_ic {mustBeGreaterThanOrEqual(args.moc_beta_ic, 0.0)} = 0.015;
+    args.moc_offset_ic {mustBeGreaterThanOrEqual(args.moc_offset_ic, 0.0)} = 10*4.0;
+    args.moc_weight_wdr {mustBeGreaterThanOrEqual(args.moc_weight_wdr, 0.0)} = 4.0;
+    args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 4.0;
     args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
 end
