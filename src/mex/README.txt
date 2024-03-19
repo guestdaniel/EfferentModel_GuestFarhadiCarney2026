@@ -1,5 +1,5 @@
 # Introduction
-This is the Mex wrapper for the ??? (202x) auditory-nerve and midbrain model.
+This is the Mex wrapper for the Carney lab auditory-nerve and midbrain efferent model.
 
 # Installation and usage
 1.  Make sure you have a C compiler installed and set up with MATLAB. 
@@ -52,7 +52,12 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
-- 2/19/2024 [!!EXPERIMENTAL!!], DRG
+- 3/19/2024, DRG
+  Adjusted PLA approximation scheme parameters and fixed a design bug that
+  resulted in excessive overhead for determining which channels were 
+  contained within the "WDR bandwidth" in multichannel simulations.
+
+- 2/19/2024, DRG
   Modified some efferent model parameters (weights, I/O nonlinearity slope)
   based on qualitative simulations for the ARO posters. This update 
   uses these updated parameter values. It also includes a bug fix in 
@@ -62,9 +67,6 @@ code in `model_changelog.txt`.
   excessive response to low-frequency temporal fine structure. Previously,
   this was *not* done in the efferent population responses, but now 
   *is done*. This should make model IC responses more sensible at low CFs.
-  This update is marked !!EXPERIMENTAL!! to make it clear to users that 
-  these parameter values are in flux and remain to be permanently 
-  determined.
 
 - 1/5/2023, DRG
   Modified default efferent parameters to match what is being used for SPiN

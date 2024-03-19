@@ -6,7 +6,7 @@
             pt(cf, 50.0), 
             [cf],
             Dict{Symbol, Any}(),  # leave old param values at default values
-            Dict{Symbol, Any}(:dur_pad_left => 7500/(cf/1e3)/100e3),
+            Dict{Symbol, Any}(:dur_pad_left => 7500/(cf/1e3)/100e3, :powerlaw_mode => 1),
         )
 
         # Loop through each stage and verify match
