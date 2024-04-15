@@ -70,6 +70,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		double,     // moc_weight_wdr
         double,     // moc_weight_ic
 		double,     // moc_width_wdr
+		int,        // n_process
+		double,
+		double,
+		double,
+		double,
+		double,
+		double,
 		double **,  // ihcout
         double **,  // anrateout_hsr
 		double **,  // anrateout_lsr
@@ -78,7 +85,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	);
 							
 	/* Check for proper number of arguments */
-	if (nrhs != 23) 
+	if (nrhs != 30) 
 	{
 		mexErrMsgTxt("model requires 23 input arguments.");
 	}; 
@@ -109,6 +116,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double moc_weight_ic = *mxGetPr(prhs[20]);
 	double moc_width_wdr = *mxGetPr(prhs[21]);
 	int powerlaw_mode = (int) *mxGetPr(prhs[22]);
+	int n_process = (int) *mxGetPr(prhs[23]);
+	float coef_slow = *mxGetPr(prhs[24]);
+	float tau_short_slow = *mxGetPr(prhs[25]);
+	float tau_long_slow = *mxGetPr(prhs[26]);
+	float coef_fast = *mxGetPr(prhs[27]);
+	float tau_short_fast = *mxGetPr(prhs[28]);
+	float tau_long_fast = *mxGetPr(prhs[29]);
 
 	/* 
 	 * Handle pressure vector by copying data from MATLAB mxArray pointer to dynamically
@@ -224,6 +238,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		moc_weight_wdr,
 		moc_weight_ic,
 		moc_width_wdr,
+		n_process,
+		coef_slow,
+		tau_short_slow,
+		tau_long_slow,
+		coef_fast,
+		tau_short_fast,
+		tau_long_fast,
 		ihcout,
 		anrateout_hsr,
 		anrateout_lsr,
