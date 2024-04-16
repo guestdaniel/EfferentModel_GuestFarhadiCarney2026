@@ -5,6 +5,7 @@ using AuditoryNerveFiber
 using AuditorySignalUtils
 using FFTW
 using Match
+using Libdl
 #using MATLAB  # for interop to check against MATLAB/Mex model implementation
 
 include("c_interface.jl")
