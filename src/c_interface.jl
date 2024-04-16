@@ -150,117 +150,125 @@ function model!(
     mocic::Vector{Vector{Float64}},
     gain::Vector{Vector{Float64}},
 )
+    # Open library using Libdl (is there any overhead here?)
+    lib = Libdl.dlopen(joinpath("src", "model", "libgfc2023.so"))
+    modelfunc = Libdl.dlsym(lib, :model)
+
+    # Place call
     ccall(
-            (:model, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"), 
-            Cvoid, # return type
-            (
-                Ptr{Cdouble}, # px
-                Ptr{Ptr{Cdouble}}, # ffGn_hsr
-                Ptr{Ptr{Cdouble}}, # ffGn_lsr
-                Ptr{Cdouble}, # cf
-                Cint,         # nchan
-                Cdouble,      # tdres
-                Cint,         # totalstim
-                Ptr{Cdouble}, # cohc
-                Ptr{Cdouble}, # cihc
-                Cint,         # species
-                Cdouble,      # spont
-                Cint,         # powerlaw_mode
-                Cdouble,      # cn_tau_e
-                Cdouble,      # cn_tau_i,
-                Cdouble,      # cn_delay
-                Cdouble,      # cn_amp
-                Cdouble,      # cn_inh
-                Cdouble,      # ic_tau_e
-                Cdouble,      # ic_tau_i,
-                Cdouble,      # ic_delay
-                Cdouble,      # ic_amp
-                Cdouble,      # ic_inh
-                Cdouble,      # moc_cutoff
-                Cdouble,      # moc_beta
-                Cdouble,      # moc_offset
-                Cdouble,      # moc_minrate
-                Cdouble,      # moc_maxrate
-                Cdouble,      # moc_beta
-                Cdouble,      # moc_offset
-                Cdouble,      # moc_minrate
-                Cdouble,      # moc_maxrate
-                Cdouble,      # moc_weight_wdr
-                Cdouble,      # moc_weight_ic
-                Cdouble,      # moc_width_wdr
-                Ptr{Ptr{Cdouble}}, # control
-                Ptr{Ptr{Cdouble}}, # c1 
-                Ptr{Ptr{Cdouble}}, # c2 
-                Ptr{Ptr{Cdouble}}, # ihcout
-                Ptr{Ptr{Cdouble}}, # expout_hsr
-                Ptr{Ptr{Cdouble}}, # sout1_hsr
-                Ptr{Ptr{Cdouble}}, # sout2_hsr
-                Ptr{Ptr{Cdouble}}, # synout_hsr
-                Ptr{Ptr{Cdouble}}, # expout_lsr
-                Ptr{Ptr{Cdouble}}, # sout1_lsr
-                Ptr{Ptr{Cdouble}}, # sout2_lsr
-                Ptr{Ptr{Cdouble}}, # synout_lsr
-                Ptr{Ptr{Cdouble}}, # hsrout
-                Ptr{Ptr{Cdouble}}, # lsrout
-                Ptr{Ptr{Cdouble}}, # cnout
-                Ptr{Ptr{Cdouble}}, # icout
-                Ptr{Ptr{Cdouble}}, # mocwdr
-                Ptr{Ptr{Cdouble}}, # mocic
-                Ptr{Ptr{Cdouble}}, # gain
-            ),
-            px,
-            ffGn_hsr,
-            ffGn_lsr,
-            cf, 
-            n_chan,
-            tdres, 
-            totalstim, 
-            cohc, 
-            cihc, 
-            species, 
-            spont,
-            powerlaw_mode,
-            cn_tau_e,
-            cn_tau_i,
-            cn_delay,
-            cn_amp,
-            cn_inh,
-            ic_tau_e,
-            ic_tau_i,
-            ic_delay,
-            ic_amp,
-            ic_inh,
-            moc_cutoff,
-            moc_beta_wdr,
-            moc_offset_wdr,
-            moc_minrate_wdr,
-            moc_maxrate_wdr,
-            moc_beta_ic,
-            moc_offset_ic,
-            moc_minrate_ic,
-            moc_maxrate_ic,
-            moc_weight_wdr,
-            moc_weight_ic,
-            moc_width_wdr,
-            controlout, 
-            c1out, 
-            c2out, 
-            ihcout,
-            expout_hsr,
-            sout1_hsr,
-            sout2_hsr,
-            synout_hsr,
-            expout_lsr,
-            sout1_lsr,
-            sout2_lsr,
-            synout_lsr,
-            hsrout,
-            lsrout,
-            cnout,
-            icout,
-            mocwdr,
-            mocic,
-            gain,
-        )
+        modelfunc,  # pointer to function from lib
+        Cvoid, # return type
+        (
+            Ptr{Cdouble}, # px
+            Ptr{Ptr{Cdouble}}, # ffGn_hsr
+            Ptr{Ptr{Cdouble}}, # ffGn_lsr
+            Ptr{Cdouble}, # cf
+            Cint,         # nchan
+            Cdouble,      # tdres
+            Cint,         # totalstim
+            Ptr{Cdouble}, # cohc
+            Ptr{Cdouble}, # cihc
+            Cint,         # species
+            Cdouble,      # spont
+            Cint,         # powerlaw_mode
+            Cdouble,      # cn_tau_e
+            Cdouble,      # cn_tau_i,
+            Cdouble,      # cn_delay
+            Cdouble,      # cn_amp
+            Cdouble,      # cn_inh
+            Cdouble,      # ic_tau_e
+            Cdouble,      # ic_tau_i,
+            Cdouble,      # ic_delay
+            Cdouble,      # ic_amp
+            Cdouble,      # ic_inh
+            Cdouble,      # moc_cutoff
+            Cdouble,      # moc_beta
+            Cdouble,      # moc_offset
+            Cdouble,      # moc_minrate
+            Cdouble,      # moc_maxrate
+            Cdouble,      # moc_beta
+            Cdouble,      # moc_offset
+            Cdouble,      # moc_minrate
+            Cdouble,      # moc_maxrate
+            Cdouble,      # moc_weight_wdr
+            Cdouble,      # moc_weight_ic
+            Cdouble,      # moc_width_wdr
+            Ptr{Ptr{Cdouble}}, # control
+            Ptr{Ptr{Cdouble}}, # c1 
+            Ptr{Ptr{Cdouble}}, # c2 
+            Ptr{Ptr{Cdouble}}, # ihcout
+            Ptr{Ptr{Cdouble}}, # expout_hsr
+            Ptr{Ptr{Cdouble}}, # sout1_hsr
+            Ptr{Ptr{Cdouble}}, # sout2_hsr
+            Ptr{Ptr{Cdouble}}, # synout_hsr
+            Ptr{Ptr{Cdouble}}, # expout_lsr
+            Ptr{Ptr{Cdouble}}, # sout1_lsr
+            Ptr{Ptr{Cdouble}}, # sout2_lsr
+            Ptr{Ptr{Cdouble}}, # synout_lsr
+            Ptr{Ptr{Cdouble}}, # hsrout
+            Ptr{Ptr{Cdouble}}, # lsrout
+            Ptr{Ptr{Cdouble}}, # cnout
+            Ptr{Ptr{Cdouble}}, # icout
+            Ptr{Ptr{Cdouble}}, # mocwdr
+            Ptr{Ptr{Cdouble}}, # mocic
+            Ptr{Ptr{Cdouble}}, # gain
+        ),
+        px,
+        ffGn_hsr,
+        ffGn_lsr,
+        cf, 
+        n_chan,
+        tdres, 
+        totalstim, 
+        cohc, 
+        cihc, 
+        species, 
+        spont,
+        powerlaw_mode,
+        cn_tau_e,
+        cn_tau_i,
+        cn_delay,
+        cn_amp,
+        cn_inh,
+        ic_tau_e,
+        ic_tau_i,
+        ic_delay,
+        ic_amp,
+        ic_inh,
+        moc_cutoff,
+        moc_beta_wdr,
+        moc_offset_wdr,
+        moc_minrate_wdr,
+        moc_maxrate_wdr,
+        moc_beta_ic,
+        moc_offset_ic,
+        moc_minrate_ic,
+        moc_maxrate_ic,
+        moc_weight_wdr,
+        moc_weight_ic,
+        moc_width_wdr,
+        controlout, 
+        c1out, 
+        c2out, 
+        ihcout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
+        cnout,
+        icout,
+        mocwdr,
+        mocic,
+        gain,
+    )
+
+    # Close library so it can be reloaded
+    Libdl.dlclose(lib)
 end
 
