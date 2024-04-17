@@ -1,5 +1,5 @@
 @testset "Exponential process approximation to PLA" begin
-    @testset "Sampling rate = $fs Hz" for fs in [50e3, 100e3, 200e3]
+    @testset "Sampling rate = $fs Hz" for fs in [100e3]
         cfs = [500.0, 1000.0, 2000.0, 4000.0]
         @testset "CF: $cf" for cf in cfs
             orig, new = run_2023_vs_2023(

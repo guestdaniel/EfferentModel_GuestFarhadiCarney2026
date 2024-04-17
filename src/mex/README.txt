@@ -52,6 +52,10 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
+- 4/17/2024, DRG
+  Further adjusted PLA approximation scheme parameters (see model changelog 
+  for details).
+
 - 3/19/2024, DRG
   Adjusted PLA approximation scheme parameters and fixed a design bug that
   resulted in excessive overhead for determining which channels were 
