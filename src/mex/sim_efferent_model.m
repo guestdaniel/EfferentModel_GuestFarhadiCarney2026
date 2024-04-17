@@ -134,7 +134,7 @@ arguments
     args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 4.0;
     args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
-	args.display_info {mustBeMember(args.display_info, [0, 1])} = 1
+	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
 end
 
 % Determine number of channels and samples
