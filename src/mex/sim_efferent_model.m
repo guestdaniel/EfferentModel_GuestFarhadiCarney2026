@@ -108,6 +108,10 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   on the current global RNG state (noiseType == 1) as inputs for the
 %   noise governing the stochastic behavior of the power-law synapse in the
 %   auditory-nerve model. 
+%
+% - args.display_info: Displays information about currently selected
+%   parameter values and model version to the console before running
+%   the model. Useful for debugging.
 arguments
     x (1,:)
     cf (1,:) {mustBeGreaterThanOrEqual(cf, 125.0), mustBeLessThanOrEqual(cf, 40e3)}
@@ -130,6 +134,7 @@ arguments
     args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 4.0;
     args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
+	args.display_info {mustBeMember(args.display_info, [0, 1])} = 1
 end
 
 % Determine number of channels and samples
@@ -149,6 +154,50 @@ else
         ffGn_lsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 0.1, 3.0);
         ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 100.0, 200.0);
     end
+end
+
+% If we want to use display_info, print now
+if args.display_info
+	% Determine some stuff
+	n_cf = length(cf);
+	switch args.species
+		case 1
+			species_string = "Cat";
+		case 2
+			species_string = "Human (Shera/Oxenham tuning)";
+		case 3
+			species_string = "Human (Glasberg/Moore tuning)";
+	end
+	switch args.noiseType
+		case -1
+			noiseType_string = "No fGN (not recommended)";
+		case 0
+			noiseType_string = "Frozen fGn (i.e., fixed seed)";
+		case 1
+			noiseType_string = "Normal fGn";
+	end
+	switch args.powerlaw_mode
+		case 1
+			powerlaw_mode_string = "True PLA (warning, slow!)";
+		case 2
+			powerlaw_mode_string = "Approximate PLA";
+	end
+	cohc_min = round(min(args.cohc), 3);
+	cohc_max = round(max(args.cohc), 3);
+	cihc_min = round(min(args.cihc), 3);
+	cihc_max = round(max(args.cihc), 3);
+
+	% Print
+	fprintf("=========================================================\n");
+	fprintf("Running Carney lab efferent model\n");
+	fprintf("Version 5.7, last updated 4/17/2024\n");
+	fprintf("Running " + string(n_cf) + " channels with...\n")
+	fprintf("	Species: " + species_string + "\n")
+	fprintf("	Fractional Gaussian noise (fGn) type: " + noiseType_string + "\n")
+	fprintf("	Power-law adaptation (PLA) implementation: " + powerlaw_mode_string + "\n")
+	fprintf("	COHC range: from " + string(cohc_min) + " to " + string(cohc_max) + "\n")
+	fprintf("	CIHC range: from " + string(cihc_min) + " to " + string(cihc_max) + "\n")
+	fprintf("=========================================================\n");
 end
 
 % Call Mex wrapper for efferent model
