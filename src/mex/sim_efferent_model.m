@@ -51,14 +51,6 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   constants fit computationally to match true power-law adaptation
 %   (powerlaw_mode == 2). 
 %
-% - args.dur_settle: How long to simulate responses to silence before
-%   simulating a response to input time-pressure waveform (s). Default of 
-%   0.01 s (10 ms). This duration of time gives the various dynamic stages
-%   of the model (e.g., AN adaptation, efferent gain control) a chance to
-%   "settle in" to a more steady-state response regime before simulating
-%   the stimulus response. If this is set to too short an interval, you may
-%   see some weird response features at simulation onset.
-%
 % - args.ic_tau_e: Excitatory time constant in IC stage (s)
 %
 % - args.ic_tau_i: Inhibitory time constant in IC stage (s)
@@ -135,11 +127,16 @@ arguments
     args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
+	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
 end
+
+% Set settle time
+dur_settle = 0.2;  % (s)
+len_settle = round(dur_settle * args.fs);
 
 % Determine number of channels and samples
 n_chan = length(cf);
-n_sample = length(x);
+n_sample = length(x) + len_settle;
 
 % Synthesize fractional Gaussian noise
 if args.noiseType == -1     
@@ -155,6 +152,9 @@ else
         ffGn_hsr(ii, :) = ffGn(n_sample, 1/args.fs, 0.9, args.noiseType, 100.0, 200.0);
     end
 end
+
+% Zero pad stimulus
+x = [zeros(1, len_settle), x];
 
 % If we want to use display_info, print now
 if args.display_info
@@ -227,4 +227,12 @@ end
 	args.powerlaw_mode ...
     );
 
+% Optionally remove settle time at beginning of simulations
+if args.clip_settle
+	ihcout = ihcout(:, (len_settle+1):end);
+	hsrout = hsrout(:, (len_settle+1):end);
+	lsrout = lsrout(:, (len_settle+1):end);
+	icout = icout(:, (len_settle+1):end);
+	gain = gain(:, (len_settle+1):end);
+end
 end

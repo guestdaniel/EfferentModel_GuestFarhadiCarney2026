@@ -596,6 +596,9 @@ void model(
     }
 
     /* Declare variables used in the subcortical stage */
+    double dur_settle = 0.2; 
+    int len_settle = (int) floor(dur_settle * 1/tdres); 
+
     double cn_B_e[2], cn_A_e[3], cn_B_i[2], cn_A_i[3];
     int cn_len_delay = (int) floor(cn_delay * 1/tdres);
     double *cn_i[n_chan];
@@ -800,8 +803,13 @@ void model(
             icout[c][n] = hw_rectify(ictmp);
 
             /* Lowpass filter LSR and IC responses to generate WDR-MOC and IC-MOC rates */
-            filter_lowpass_iir(anrateout_lsr[c], n, moc_d, mocwdr[c]);
-            filter_lowpass_iir(icout[c], n, moc_d, mocic[c]);
+            if (n < len_settle) { 
+                mocwdr[c][n] = 0.0;
+                mocic[c][n] = 0.0;
+            } else {
+                filter_lowpass_iir(anrateout_lsr[c], n, moc_d, mocwdr[c]);
+                filter_lowpass_iir(icout[c], n, moc_d, mocic[c]);
+            }
 
             /* Below, we generate gain value (in [0, 1]) for next sample */
 
