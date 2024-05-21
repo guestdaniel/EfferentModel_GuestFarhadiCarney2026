@@ -1,5 +1,4 @@
-export sim_gfc2023, sim_gfc2023_dict, sim_gfc2023_wrapper, sim_gfc2023_wrapper_dict, 
-    sim_orig, sim_orig_dict
+export sim_gfc2023, sim_gfc2023_dict, sim_orig, sim_orig_dict
 
 """
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
@@ -49,7 +48,7 @@ function sim_gfc2023(
     moc_weight_wdr=0.0,
     moc_weight_ic=0.0,
     moc_width_wdr=0.0,
-    dur_pad_left=0.0,
+    dur_pad_left=0.2,
     clip_left=dur_pad_left == 0.0 ? false : true,
     dur_pad_right=0.0,
     clip_right=dur_pad_right == 0.0 ? false : true,
@@ -215,144 +214,6 @@ function sim_gfc2023_dict(args...; kwargs...)
         "ic" => ic,
         "mocwdr" => mocwdr,
         "mocic" => mocic,
-        "gain" => gain,
-    )
-end
-
-function sim_gfc2023_wrapper(
-    x::Vector{Float64}, 
-    cf::Vector{Float64}; 
-    fs::Float64=100e3,
-    cohc::Vector{Float64}=ones(size(cf)),
-    cihc::Vector{Float64}=ones(size(cf)),
-    species::String="human",
-    fractional=false,
-    fastmode=true,
-    ic_tau_e=1.0e-3,
-    ic_tau_i=2.0e-3,
-    ic_delay=1.0e-3,
-    ic_amp=1.0,
-    ic_inh=1.0,
-    moc_beta_wdr=0.01,
-    moc_offset_wdr=0.0,
-    moc_beta_ic=0.01,
-    moc_offset_ic=0.0,
-    moc_weight_wdr=0.0,
-    moc_weight_ic=0.0,
-    moc_width_wdr=0.5,
-    dur_pad_left=0.05,
-    clip_left=dur_pad_left == 0.0 ? false : true,
-    dur_pad_right=0.0,
-    clip_right=dur_pad_right == 0.0 ? false : true,
-)
-    # Calculate pad sizes in samples
-    len_pad_left = Int(floor(dur_pad_left*fs))
-    len_pad_right = Int(floor(dur_pad_right*fs))
-    len_stim = length(x)
-    len_total = len_pad_left + len_stim + len_pad_right
-
-    # Pad x
-    stim = vcat(zeros(len_pad_left), x, zeros(len_pad_right))
-
-    # Calculate n_chan
-    n_chan = length(cf)
-
-    # Convert human-readable arguments into C-side floats/ints
-    species_flag = Dict(
-        "cat" => 1,
-        "human" => 2,
-        "human_glasberg" => 3
-    )[species]
-
-    # Synthesize ffGn
-    if fractional
-        ffGn_hsr = map(1:n_chan) do _
-            ffGn_native(
-                len_total,
-                1/fs,
-                0.9,
-                1.0,
-                100.0,
-            )
-        end
-        ffGn_lsr = map(1:n_chan) do _
-            ffGn_native(
-                len_total,
-                1/fs,
-                0.9,
-                1.0,
-                0.1,
-            )
-        end
-    else
-        ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
-        ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
-    end
-
-    # Pre-allocate memory
-    ihcout = [zeros(len_total) for _ in 1:n_chan]
-    hsrout = [zeros(len_total) for _ in 1:n_chan]
-    lsrout = [zeros(len_total) for _ in 1:n_chan]
-    icout = [zeros(len_total) for _ in 1:n_chan]
-    gain = [zeros(len_total) for _ in 1:n_chan]
-
-    # Run model
-    model_wrapper!(
-        stim, 
-        ffGn_hsr,
-        ffGn_lsr,
-        cf,
-        n_chan,
-        1/fs, 
-        len_total, 
-        cohc, 
-        cihc, 
-        species_flag, 
-        Int64(fastmode),
-        ic_tau_e,
-        ic_tau_i,
-        ic_delay,
-        ic_amp,
-        ic_inh,
-        moc_beta_wdr,
-        moc_offset_wdr,
-        moc_beta_ic,
-        moc_offset_ic,
-        moc_weight_wdr,
-        moc_weight_ic,
-        moc_width_wdr,
-        ihcout,
-        hsrout,
-        lsrout,
-        icout,
-        gain,
-    )
-
-    # Return
-    outputs = [ihcout, hsrout, lsrout, icout, gain]
-    if clip_left | clip_right
-        outputs = map(outputs) do output
-            output = map(output) do channel
-                idx_left = clip_left ? (len_pad_left+1) : 1
-                idx_right = clip_right ? length(channel) - len_pad_right : length(channel)
-                channel = channel[idx_left:idx_right]
-            end
-        end
-    end
-    return outputs
-end
-
-function sim_gfc2023_wrapper(x::Vector{Float64}, cf::Float64; kwargs...)
-    [x[1] for (idx, x) in enumerate(sim_gfc2023_wrapper(x, [cf]; kwargs...))]
-end
-
-function sim_gfc2023_wrapper_dict(args...; kwargs...)
-    ihc, hsr, lsr, ic, gain = sim_gfc2023_wrapper(args...; kwargs...)
-    return Dict(
-        "ihc" => ihc,
-        "hsr" => hsr,
-        "lsr" => lsr,
-        "ic" => ic,
         "gain" => gain,
     )
 end
