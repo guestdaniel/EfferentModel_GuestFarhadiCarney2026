@@ -26,17 +26,17 @@
  *
  * Mex function that parses MATLAB inputs, appropriately converts them into a form 
  * suitable for passing to the model C code, calls the model on the converted inputs, and 
- * then appropriately converts the outputs and passed them back to MATLAB.
+ * then appropriately converts the outputs and passes them back to MATLAB.
  *
  * Note that there are no safety checks built into this function --- all checking should
- * happen in MATLAB before passing to this function.
+ * happen in MATLAB *before* passing inputs to this function.
  *
  * @param nlhs Number of return values (i.e., [n]umber [l]eft [h]and [s]ide values)
  * @param plhs mxArray of pointers to output variables (i.e., [p]ointers to [l]eft [h]and
- * [s]ide values). Obtain a pointer wiht `mexGetPr`.
+ * [s]ide values). Obtain a pointer with `mexGetPr`.
  * @param nrhs Number of return values (i.e., [n]umber [l]eft [h]and [s]ide values)
  * @param prhs mxArray of pointers to input variables (i.e., [p]ointers to [r]eft [h]and
- * [s]ide values). Obtain a pointer wiht `mexGetPr`.
+ * [s]ide values). Obtain a pointer with `mexGetPr`.
  */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/* Declare signature for `model`, the C function for the efferent model. */
@@ -108,9 +108,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	);
 							
 	/* Check for proper number of arguments */
-	if (nrhs != 23) 
+	if (nrhs != 32) 
 	{
-		mexErrMsgTxt("model requires 23 input arguments.");
+		mexErrMsgTxt("model requires 32 input arguments.");
 	}; 
 
 	if (nlhs != 5)  
@@ -139,6 +139,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double moc_weight_ic = *mxGetPr(prhs[20]);
 	double moc_width_wdr = *mxGetPr(prhs[21]);
 	int powerlaw_mode = (int) *mxGetPr(prhs[22]);
+	double cn_tau_e = *mxGetPr(prhs[23]);
+	double cn_tau_i = *mxGetPr(prhs[24]);
+	double cn_delay = *mxGetPr(prhs[25]);
+	double cn_amp = *mxGetPr(prhs[26]);
+	double cn_inh = *mxGetPr(prhs[27]);
+	double moc_minrate_wdr = *mxGetPr(prhs[28]);
+	double moc_maxrate_wdr = *mxGetPr(prhs[29]);
+	double moc_minrate_ic = *mxGetPr(prhs[30]);
+	double moc_maxrate_ic = *mxGetPr(prhs[31]);
 
 	/* 
 	 * Handle pressure vector by copying data from MATLAB mxArray pointer to dynamically
@@ -270,11 +279,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		species,
 		100.0, // spont
 		powerlaw_mode,
-		0.5e-3,  // cn_tau_e
-		2.0e-3,  // cn_tau_i
-		1.0e-3,  // cn_delay
-		1.5,     // cn_amp
-		0.6,     // cn_inh
+		cn_tau_e,
+		cn_tau_i,
+		cn_delay,
+		cn_amp,
+		cn_inh,
 		ic_tau_e,
 		ic_tau_i,
 		ic_delay,
@@ -283,12 +292,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		moc_cutoff,
 		moc_beta_wdr,
 		moc_offset_wdr,
-		0.1,
-		1.0,
+		moc_minrate_wdr,
+		moc_maxrate_wdr,
 		moc_beta_ic,
 		moc_offset_ic,
-		0.1,
-		1.0,
+		moc_minrate_ic,
+		moc_maxrate_ic,
 		moc_weight_wdr,
 		moc_weight_ic,
 		moc_width_wdr,
