@@ -130,6 +130,7 @@ function model!(
     moc_weight_wdr::Float64,
     moc_weight_ic::Float64,
     moc_width_wdr::Float64,
+    dur_settle::Float64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -193,6 +194,7 @@ function model!(
             Cdouble,      # moc_weight_wdr
             Cdouble,      # moc_weight_ic
             Cdouble,      # moc_width_wdr
+            Cdouble,      # dur_settle
             Ptr{Ptr{Cdouble}}, # control
             Ptr{Ptr{Cdouble}}, # c1 
             Ptr{Ptr{Cdouble}}, # c2 
@@ -247,6 +249,7 @@ function model!(
         moc_weight_wdr,
         moc_weight_ic,
         moc_width_wdr,
+        dur_settle,
         controlout, 
         c1out, 
         c2out, 

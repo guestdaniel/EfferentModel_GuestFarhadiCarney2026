@@ -157,6 +157,7 @@ function sim_gfc2023(
         moc_weight_wdr,
         moc_weight_ic,
         moc_width_wdr,
+        dur_pad_left,
         controlout, 
         c1out, 
         c2out, 
