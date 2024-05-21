@@ -26,61 +26,91 @@
  *
  * Mex function that parses MATLAB inputs, appropriately converts them into a form 
  * suitable for passing to the model C code, calls the model on the converted inputs, and 
- * then appropriately converts the outputs and passed them back to MATLAB.
+ * then appropriately converts the outputs and passes them back to MATLAB.
  *
  * Note that there are no safety checks built into this function --- all checking should
- * happen in MATLAB before passing to this function.
+ * happen in MATLAB *before* passing inputs to this function.
  *
  * @param nlhs Number of return values (i.e., [n]umber [l]eft [h]and [s]ide values)
  * @param plhs mxArray of pointers to output variables (i.e., [p]ointers to [l]eft [h]and
- * [s]ide values). Obtain a pointer wiht `mexGetPr`.
+ * [s]ide values). Obtain a pointer with `mexGetPr`.
  * @param nrhs Number of return values (i.e., [n]umber [l]eft [h]and [s]ide values)
  * @param prhs mxArray of pointers to input variables (i.e., [p]ointers to [r]eft [h]and
- * [s]ide values). Obtain a pointer wiht `mexGetPr`.
+ * [s]ide values). Obtain a pointer with `mexGetPr`.
  */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
-	/* 
-	 * Declare signature for `model_efferent_wrapper`, our entry point to the model.
-	 * This function is defined in `model.c`, and is a simplified version of the full 
-	 * `model` function with a more stable signature than the full `model` function (making 
-	 * it easier to write the Mex wrapper).
-	 */
-	void model_efferent_wrapper(
+	/* Declare signature for `model`, the C function for the efferent model. */
+	void model(
+		// Principal inputs
 		double *,   // px
 		double **,  // randNums_hsr
 		double **,  // randNums_lsr
-        double *,   // cf
+		double *,   // cf
+		// IHC/AN parameters
 		int,        // n_chan
 		double,     // tdres
 		int,        // totalstim
 		double *,   // cohc
-        double *,   // cihc
+		double *,   // cihc
 		int,        // species
+		double,     // spont
 		int,        // powerlaw_mode
+		// CN parameters
+		double,     // cn_tau_e
+		double,     // cn_tau_i
+		double,     // cn_delay
+		double,     // cn_amp
+		double,     // cn_inh
+		// IC parameters
 		double,     // ic_tau_e
- 		double,     // ic_tau_i
-        double,     // ic_delay
+		double,     // ic_tau_i
+		double,     // ic_delay
 		double,     // ic_amp
 		double,     // ic_inh
+		// MOC parameters
 		double,     // moc_cutoff
-        double,     // moc_beta_wdr
+		double,     // moc_beta_wdr
 		double,     // moc_offset_wdr
+		double,     // moc_minrate_wdr
+		double,     // moc_maxrate_wdr
 		double,     // moc_beta_ic
-        double,     // moc_offset_ic
+		double,     // moc_offset_ic
+		double,     // moc_minrate_ic
+		double,     // moc_maxrate_ic
 		double,     // moc_weight_wdr
-        double,     // moc_weight_ic
+		double,     // moc_weight_ic
 		double,     // moc_width_wdr
+		// BM/IHC outputs
+		double **,  // controlout
+		double **,  // c1out
+		double **,  // c2out
 		double **,  // ihcout
-        double **,  // anrateout_hsr
+		// HSR outputs
+		double **,  // expout_hsr
+		double **,  // sout1_hsr
+		double **,  // sout2_hsr
+		double **,  // synout_hsr
+		// LSR outputs
+		double **,  // expout_lsr
+		double **,  // sout1_lsr
+		double **,  // sout2_lsr
+		double **,  // synout_lsr
+		// AN outputs
+		double **,  // anrateout_hsr
 		double **,  // anrateout_lsr
+		// CN/IC outputs
+		double **,  // cnout
 		double **,  // icout
-        double **   // gain
+		// MOC outputs
+		double **,  // mocwdr
+		double **,  // mocic
+		double **   // gain
 	);
 							
 	/* Check for proper number of arguments */
-	if (nrhs != 23) 
+	if (nrhs != 32) 
 	{
-		mexErrMsgTxt("model requires 23 input arguments.");
+		mexErrMsgTxt("model requires 32 input arguments.");
 	}; 
 
 	if (nlhs != 5)  
@@ -109,6 +139,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double moc_weight_ic = *mxGetPr(prhs[20]);
 	double moc_width_wdr = *mxGetPr(prhs[21]);
 	int powerlaw_mode = (int) *mxGetPr(prhs[22]);
+	double cn_tau_e = *mxGetPr(prhs[23]);
+	double cn_tau_i = *mxGetPr(prhs[24]);
+	double cn_delay = *mxGetPr(prhs[25]);
+	double cn_amp = *mxGetPr(prhs[26]);
+	double cn_inh = *mxGetPr(prhs[27]);
+	double moc_minrate_wdr = *mxGetPr(prhs[28]);
+	double moc_maxrate_wdr = *mxGetPr(prhs[29]);
+	double moc_minrate_ic = *mxGetPr(prhs[30]);
+	double moc_maxrate_ic = *mxGetPr(prhs[31]);
 
 	/* 
 	 * Handle pressure vector by copying data from MATLAB mxArray pointer to dynamically
@@ -178,17 +217,45 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	 * for return as a pointer to MATLAB.
 	 */	
 	// Allocate output matrices
+	double *controlout[n_chan];
+	double *c1out[n_chan];
+	double *c2out[n_chan];
 	double *ihcout[n_chan];
+	double *expout_hsr[n_chan];
+	double *sout1_hsr[n_chan];
+	double *sout2_hsr[n_chan];
+	double *synout_hsr[n_chan];
+	double *expout_lsr[n_chan];
+	double *sout1_lsr[n_chan];
+	double *sout2_lsr[n_chan];
+	double *synout_lsr[n_chan];
 	double *anrateout_hsr[n_chan];
 	double *anrateout_lsr[n_chan];
+	double *cnout[n_chan];
 	double *icout[n_chan];
+	double *mocwdr[n_chan];
+	double *mocic[n_chan];
 	double *gain[n_chan];
  	for (int i = 0; i < n_chan; i++) {
-    	ihcout[i] = (double*) calloc(totalstim, sizeof(double));
+    	controlout[i]    = (double*) calloc(totalstim, sizeof(double));
+    	c1out[i]         = (double*) calloc(totalstim, sizeof(double));
+    	c2out[i]         = (double*) calloc(totalstim, sizeof(double));
+    	ihcout[i]        = (double*) calloc(totalstim, sizeof(double));
+    	expout_hsr[i]    = (double*) calloc(totalstim, sizeof(double));
+    	sout1_hsr[i]     = (double*) calloc(totalstim, sizeof(double));
+    	sout2_hsr[i]     = (double*) calloc(totalstim, sizeof(double));
+    	synout_hsr[i]    = (double*) calloc(totalstim, sizeof(double));
+    	expout_lsr[i]    = (double*) calloc(totalstim, sizeof(double));
+    	sout1_lsr[i]     = (double*) calloc(totalstim, sizeof(double));
+    	sout2_lsr[i]     = (double*) calloc(totalstim, sizeof(double));
+    	synout_lsr[i]    = (double*) calloc(totalstim, sizeof(double));
 		anrateout_hsr[i] = (double*) calloc(totalstim, sizeof(double));
 		anrateout_lsr[i] = (double*) calloc(totalstim, sizeof(double));
-		icout[i] = (double*) calloc(totalstim, sizeof(double));
-		gain[i] = (double*) calloc(totalstim, sizeof(double));
+		cnout[i]         = (double*) calloc(totalstim, sizeof(double));
+		icout[i]         = (double*) calloc(totalstim, sizeof(double));
+		mocwdr[i]        = (double*) calloc(totalstim, sizeof(double));
+		mocic[i]         = (double*) calloc(totalstim, sizeof(double));
+		gain[i]          = (double*) calloc(totalstim, sizeof(double));
 	}
 
 	/* 
@@ -199,7 +266,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	 * are pointers to input arrays, and the remaining arguments are 
 	 * floating-point or integer values.
 	 */
-	model_efferent_wrapper(
+	model(
 		px, 
 		randNums_hsr,
 		randNums_lsr,
@@ -210,7 +277,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		cohc,
 		cihc,
 		species,
+		100.0, // spont
 		powerlaw_mode,
+		cn_tau_e,
+		cn_tau_i,
+		cn_delay,
+		cn_amp,
+		cn_inh,
 		ic_tau_e,
 		ic_tau_i,
 		ic_delay,
@@ -219,15 +292,33 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		moc_cutoff,
 		moc_beta_wdr,
 		moc_offset_wdr,
+		moc_minrate_wdr,
+		moc_maxrate_wdr,
 		moc_beta_ic,
 		moc_offset_ic,
+		moc_minrate_ic,
+		moc_maxrate_ic,
 		moc_weight_wdr,
 		moc_weight_ic,
 		moc_width_wdr,
+		controlout,
+		c1out,
+		c2out,
 		ihcout,
+		expout_hsr,
+		sout1_hsr,
+		sout2_hsr,
+		synout_hsr,
+		expout_lsr,
+		sout1_lsr,
+		sout2_lsr,
+		synout_lsr,
 		anrateout_hsr,
 		anrateout_lsr,
+		cnout,
 		icout,
+		mocwdr,
+		mocic,
 		gain
 	); 
 
@@ -268,10 +359,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	for (int i = 0; i < n_chan; i++) {
 		free(randNums_hsr[i]);
 		free(randNums_lsr[i]);
+		free(controlout[i]);
+		free(c1out[i]);
+		free(c2out[i]);
 		free(ihcout[i]);
+		free(expout_hsr[i]);
+		free(sout1_hsr[i]);
+		free(sout2_hsr[i]);
+		free(synout_hsr[i]);
+		free(expout_lsr[i]);
+		free(sout1_lsr[i]);
+		free(sout2_lsr[i]);
+		free(synout_lsr[i]);
 		free(anrateout_hsr[i]);
 		free(anrateout_lsr[i]);
+		free(cnout[i]);
 		free(icout[i]);
+		free(mocwdr[i]);
+		free(mocic[i]);
 		free(gain[i]);
 	}
 	free(px);

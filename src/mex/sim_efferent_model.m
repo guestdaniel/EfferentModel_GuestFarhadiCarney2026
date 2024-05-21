@@ -51,6 +51,24 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   constants fit computationally to match true power-law adaptation
 %   (powerlaw_mode == 2). 
 %
+% - args.dur_settle: How long to simulate responses to silence before
+%   simulating a response to input time-pressure waveform (s). Default of 
+%   0.01 s (10 ms). This duration of time gives the various dynamic stages
+%   of the model (e.g., AN adaptation, efferent gain control) a chance to
+%   "settle in" to a more steady-state response regime before simulating
+%   the stimulus response. If this is set to too short an interval, you may
+%   see some weird response features at simulation onset.
+%
+% - args.cn_tau_e: Excitatory time constant in CN stage (s)
+%
+% - args.cn_tau_i: Inhibitory time constant in CN stage (s)
+%
+% - args.cn_delay: Inhibitory delay time in CN stage (s)
+%
+% - args.cn_amp: Excitatory strength in CN stage
+%
+% - args.cn_inh: Inhibitory strength in CN stage 
+%
 % - args.ic_tau_e: Excitatory time constant in IC stage (s)
 %
 % - args.ic_tau_i: Inhibitory time constant in IC stage (s)
@@ -73,6 +91,9 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %
 % - args.moc_offset_wdr: "offset" parameter in the MOC input-output
 %   nonlinearity for the wide-dynamic-range MOC pathway (a.u.)
+%
+% - args.moc_minrate_wdr: Minimum possible gain factor in MOC input-output
+%   nonlinearity for the wide-dynamic-range MOC pathway
 %
 % - args.moc_beta_ic: "beta" parameter in the MOC input-output
 %   nonlinearity for the IC MOC pathway (a.u.)
@@ -112,6 +133,11 @@ arguments
     args.cihc {mustBeGreaterThanOrEqual(args.cihc, 0.0), mustBeLessThanOrEqual(args.cihc, 1.0)} = ones(size(cf))
 	args.species {mustBeMember(args.species, [1, 2, 3])} = 2 
 	args.powerlaw_mode {mustBeMember(args.powerlaw_mode, [1, 2])} = 2
+	args.cn_tau_e {mustBeGreaterThan(args.cn_tau_e, 0.0)} = 0.5e-3
+    args.cn_tau_i {mustBeGreaterThan(args.cn_tau_i, 0.0)} =  2.0e-3
+    args.cn_delay {mustBeGreaterThanOrEqual(args.cn_delay, 0.0)} = 1.0e-3
+    args.cn_amp {mustBeGreaterThan(args.cn_amp, 0.0)} = 1.5
+    args.cn_inh {mustBeGreaterThanOrEqual(args.cn_inh, 0.0)} = 0.6
     args.ic_tau_e {mustBeGreaterThan(args.ic_tau_e, 0.0)} = 1.0/(10.0 * 64.0);  % BMF == 64 Hz
     args.ic_tau_i {mustBeGreaterThan(args.ic_tau_i, 0.0)} =  1.0/(10.0 * 64.0)*1.5
     args.ic_delay {mustBeGreaterThanOrEqual(args.ic_delay, 0.0)} = 1.0/(10.0 * 64.0)*2.0
@@ -120,8 +146,12 @@ arguments
     args.moc_cutoff {mustBeGreaterThanOrEqual(args.moc_cutoff, 0.0)} = 0.64
     args.moc_beta_wdr {mustBeGreaterThanOrEqual(args.moc_beta_wdr, 0.0)} = 0.015;
     args.moc_offset_wdr {mustBeGreaterThanOrEqual(args.moc_offset_wdr, 0.0)} = 10*4.0; 
+	args.moc_minrate_wdr = 0.1;
+	args.moc_maxrate_wdr = 1.0;
     args.moc_beta_ic {mustBeGreaterThanOrEqual(args.moc_beta_ic, 0.0)} = 0.015;
     args.moc_offset_ic {mustBeGreaterThanOrEqual(args.moc_offset_ic, 0.0)} = 10*4.0;
+	args.moc_minrate_ic = 0.1;
+	args.moc_maxrate_ic = 1.0;
     args.moc_weight_wdr {mustBeGreaterThanOrEqual(args.moc_weight_wdr, 0.0)} = 4.0;
     args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 4.0;
     args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
@@ -224,8 +254,17 @@ end
     args.moc_weight_wdr, ...
     args.moc_weight_ic, ...
     args.moc_width_wdr, ...
-	args.powerlaw_mode ...
-    );
+	args.powerlaw_mode, ...
+	args.cn_tau_e, ...
+	args.cn_tau_i, ...
+	args.cn_delay, ...
+	args.cn_amp, ...
+	args.cn_inh, ...
+	args.moc_minrate_wdr, ...
+	args.moc_maxrate_wdr, ...
+	args.moc_minrate_ic, ...
+	args.moc_maxrate_ic ...
+);
 
 % Optionally remove settle time at beginning of simulations
 if args.clip_settle
