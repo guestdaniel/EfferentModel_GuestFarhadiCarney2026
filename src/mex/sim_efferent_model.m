@@ -159,6 +159,7 @@ arguments
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
 	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.2;
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
+	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.0;
 end
 
 % Determine number of samples corresponding to settle time
@@ -220,7 +221,7 @@ if args.display_info
 	% Print
 	fprintf("=========================================================\n");
 	fprintf("Running Carney lab efferent model\n");
-	fprintf("Version 5.8, last updated 5/21/2024\n");
+	fprintf("Version 5.10, last updated 5/21/2024\n");
 	fprintf("Running " + string(n_cf) + " channels with...\n")
 	fprintf("	Species: " + species_string + "\n")
 	fprintf("	Fractional Gaussian noise (fGn) type: " + noiseType_string + "\n")
@@ -264,7 +265,8 @@ end
 	args.moc_maxrate_wdr, ...
 	args.moc_minrate_ic, ...
 	args.moc_maxrate_ic, ...
-	args.dur_settle ...
+	args.dur_settle, ...
+	args.moc_delay ...
 );
 
 % Optionally remove settle time at beginning of simulations

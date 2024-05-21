@@ -1,3 +1,8 @@
+%% Example #0: Just make sure the model can run and plot any output result
+% Simulate response to silence and plot HSR waveform
+[~, hsr, ~, ~, ~] = sim_efferent_model(zeros(1, 10000), 1000.0);
+plot(hsr);
+
 %% Example #1: Complex tone of 6-10F0, 50 dB SPL per component, sine phase
 % Here, we synthesize a five-component complex tone with frequencies at
 % 6F0-10F0 for an F0 of 200 Hz at 50 dB SPL per component and then simulate 

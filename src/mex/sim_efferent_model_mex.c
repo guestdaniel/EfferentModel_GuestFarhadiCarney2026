@@ -81,6 +81,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		double,     // moc_weight_ic
 		double,     // moc_width_wdr
 		double,     // dur_settle
+		double,     // moc_delay
 		// BM/IHC outputs
 		double **,  // controlout
 		double **,  // c1out
@@ -109,9 +110,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	);
 							
 	/* Check for proper number of arguments */
-	if (nrhs != 33) 
+	if (nrhs != 34) 
 	{
-		mexErrMsgTxt("model requires 33 input arguments.");
+		mexErrMsgTxt("model requires 34 input arguments.");
 	}; 
 
 	if (nlhs != 5)  
@@ -150,6 +151,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double moc_minrate_ic = *mxGetPr(prhs[30]);
 	double moc_maxrate_ic = *mxGetPr(prhs[31]);
 	double dur_settle = *mxGetPr(prhs[32]);
+	double moc_delay = *mxGetPr(prhs[33]);
 
 	/* 
 	 * Handle pressure vector by copying data from MATLAB mxArray pointer to dynamically
@@ -304,6 +306,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		moc_weight_ic,
 		moc_width_wdr,
 		dur_settle,
+		moc_delay,
 		controlout,
 		c1out,
 		c2out,
