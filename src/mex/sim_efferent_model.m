@@ -220,7 +220,7 @@ if args.display_info
 	% Print
 	fprintf("=========================================================\n");
 	fprintf("Running Carney lab efferent model\n");
-	fprintf("Version 5.7, last updated 4/17/2024\n");
+	fprintf("Version 5.8, last updated 5/21/2024\n");
 	fprintf("Running " + string(n_cf) + " channels with...\n")
 	fprintf("	Species: " + species_string + "\n")
 	fprintf("	Fractional Gaussian noise (fGn) type: " + noiseType_string + "\n")
