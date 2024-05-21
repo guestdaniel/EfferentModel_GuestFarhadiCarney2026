@@ -157,12 +157,12 @@ arguments
     args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
+	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.2;
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
 end
 
-% Set settle time
-dur_settle = 0.2;  % (s)
-len_settle = round(dur_settle * args.fs);
+% Determine number of samples corresponding to settle time
+len_settle = round(args.dur_settle * args.fs);
 
 % Determine number of channels and samples
 n_chan = length(cf);
@@ -183,7 +183,7 @@ else
     end
 end
 
-% Zero pad stimulus
+% Zero pad stimulus according to settle time
 x = [zeros(1, len_settle), x];
 
 % If we want to use display_info, print now
@@ -263,7 +263,8 @@ end
 	args.moc_minrate_wdr, ...
 	args.moc_maxrate_wdr, ...
 	args.moc_minrate_ic, ...
-	args.moc_maxrate_ic ...
+	args.moc_maxrate_ic, ...
+	args.dur_settle ...
 );
 
 % Optionally remove settle time at beginning of simulations
