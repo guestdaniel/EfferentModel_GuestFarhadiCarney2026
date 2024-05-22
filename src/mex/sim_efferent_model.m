@@ -29,7 +29,9 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 % - x: Vector containing input sound-pressure waveform (Pa)
 %
 % - cf: Vector containing characteristic frequencies for each channel 
-%   in the simulation (Hz)
+%   in the simulation (Hz). For multi-channel simulations, we operate 
+%   under the assumption that CFs are in order from lowest to highest and
+%   are equidistant on a log-frequency scale.
 %
 % - args.fs: Sampling rate of the simulation (Hz). Note that inputs must be 
 %   sampled at this sampling rate. 
@@ -163,6 +165,7 @@ arguments
 end
 
 % Determine number of samples corresponding to settle time
+dur_orig = length(x)/args.fs;
 len_settle = round(args.dur_settle * args.fs);
 
 % Determine number of channels and samples
@@ -189,8 +192,10 @@ x = [zeros(1, len_settle), x];
 
 % If we want to use display_info, print now
 if args.display_info
-	% Determine some stuff
+	% CF-related info
 	n_cf = length(cf);
+
+	% Identify species
 	switch args.species
 		case 1
 			species_string = "Cat";
@@ -199,6 +204,8 @@ if args.display_info
 		case 3
 			species_string = "Human (Glasberg/Moore tuning)";
 	end
+
+	% Identify noise type
 	switch args.noiseType
 		case -1
 			noiseType_string = "No fGN (not recommended)";
@@ -207,28 +214,56 @@ if args.display_info
 		case 1
 			noiseType_string = "Normal fGn";
 	end
+
+	% Identify power-law mode
 	switch args.powerlaw_mode
 		case 1
 			powerlaw_mode_string = "True PLA (warning, slow!)";
 		case 2
 			powerlaw_mode_string = "Approximate PLA";
 	end
-	cohc_min = round(min(args.cohc), 3);
-	cohc_max = round(max(args.cohc), 3);
-	cihc_min = round(min(args.cihc), 3);
-	cihc_max = round(max(args.cihc), 3);
+
+	% Determine COHC/CIHC values
+	cohc_min = round(min(args.cohc), 2);
+	cohc_max = round(max(args.cohc), 2);
+	cihc_min = round(min(args.cihc), 2);
+	cihc_max = round(max(args.cihc), 2);
+
+	% Determine git information that is available
+	[fp, ~, ~] = fileparts(which("sim_efferent_model"));
+	[r, s] = system(sprintf("git -C %s describe --tags --first-parent --abbrev=7 --long --dirty --always", fp));
+
+	% Get information about version number
+	fid = fopen(fullfile(fp, "model.c"));
+	fgetl(fid);
+	line = fgetl(fid);
+	fclose(fid);
+	parts = strsplit(line, " ");
+	version_number = parts{4};
 
 	% Print
+	tic;
 	fprintf("=========================================================\n");
 	fprintf("Running Carney lab efferent model\n");
-	fprintf("Version 5.10, last updated 5/21/2024\n");
+	fprintf("Version %s, last updated 5/22/2024\n", version_number);
 	fprintf("Running " + string(n_cf) + " channels with...\n")
-	fprintf("	Species: " + species_string + "\n")
-	fprintf("	Fractional Gaussian noise (fGn) type: " + noiseType_string + "\n")
-	fprintf("	Power-law adaptation (PLA) implementation: " + powerlaw_mode_string + "\n")
-	fprintf("	COHC range: from " + string(cohc_min) + " to " + string(cohc_max) + "\n")
-	fprintf("	CIHC range: from " + string(cihc_min) + " to " + string(cihc_max) + "\n")
-	fprintf("=========================================================\n");
+	if r == 0
+		fprintf("	Build:                   %s", s);
+	end
+	fprintf("	Path to MATLAB function: %s\n", which("sim_efferent_model"));
+	fprintf("	Path to Mex function:    %s\n", which("sim_efferent_model_mex"));
+	fprintf("	Species:                 " + species_string + "\n")
+	fprintf("	fGn type:                " + noiseType_string + "\n")
+	fprintf("	PLA implementation:      " + powerlaw_mode_string + "\n")
+	if length(cf) == 1
+		fprintf("	CF:                      %0.2f kHz\n", cf/1000)
+		fprintf("	COHC:                    %0.2f\n", cohc);
+		fprintf("	COHC:                    %0.2f\n", cihc);
+	else
+		fprintf("	CFs:                     %0.2f to %0.2f kHz\n", cf(1)/1000, cf(end)/1000)
+		fprintf("	COHC:                    " + string(cohc_min) + " to " + string(cohc_max) + "\n")
+		fprintf("	CIHC:                    " + string(cihc_min) + " to " + string(cihc_max) + "\n")
+	end
 end
 
 % Call Mex wrapper for efferent model
@@ -268,6 +303,17 @@ end
 	args.dur_settle, ...
 	args.moc_delay ...
 );
+
+% Optionally show tic/toc results
+if args.display_info
+	elapsed = toc;
+	if elapsed > 1
+		fprintf("	Runtime:                 %0.2f s (%0.2f s/chan)\n", elapsed, elapsed/n_chan);
+	else
+		fprintf("	Runtime:                 %0.2f ms (%0.2f s/chan)\n", elapsed*1000, elapsed*1000/n_chan);
+	end
+	fprintf("	Runtime / sim time:      %0.2f (lower is better, calc. per channel)\n", elapsed/dur_orig/n_chan);
+end
 
 % Optionally remove settle time at beginning of simulations
 if args.clip_settle
