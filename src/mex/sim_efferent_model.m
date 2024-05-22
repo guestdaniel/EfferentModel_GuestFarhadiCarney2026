@@ -123,6 +123,12 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   "settle in" to a more steady-state response regime before simulating
 %   the stimulus response. If this is set to too short an interval, you may
 %   see some weird response features at simulation onset.
+%
+% - args.clip_settle: Boolean determining whether to clip the beginning
+%   of responses to remove the period corresponding to `dur_settle`, during
+%   which MOC gain control is disabled and the model is allowed to respond
+%   to silence. By default, this value is true and thus the `dur_settle`
+%   system is invisible to the user.
 % 
 % - args.moc_delay: Delay time (s) between MOC responses and changes to
 %   cochlear gain. The return value called `gain` does not reflect this
