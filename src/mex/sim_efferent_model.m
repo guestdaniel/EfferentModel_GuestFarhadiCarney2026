@@ -273,8 +273,8 @@ if args.display_info
 	fprintf("	PLA implementation:      " + powerlaw_mode_string + "\n")
 	if length(cf) == 1
 		fprintf("	CF:                      %0.2f kHz\n", cf/1000)
-		fprintf("	COHC:                    %0.2f\n", cohc);
-		fprintf("	COHC:                    %0.2f\n", cihc);
+		fprintf("	COHC:                    %0.2f\n", args.cohc);
+		fprintf("	COHC:                    %0.2f\n", args.cihc);
 	else
 		fprintf("	CFs:                     %0.2f to %0.2f kHz\n", cf(1)/1000, cf(end)/1000)
 		fprintf("	COHC:                    " + string(cohc_min) + " to " + string(cohc_max) + "\n")
