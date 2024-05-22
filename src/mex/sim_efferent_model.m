@@ -247,7 +247,7 @@ if args.display_info
 
 	% Determine git information that is available
 	[fp, ~, ~] = fileparts(which("sim_efferent_model"));
-	[r, s] = system(sprintf("git -C %s describe --tags --first-parent --abbrev=7 --long --dirty --always", fp));
+% 	[r, s] = system(sprintf("git -C %s describe --tags --first-parent --abbrev=7 --long --dirty --always", fp));
 
 	% Get information about version number
 	fid = fopen(fullfile(fp, "model.c"));
@@ -263,9 +263,9 @@ if args.display_info
 	fprintf("Running Carney lab efferent model\n");
 	fprintf("Version %s, last updated 5/22/2024\n", version_number);
 	fprintf("Running " + string(n_cf) + " channels with...\n")
-	if r == 0
-		fprintf("	Build:                   %s", s);
-	end
+% 	if r == 0
+% 		fprintf("	Build:                   %s", s);
+% 	end
 	fprintf("	Path to MATLAB function: %s\n", which("sim_efferent_model"));
 	fprintf("	Path to Mex function:    %s\n", which("sim_efferent_model_mex"));
 	fprintf("	Species:                 " + species_string + "\n")
