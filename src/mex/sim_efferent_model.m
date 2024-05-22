@@ -53,14 +53,6 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   constants fit computationally to match true power-law adaptation
 %   (powerlaw_mode == 2). 
 %
-% - args.dur_settle: How long to simulate responses to silence before
-%   simulating a response to input time-pressure waveform (s). Default of 
-%   0.01 s (10 ms). This duration of time gives the various dynamic stages
-%   of the model (e.g., AN adaptation, efferent gain control) a chance to
-%   "settle in" to a more steady-state response regime before simulating
-%   the stimulus response. If this is set to too short an interval, you may
-%   see some weird response features at simulation onset.
-%
 % - args.cn_tau_e: Excitatory time constant in CN stage (s)
 %
 % - args.cn_tau_i: Inhibitory time constant in CN stage (s)
@@ -124,9 +116,27 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   noise governing the stochastic behavior of the power-law synapse in the
 %   auditory-nerve model. 
 %
+% - args.dur_settle: How long to simulate responses to silence before
+%   simulating a response to input time-pressure waveform (s). Default of 
+%   0.01 s (10 ms). This duration of time gives the various dynamic stages
+%   of the model (e.g., AN adaptation, efferent gain control) a chance to
+%   "settle in" to a more steady-state response regime before simulating
+%   the stimulus response. If this is set to too short an interval, you may
+%   see some weird response features at simulation onset.
+% 
+% - args.moc_delay: Delay time (s) between MOC responses and changes to
+%   cochlear gain. The return value called `gain` does not reflect this
+%   delay (i.e., it shows the time-varying gain factor BEFORE the delay is
+%   applied). A delay time of, for example, 5 ms means that the peripheral
+%   filter stage uses the gain factor from 5 ms in the past when
+%   calculating filter outputs. The default value is set to 25 ms, but this
+%   is subject to change as various sources of data are analyzed to
+%   determine an appropriate value.
+%
 % - args.display_info: Displays information about currently selected
 %   parameter values and model version to the console before running
 %   the model. Useful for debugging.
+
 arguments
     x (1,:)
     cf (1,:) {mustBeGreaterThanOrEqual(cf, 125.0), mustBeLessThanOrEqual(cf, 40e3)}
@@ -161,7 +171,7 @@ arguments
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
 	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.2;
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
-	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.0;
+	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.025;
 end
 
 % Determine number of samples corresponding to settle time

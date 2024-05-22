@@ -52,6 +52,11 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
+- 5/22/2024, DRG
+  Altered default `moc_delay` to be 25 ms, added some more parameters to 
+  the documentation inside the model function, and improved the usefulness
+  of the `display_info` feature.
+
 - 5/21/2024, DRG
   Added a settle period that simulates responses to silence at the beginning of simulations.
   Also changed some internals of the Mex code so that all parameters exposed by the model
