@@ -450,6 +450,7 @@ legend(["Normal hearing", "Hearing impaired"]);
 % **Key ideas:* IC vs WDR gain control, MOC width
 
 % Set parameters
+fs = 100e3;
 cf = 1e3;                                                    % middle CF 
 cfs = exp(linspace(log(1e3 * 2^(-1)), log(1e3 * 2^1), 21));  % range of CFs around middle CF
 dur = 0.5;                                   % duration (dur)
@@ -465,7 +466,8 @@ tiledlayout(1, 4);
 nexttile; hold(gca, "on");
 for idx_level = 1:length(Nos)
 	level = Nos(idx_level) + 10*log10(fs/2);
-	x = scale_dbspl(randn(1, round(dur*fs)), level);
+	x = randn(1, round(dur*fs));
+	x = 10^(level/20)*20e-6 * x/rms(x);
 	x = filter(b, a, x);
 	[~, hsr, ~, ~, gain] = sim_efferent_model(x, cf, moc_weight_ic=0.0, moc_weight_wdr=10.0, noiseType=-1);
 	plot(t, gain);
@@ -484,7 +486,8 @@ for width = [0 0.5 1.0]
 	nexttile; hold(gca, "on");
 	for idx_level = 1:length(Nos)
 		level = Nos(idx_level) + 10*log10(fs/2);
-		x = scale_dbspl(randn(1, round(dur*fs)), level);
+		x = randn(1, round(dur*fs));
+		x = 10^(level/20)*20e-6 * x/rms(x);
 		x = filter(b, a, x);
 		[~, hsr, ~, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_weight_ic=0.0, moc_weight_wdr=10.0, moc_width_wdr=width);
 		plot(t, gain(11, :));  % target CF is 11th channel

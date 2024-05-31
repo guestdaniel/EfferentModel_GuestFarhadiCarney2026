@@ -52,18 +52,24 @@ Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
 
+- 5/31/2024, DRG
+  Removed references to `scale_dbspl`, an external function that is not 
+  provided with this code, and replaced them with an inline
+  equivalent.
+
 - 5/22/2024, DRG
   Altered default `moc_delay` to be 25 ms, added some more parameters to 
   the documentation inside the model function, and improved the usefulness
   of the `display_info` feature.
 
 - 5/21/2024, DRG
-  Added a settle period that simulates responses to silence at the beginning of simulations.
-  Also changed some internals of the Mex code so that all parameters exposed by the model
-  can be passed in via the MATLAB interface. This now includes "dur_settle", the parameter
-  that governs the duration of the settle period. The MATLAB wrapper for the Mex function
-  now automatically zero pads the stimulus with a duration of silence equal to dur_settle
-  before passing everything to the model.
+  Added a settle period that simulates responses to silence at the beginning
+  of simulations. Also changed some internals of the Mex code so that all 
+  parameters exposed by the model can be passed in via the MATLAB 
+  interface. This now includes "dur_settle", the parameter that governs the
+  duration of the settle period. The MATLAB wrapper for the Mex function
+  now automatically zero pads the stimulus with a duration of silence equal
+  to dur_settle before passing everything to the model.
 
 - 4/17/2024, DRG
   Further adjusted PLA approximation scheme parameters (see model changelog 
