@@ -168,7 +168,6 @@ arguments
 	args.moc_maxrate_wdr = 1.0;
     args.moc_beta_ic {mustBeGreaterThanOrEqual(args.moc_beta_ic, 0.0)} = 0.015;
     args.moc_offset_ic {mustBeGreaterThanOrEqual(args.moc_offset_ic, 0.0)} = 10*4.0;
-	args.moc_minrate_ic = 0.1;
 	args.moc_maxrate_ic = 1.0;
     args.moc_weight_wdr {mustBeGreaterThanOrEqual(args.moc_weight_wdr, 0.0)} = 4.0;
     args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 4.0;
@@ -179,6 +178,9 @@ arguments
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
 	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.025;
 end
+
+% Determine guardrail COHC values
+moc_minrate_ic = calc_guardrail_cohc(cf, args.species);
 
 % Determine number of samples corresponding to settle time
 dur_orig = length(x)/args.fs;
@@ -261,7 +263,9 @@ if args.display_info
 	tic;
 	fprintf("=========================================================\n");
 	fprintf("Running Carney lab efferent model\n");
-	fprintf("Version %s, last updated 5/22/2024\n", version_number);
+	fprintf("Version %s, last updated 6/17/2024\n", version_number);
+	fprintf("!! WARNING !! This is an interim model version not suitable for public use...\n")
+	fprintf("!! WARNING !! In the current model architecture, wdr parameters other than moc_weight_wdr are ignored...\n")
 	fprintf("Running " + string(n_cf) + " channels with...\n")
 % 	if r == 0
 % 		fprintf("	Build:                   %s", s);
@@ -314,7 +318,7 @@ end
 	args.cn_inh, ...
 	args.moc_minrate_wdr, ...
 	args.moc_maxrate_wdr, ...
-	args.moc_minrate_ic, ...
+	moc_minrate_ic, ...
 	args.moc_maxrate_ic, ...
 	args.dur_settle, ...
 	args.moc_delay ...

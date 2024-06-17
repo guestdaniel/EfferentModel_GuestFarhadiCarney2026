@@ -500,3 +500,55 @@ for width = [0 0.5 1.0]
 	title(sprintf("Multichannel (width = %0.1f oct)", width))
 end
 
+%% Example #8: MOC guardrails
+% The MOC system in the model includes CF-specific "guardrails" that
+% set a floor on the gain factor to prevent threshold and rate-level
+% function shifts that exceed what is observed under electrical stimulation
+% of the MOC bundle (e.g., Guinan and Gifford (1988), Hearing Research).
+% The function `calc_guardrail_cohc` converts from CF to this guardrail
+% COHC value. We can simulate efferent responses to very "strong" stimuli
+% (e.g., loud modulated noises) with very high MOC weights and verify that 
+% the resultant time-varying gain value never exceeds this floor value.
+
+% Set parameters
+fs = 100e3;                                      % sample rate (Hz)
+dur = 2.0;                                       % duration (seconds)
+t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
+fm = 64.0;                                       % mod freq (Hz)
+level = 40.0;                                    % spectrum level
+depth = 0.0;                                     % modulation depth (dB)
+m = 10^(depth/20);                               % modulation index
+b_bp = fir1(4000, [100 8000]/(fs/2));            % filter coefs
+
+% Construct stimulus
+% Construct carrier
+noise_spl = level+10*log10(fs/2);
+noise_rms = 10^(noise_spl/20)*20e-6;
+BBN_Pa = noise_rms*randn(1,dur*fs);
+BBN_Pa_band = conv(BBN_Pa,b_bp,'same');  % bandpass filter carrier from 0.1-8 kHz
+pre_mod_rms = rms(BBN_Pa_band);
+
+% Construct modulator
+modulator = m*sin(2*pi*fm*t);
+
+% Combine, scale, and store result
+temp = (1 + modulator) .* BBN_Pa_band;
+stimulus = temp * pre_mod_rms / rms(temp);
+
+% Simulate response
+% Note that we crank up the weights to very high values to ensure that 
+% the MOC system is strongly driven by this stimulus.
+cfs = [0.5e3, 1e3, 2e3, 4e3, 8e3];
+[~, ~, ~, ~, gain] = sim_efferent_model(stimulus, cfs, species=2, moc_weight_ic=20.0, moc_weight_wdr=20.0);
+
+% Plot gain factor over time for many different CFs.
+% We plot a reference line at the minimum allowed COHC for each CF.
+figure; hold on;
+for ii = 1:length(cfs)
+	plot(gain(ii, :), color=colors(ii, :), HandleVisibility="off");
+	yline(calc_guardrail_cohc(cfs(ii), 2), color=colors(ii, :), linestyle="-");
+end
+hold off;
+xlabel("Time (s)");
+ylabel("Gain factor");
+legend(string(cfs));

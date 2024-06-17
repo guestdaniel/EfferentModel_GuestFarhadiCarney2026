@@ -75,7 +75,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		double,     // moc_maxrate_wdr
 		double,     // moc_beta_ic
 		double,     // moc_offset_ic
-		double,     // moc_minrate_ic
+		double *,   // moc_minrate_ic
 		double,     // moc_maxrate_ic
 		double,     // moc_weight_wdr
 		double,     // moc_weight_ic
@@ -148,7 +148,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double cn_inh = *mxGetPr(prhs[27]);
 	double moc_minrate_wdr = *mxGetPr(prhs[28]);
 	double moc_maxrate_wdr = *mxGetPr(prhs[29]);
-	double moc_minrate_ic = *mxGetPr(prhs[30]);
 	double moc_maxrate_ic = *mxGetPr(prhs[31]);
 	double dur_settle = *mxGetPr(prhs[32]);
 	double moc_delay = *mxGetPr(prhs[33]);
@@ -201,6 +200,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         randNums_hsr[i] = (double*) calloc(totalstim, sizeof(double));
         randNums_lsr[i] = (double*) calloc(totalstim, sizeof(double));
     }
+
+	/*
+	 * Handle moc_minrate_ic by copying data from MATLAB mxArray pointer to
+	 * dynamically allocated array in C.
+	 */
+	double *moc_minrate_ic_mex = mxGetPr(prhs[30]);
+	double *moc_minrate_ic = (double*) calloc(n_chan, sizeof(double));
+	for (int i = 0; i < n_chan; i++){
+		moc_minrate_ic[i] = moc_minrate_ic_mex[i];
+	}
 
 	// Loop through elements via linear indexing, store	elements in row-major order
 	int idx_cf, idx_t;
@@ -389,4 +398,5 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	free(cf);
 	free(cohc);
 	free(cihc);
+	free(moc_minrate_ic);
 }
