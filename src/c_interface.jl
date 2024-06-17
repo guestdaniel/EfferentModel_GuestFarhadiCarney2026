@@ -125,7 +125,7 @@ function model!(
     moc_maxrate_wdr::Float64,
     moc_beta_ic::Float64,
     moc_offset_ic::Float64,
-    moc_minrate_ic::Float64,
+    moc_minrate_ic::Vector{Float64},
     moc_maxrate_ic::Float64,
     moc_weight_wdr::Float64,
     moc_weight_ic::Float64,
@@ -190,7 +190,7 @@ function model!(
             Cdouble,      # moc_maxrate
             Cdouble,      # moc_beta
             Cdouble,      # moc_offset
-            Cdouble,      # moc_minrate
+            Ptr{Cdouble}, # moc_minrate_ic
             Cdouble,      # moc_maxrate
             Cdouble,      # moc_weight_wdr
             Cdouble,      # moc_weight_ic

@@ -1,6 +1,36 @@
 export sim_gfc2023, sim_gfc2023_dict, sim_orig, sim_orig_dict
 
 """
+    calc_guardrail_cohc(cf, species)
+
+Calculates a "guardrail" COHC value at a given `cf` for `species`
+
+Based on a series of simulations reported in [[cite]], guardrail COHC values are values of
+COHC for a specific CF and species that prevent ΔL and ΔTH values due to efferent activity
+from exceeding what is plausible given MOC electrical stimulation experiments. These 
+simualtions were parametrized in terms of normalized cochlear distance according to:
+    Greenwood, D. D. (1990). A cochlear frequency-position function for several species—29
+    years later. The Journal of the Acoustical Society of America, 87(6), 2592–2605.
+    https://doi.org/10.1121/1.399052
+Hence, below we convert CF to a cochlear distance based on species and then determine an
+appropriate COHC value based on a pre-determined linear mapping between cochlear distance
+and COHC.
+"""
+function calc_guardrail_cohc(cf, species)
+    # Convert from CF to cochlear distance `cd`, depending on speices
+    if species == "cat"
+        cd = log10(cf/456.0 + 0.8)/2.1
+    elseif species == "human"
+        cd = log10(cf/165.4 + 0.88)/2.1
+    else
+        error("Only cat and human are accepted as species.")
+    end
+
+    # Map from cochlear distance to guardrail COHC
+    return exp(-1.976321 + 1.767505 * cd)  # linear regression coefs deteremined in [[cite]]
+end
+
+"""
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
 Simulates full model output for sound-pressure input
@@ -43,7 +73,7 @@ function sim_gfc2023(
     moc_maxrate_wdr=1.0,
     moc_beta_ic=0.015,
     moc_offset_ic=10.0*4.0,
-    moc_minrate_ic=0.1,
+    moc_minrate_ic=calc_guardrail_cohc.(cf, species),
     moc_maxrate_ic=1.0,
     moc_weight_wdr=4.0,
     moc_weight_ic=4.0,
