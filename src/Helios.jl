@@ -1,5 +1,6 @@
 module Helios
 
+using CairoMakie
 using DSP
 using AuditoryNerveFiber
 using AuditorySignalUtils

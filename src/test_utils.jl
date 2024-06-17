@@ -1,4 +1,4 @@
-export testparams, postprocess_simulations, run_2014_vs_2023, run_2023_vs_2023, rtol_2014_vs_2023, rtol_2023_vs_2023
+export testparams, postprocess_simulations, run_2014_vs_2023, run_2023_vs_2023, rtol_2014_vs_2023, rtol_2023_vs_2023, plot2
 
 # Define peripheral and post-peripheral stages to test
 stages_peripheral = ["control", "c1", "c2", "ihc", "expon", "syn", "hsr", "lsr"]
@@ -18,6 +18,20 @@ testparams = Dict(
     "stages_peripheral_multichannel" => stages_peripheral_multichannel,
     "params_sfie" => params_sfie,
 )
+
+"""
+    plot2(one, two)
+"""
+function plot2(one, two)
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    lines!(ax, timevec(one, 100e3), one)
+    lines!(ax, timevec(two, 100e3), two)
+    ax = Axis(fig[2, 1])
+    lines!(ax, timevec(one, 100e3), two .- one)
+    display(fig)
+    fig, ax
+end
 
 """
     rtol_2014_vs_2023(stage)
