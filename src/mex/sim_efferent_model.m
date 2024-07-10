@@ -166,6 +166,7 @@ arguments
     args.moc_offset_wdr {mustBeGreaterThanOrEqual(args.moc_offset_wdr, 0.0)} = 10*4.0; 
 	args.moc_minrate_wdr = 0.1;
 	args.moc_maxrate_wdr = 1.0;
+	args.guardrail_mode = "standard"
     args.moc_beta_ic {mustBeGreaterThanOrEqual(args.moc_beta_ic, 0.0)} = 0.015;
     args.moc_offset_ic {mustBeGreaterThanOrEqual(args.moc_offset_ic, 0.0)} = 10*4.0;
 	args.moc_maxrate_ic = 1.0;
@@ -180,7 +181,7 @@ arguments
 end
 
 % Determine guardrail COHC values
-moc_minrate_ic = calc_guardrail_cohc(cf, args.species);
+moc_minrate_ic = calc_guardrail_cohc(cf, args.species, args.guardrail_mode);
 
 % Determine number of samples corresponding to settle time
 dur_orig = length(x)/args.fs;

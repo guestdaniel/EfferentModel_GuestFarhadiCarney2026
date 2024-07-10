@@ -549,6 +549,6 @@ for ii = 1:length(cfs)
 	yline(calc_guardrail_cohc(cfs(ii), 2), color=colors(ii, :), linestyle="-");
 end
 hold off;
-xlabel("Time (s)");
+xlabel("Samples");
 ylabel("Gain factor");
 legend(string(cfs));

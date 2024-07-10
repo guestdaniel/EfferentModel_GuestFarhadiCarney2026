@@ -1,7 +1,7 @@
 export sim_gfc2023, sim_gfc2023_dict, sim_orig, sim_orig_dict
 
 """
-    calc_guardrail_cohc(cf, species)
+    calc_guardrail_cohc(cf, species[, guardrail_mode="median"])
 
 Calculates a "guardrail" COHC value at a given `cf` for `species`
 
@@ -13,10 +13,9 @@ simualtions were parametrized in terms of normalized cochlear distance according
     years later. The Journal of the Acoustical Society of America, 87(6), 2592–2605.
     https://doi.org/10.1121/1.399052
 Hence, below we convert CF to a cochlear distance based on species and then determine an
-appropriate COHC value based on a pre-determined linear mapping between cochlear distance
-and COHC.
+appropriate COHC value based on the mappings described in [[cite]].
 """
-function calc_guardrail_cohc(cf, species)
+function calc_guardrail_cohc(cf, species, guardrail_mode="standard")
     # Convert from CF to cochlear distance `cd`, depending on speices
     if species == "cat"
         cd = log10(cf/456.0 + 0.8)/2.1
@@ -27,7 +26,23 @@ function calc_guardrail_cohc(cf, species)
     end
 
     # Map from cochlear distance to guardrail COHC
-    return exp(-1.976321 + 1.767505 * cd)  # linear regression coefs deteremined in [[cite]]
+    if guardrail_mode == "none" 
+        cohc = 0.0
+    # if "standard", use lm between cochlear distance and log(cohc)
+    elseif guardrail_mode == "standard"
+        cohc = exp(-2.003942 + 1.753976 * cd)  # linear regression coefs deteremined in [[cite]]
+    elseif guardrail_mode == "standard+5"
+        cohc = exp(-2.452641 + 1.942155 * cd)  # linear regression coefs deteremined in [[cite]]
+    elseif guardrail_mode == "standard+10"
+        cohc = exp(-3.010872 + 2.252671 * cd)  # linear regression coefs deteremined in [[cite]]
+    elseif guardrail_mode == "standard+15"
+        cohc = exp(-3.665091 + 2.659225 * cd)  # linear regression coefs deteremined in [[cite]]
+    elseif guardrail_mode == "standard+20"
+        cohc = exp(-4.587940 + 3.358810 * cd)  # linear regression coefs deteremined in [[cite]]
+    else
+        error("guradrail_mode not recognized!")
+    end
+    return cohc
 end
 
 """
@@ -73,7 +88,8 @@ function sim_gfc2023(
     moc_maxrate_wdr=1.0,
     moc_beta_ic=0.015,
     moc_offset_ic=10.0*4.0,
-    moc_minrate_ic=calc_guardrail_cohc.(cf, species),
+    guardrail_mode="standard",
+    moc_minrate_ic=calc_guardrail_cohc.(cf, species, guardrail_mode),
     moc_maxrate_ic=1.0,
     moc_weight_wdr=4.0,
     moc_weight_ic=4.0,
