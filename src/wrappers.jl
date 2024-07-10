@@ -169,9 +169,9 @@ function sim_gfc2023(
     mocwdr = [zeros(len_total) for _ in 1:n_chan]
     mocic = [zeros(len_total) for _ in 1:n_chan]
     if isempty(gain[1])
-        gain = [zeros(len_total) for _ in 1:n_chan]
+        gain = [ones(len_total) for _ in 1:n_chan]
     end
-    gainpostmix = [zeros(len_total) for _ in 1:n_chan]
+    gainpostmix = [ones(len_total) for _ in 1:n_chan]
 
     # Run model
     model!(
