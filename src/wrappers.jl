@@ -171,6 +171,7 @@ function sim_gfc2023(
     if isempty(gain[1])
         gain = [zeros(len_total) for _ in 1:n_chan]
     end
+    gainpostmix = [zeros(len_total) for _ in 1:n_chan]
 
     # Run model
     model!(
@@ -230,11 +231,12 @@ function sim_gfc2023(
         mocwdr,
         mocic,
         gain,
+        gainpostmix,
     )
 
     # Return
     outputs = [controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr,
-               hsrout, lsrout, cnout, icout, mocwdr, mocic, gain]
+               hsrout, lsrout, cnout, icout, mocwdr, mocic, gain, gainpostmix]
     if clip_left | clip_right
         outputs = map(outputs) do output
             output = map(output) do channel
@@ -252,7 +254,7 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, mocwdr, mocic, gain = sim_gfc2023(args...; kwargs...)
+    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, mocwdr, mocic, gain, gainpostmix = sim_gfc2023(args...; kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
@@ -269,6 +271,7 @@ function sim_gfc2023_dict(args...; kwargs...)
         "mocwdr" => mocwdr,
         "mocic" => mocic,
         "gain" => gain,
+        "gainpostmix" => gainpostmix
     )
 end
 

@@ -152,6 +152,7 @@ function model!(
     mocwdr::Vector{Vector{Float64}},
     mocic::Vector{Vector{Float64}},
     gain::Vector{Vector{Float64}},
+    gainpostmix::Vector{Vector{Float64}},
 )
     # Open library using Libdl (is there any overhead here?)
     lib = Libdl.dlopen("C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so")
@@ -218,6 +219,7 @@ function model!(
             Ptr{Ptr{Cdouble}}, # mocwdr
             Ptr{Ptr{Cdouble}}, # mocic
             Ptr{Ptr{Cdouble}}, # gain
+            Ptr{Ptr{Cdouble}}, # gainpostmix
         ),
         px,
         ffGn_hsr,
@@ -275,6 +277,7 @@ function model!(
         mocwdr,
         mocic,
         gain,
+        gainpostmix,
     )
 
     # Close library so it can be reloaded
