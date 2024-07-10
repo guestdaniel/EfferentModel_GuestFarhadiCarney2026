@@ -132,6 +132,7 @@ function model!(
     moc_width_wdr::Float64,
     dur_settle::Float64,
     moc_delay::Float64,
+    moc_fix_gain::Int64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -197,6 +198,7 @@ function model!(
             Cdouble,      # moc_width_wdr
             Cdouble,      # dur_settle
             Cdouble,      # moc_delay
+            Cint,         # moc_fix_gain
             Ptr{Ptr{Cdouble}}, # control
             Ptr{Ptr{Cdouble}}, # c1 
             Ptr{Ptr{Cdouble}}, # c2 
@@ -253,6 +255,7 @@ function model!(
         moc_width_wdr,
         dur_settle,
         moc_delay,
+        moc_fix_gain,
         controlout, 
         c1out, 
         c2out, 
