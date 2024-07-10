@@ -45,7 +45,7 @@ function calc_guardrail_cohc(cf, species, guardrail_mode="standard")
     return cohc
 end
 
-"""
+""" 
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
 Simulates full model output for sound-pressure input
