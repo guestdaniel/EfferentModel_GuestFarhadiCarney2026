@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "bc8276ab77cd0191235a6e70aa1a8173e399b2e8"
+project_hash = "8f0fed95ea8a9f798403aecbc4fcb9f71b8bea09"
 
 [[deps.ATK_jll]]
 deps = ["Artifacts", "Glib_jll", "JLLWrappers", "Libdl"]
@@ -125,7 +125,7 @@ uuid = "83795400-82fe-439b-8fdc-4e65948642a8"
 version = "0.2.1"
 
 [[deps.AuditorySignalUtils]]
-deps = ["DSP", "Statistics", "Test", "UnicodePlots"]
+deps = ["BenchmarkTools", "DSP", "Statistics", "Test", "UnicodePlots"]
 path = "../../AuditorySignalUtils.jl"
 uuid = "20759599-9703-4078-b9af-37a489742e5c"
 version = "0.1.1"
