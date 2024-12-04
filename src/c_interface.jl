@@ -130,6 +130,7 @@ function model!(
     moc_weight_wdr::Float64,
     moc_weight_ic::Float64,
     moc_width_wdr::Float64,
+    moc_innerv_factor::Vector{Float64},
     dur_settle::Float64,
     moc_delay::Float64,
     moc_fix_gain::Int64,
@@ -197,6 +198,7 @@ function model!(
             Cdouble,      # moc_weight_wdr
             Cdouble,      # moc_weight_ic
             Cdouble,      # moc_width_wdr
+            Ptr{Cdouble}, # moc_innerv_factor
             Cdouble,      # dur_settle
             Cdouble,      # moc_delay
             Cint,         # moc_fix_gain
@@ -255,6 +257,7 @@ function model!(
         moc_weight_wdr,
         moc_weight_ic,
         moc_width_wdr,
+        moc_innerv_factor,
         dur_settle,
         moc_delay,
         moc_fix_gain,
