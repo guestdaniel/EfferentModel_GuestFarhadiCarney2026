@@ -237,8 +237,28 @@ function sim_gfc2023(
     )
 
     # Return
-    outputs = [controlout, c1out, c2out, ihcout, expout_hsr, sout1_hsr, sout2_hsr, synout_hsr,
-               hsrout, lsrout, cnout, icout, mocwdr, mocic, gain, gainpostmix]
+    outputs = [
+        controlout, 
+        c1out, 
+        c2out, 
+        ihcout, 
+        expout_hsr, 
+        sout1_hsr, 
+        sout2_hsr, 
+        synout_hsr,
+        expout_lsr, 
+        sout1_lsr, 
+        sout2_lsr, 
+        synout_lsr,
+        hsrout, 
+        lsrout, 
+        cnout, 
+        icout, 
+        mocwdr, 
+        mocic, 
+        gain, 
+        gainpostmix
+    ]
     if clip_left | clip_right
         outputs = map(outputs) do output
             output = map(output) do channel
@@ -256,16 +276,20 @@ function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
 end
 
 function sim_gfc2023_dict(args...; kwargs...)
-    control, c1, c2, ihc, expon, sout1, sout2, syn, hsr, lsr, cn, ic, mocwdr, mocic, gain, gainpostmix = sim_gfc2023(args...; kwargs...)
+    control, c1, c2, ihc, expon_hsr, sout1_hsr, sout2_hsr, syn_hsr, expon_lsr, sout1_lsr, sout2_lsr, syn_lsr, hsr, lsr, cn, ic, mocwdr, mocic, gain, gainpostmix = sim_gfc2023(args...; kwargs...)
     return Dict(
         "control" => control,
         "c1" => c1,
         "c2" => c2,
         "ihc" => ihc,
-        "expon" => expon,
-        "sout1" => sout1,
-        "sout2" => sout2,
-        "syn" => syn,
+        "expon_hsr" => expon_hsr,
+        "sout1_hsr" => sout1_hsr,
+        "sout2_hsr" => sout2_hsr,
+        "syn_hsr" => syn_hsr,
+        "expon_lsr" => expon_lsr,
+        "sout1_lsr" => sout1_lsr,
+        "sout2_lsr" => sout2_lsr,
+        "syn_lsr" => syn_lsr,
         "hsr" => hsr,
         "lsr" => lsr,
         "cn" => cn,
