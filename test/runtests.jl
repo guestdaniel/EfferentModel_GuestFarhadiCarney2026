@@ -1,6 +1,6 @@
 using Test
 using AuditorySignalUtils
-using AuditoryNerveFiber
+using ZilanyBruceCarney2014
 using AuditoryMidbrain
 using Statistics
 using DSP

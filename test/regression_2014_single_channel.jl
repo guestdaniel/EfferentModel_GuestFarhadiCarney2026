@@ -6,12 +6,22 @@
             pt(cf, 50.0), 
             [cf],
             Dict{Symbol, Any}(),  # leave old param values at default values
-            Dict{Symbol, Any}(:powerlaw_mode => 1, :moc_weight_wdr => 0.0, :moc_weight_ic => 0.0),
+            Dict{Symbol, Any}(:powerlaw_mode => 1, :moc_weight_wdr => 0.0, :moc_weight_ic => 0.0, :dur_pad_left => 0.2),
         )
 
         # Loop through each stage and verify match
         @testset "stage: $stage" for stage in testparams["stages_peripheral"] 
-            @test isapprox(orig[stage][1], new[stage][1]; rtol=rtol_2014_vs_2023(stage)) broken=((cf == 4000.0) & (stage in ["syn", "lsr"]))
+            # If the stage is one of [sout1, sout2, syn, expon], we need to handle the name
+            # accordingly; for the efferent model, we have stage_hsr and stage_lsr, but for
+            # the 2014 model we only have stage...
+            if occursin("_", stage)
+                stage_2014 = split(stage, "_")[1]
+                stage_2023 = stage 
+            else
+                stage_2014 = stage
+                stage_2023 = stage 
+            end
+            @test isapprox(orig[stage_2014][1], new[stage_2023][1]; rtol=rtol_2014_vs_2023(stage)) broken=((cf==4e3) & (stage=="lsr"))
         end
     end
 end

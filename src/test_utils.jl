@@ -1,7 +1,7 @@
 export testparams, postprocess_simulations, run_2014_vs_2023, run_2023_vs_2023, rtol_2014_vs_2023, rtol_2023_vs_2023, plot2
 
 # Define peripheral and post-peripheral stages to test
-stages_peripheral = ["control", "c1", "c2", "ihc", "expon", "syn", "hsr", "lsr"]
+stages_peripheral = ["control", "c1", "c2", "ihc", "hsr", "lsr"]
 stages_peripheral_multichannel = ["control", "c1", "c2", "ihc"]
 stages_subcortical = ["cn", "ic"]
 
@@ -102,7 +102,7 @@ function postprocess_simulations(
     # sout2 (and the whole powerlaw in general) included zeropadding on the edges of
     # the IHC respons. This is eliminated in the new code and produces edge effects numerical
     # the temporal edge of the simulations.
-    if (model == "gfc2023") & (stage in ["sout1", "sout2"])
+    if (model == "gfc2023") & (stage in ["sout1_hsr", "sout2_hsr", "sout1_lsr", "sout2_lsr"])
         if downsample; sim = sim[1:10:end]; end;
     end
     if (model == "zbc2014") & (stage in ["sout1", "sout2"])
@@ -115,7 +115,7 @@ function postprocess_simulations(
     # the original code used a linear interpolation to upsample back to the stimulus 
     # sampling rate, but the new code is actually simulated at 100 kHz, producing large
     # disparities between sample points)
-    if stage in ["syn", "hsr", "lsr"]
+    if stage in ["syn_hsr", "syn_lsr", "syn", "hsr", "lsr"]
         if downsample; sim = sim[1:10:end]; end;
     end
 
@@ -126,7 +126,7 @@ function postprocess_simulations(
             # zero-padding old control signal isn't viable and we only want to look at the 
             # relevant pieces
             sim = sim[2000:end]
-        elseif stage in ["sout1", "sout2", "syn", "hsr", "lsr"]
+        elseif stage in ["sout1_hsr", "sout2_hsr", "syn_hsr", "sout1_lsr", "sout2_lsr", "syn_lsr", "sout1", "sout2", "syn", "hsr", "lsr"]
             # For synapse stuff, we need to avoid the initial few samples because the lack of
             # a "delaypoint" system in the new model creates onset irregularities
             sim = sim[50:end]
