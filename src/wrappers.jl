@@ -96,7 +96,7 @@ function sim_gfc2023(
     moc_weight_ic=4.0,
     moc_width_wdr=0.5,
     moc_innerv_factor=ones(length(cf)),
-    dur_pad_left=0.2,
+    dur_pad_left=0.02,
     moc_delay=0.025,
     moc_fix_gain=false,
     clip_left=dur_pad_left == 0.0 ? false : true,

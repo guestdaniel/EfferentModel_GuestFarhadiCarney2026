@@ -3,7 +3,6 @@ module Helios
 using CairoMakie
 using DrWatson
 using DSP
-using AuditoryNerveFiber
 using AuditorySignalUtils
 using FFTW
 using Match
@@ -11,6 +10,7 @@ using Libdl
 #using MATLAB  # for interop to check against MATLAB/Mex model implementation
 using Profile
 using Dates
+using ZilanyBruceCarney2014
 
 include("c_interface.jl")
 include("wrappers.jl")
