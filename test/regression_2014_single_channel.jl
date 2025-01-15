@@ -1,3 +1,9 @@
+# This script tests whether the current model code correctly matches responses from the old
+# model when parameters are configured accordingly. There are several points of awkwardness
+# that arise when comparing model responses from the different stages, these are mostly
+# handled by the parameter settings or by the model-response postprocessing code. A few
+# stages with known issue are excluded. True power-law adaptation is used by the new model;
+# testing for the power-law approximation provided by `powerlaw_mode=2` is tested elsewhere. 
 @testset "Regression vs 2014 --- single channel" begin
     # Loop over different frequencies
     @testset "CF/tone freq = $cf Hz" for cf in [1000.0, 2000.0, 4000.0]
