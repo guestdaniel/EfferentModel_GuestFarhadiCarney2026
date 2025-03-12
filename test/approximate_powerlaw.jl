@@ -11,7 +11,7 @@
                 pt(cf, 50.0, 0.2, fs), 
                 [cf],
                 Dict{Symbol, Any}(),
-                Dict{Symbol, Any}(:powerlaw_mode => 2, :fs => fs, :moc_weight_ic => 0.0, :moc_weight_wdr => 0.0, :dur_pad_left => 0.2),
+                Dict{Symbol, Any}(:powerlaw_mode => 2, :fs => fs, :moc_weight => 0.0, :dur_pad_left => 0.2),
             )
             @testset "$cf-kHz pure tone, 50 dB SPL, stage: $stage" for stage in testparams["stages_peripheral"] 
                 @test isapprox(orig[stage][1], new[stage][1]; rtol=0.03) broken=( ((cf==4e3) & ((stage == "lsr") | (stage == "hsr"))) | ((cf==0.5e3) & ((stage == "c1") | (stage == "c2"))) )

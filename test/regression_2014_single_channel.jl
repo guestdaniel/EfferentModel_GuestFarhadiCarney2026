@@ -12,7 +12,7 @@
             pt(cf, 50.0), 
             [cf],
             Dict{Symbol, Any}(),  # leave old param values at default values
-            Dict{Symbol, Any}(:powerlaw_mode => 1, :moc_weight_wdr => 0.0, :moc_weight_ic => 0.0, :dur_pad_left => 0.2),
+            Dict{Symbol, Any}(:powerlaw_mode => 1, :moc_weight => 0.0, :dur_pad_left => 0.2),
         )
 
         # Loop through each stage and verify match

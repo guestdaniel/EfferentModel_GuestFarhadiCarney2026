@@ -119,18 +119,12 @@ function model!(
     ic_amp::Float64,
     ic_inh::Float64,
     moc_cutoff::Float64,
-    moc_beta_wdr::Float64,
-    moc_offset_wdr::Float64,
-    moc_minrate_wdr::Float64,
-    moc_maxrate_wdr::Float64,
-    moc_beta_ic::Float64,
-    moc_offset_ic::Float64,
-    moc_minrate_ic::Vector{Float64},
-    moc_maxrate_ic::Float64,
-    moc_weight_wdr::Float64,
-    moc_weight_ic::Float64,
-    moc_width_wdr::Float64,
-    moc_innerv_factor::Vector{Float64},
+    moc_beta::Float64,
+    moc_offset::Float64,
+    moc_minval::Float64,
+    moc_maxval::Float64,
+    moc_weight::Float64,
+    moc_width::Float64,
     dur_settle::Float64,
     moc_delay::Float64,
     moc_fix_gain::Int64,
@@ -191,14 +185,8 @@ function model!(
             Cdouble,      # moc_offset
             Cdouble,      # moc_minrate
             Cdouble,      # moc_maxrate
-            Cdouble,      # moc_beta
-            Cdouble,      # moc_offset
-            Ptr{Cdouble}, # moc_minrate_ic
-            Cdouble,      # moc_maxrate
-            Cdouble,      # moc_weight_wdr
-            Cdouble,      # moc_weight_ic
-            Cdouble,      # moc_width_wdr
-            Ptr{Cdouble}, # moc_innerv_factor
+            Cdouble,      # moc_weight
+            Cdouble,      # moc_width
             Cdouble,      # dur_settle
             Cdouble,      # moc_delay
             Cint,         # moc_fix_gain
@@ -246,18 +234,12 @@ function model!(
         ic_amp,
         ic_inh,
         moc_cutoff,
-        moc_beta_wdr,
-        moc_offset_wdr,
-        moc_minrate_wdr,
-        moc_maxrate_wdr,
-        moc_beta_ic,
-        moc_offset_ic,
-        moc_minrate_ic,
-        moc_maxrate_ic,
-        moc_weight_wdr,
-        moc_weight_ic,
-        moc_width_wdr,
-        moc_innerv_factor,
+        moc_beta,
+        moc_offset,
+        moc_minval,
+        moc_maxval,
+        moc_weight,
+        moc_width,
         dur_settle,
         moc_delay,
         moc_fix_gain,
