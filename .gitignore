@@ -17,3 +17,5 @@ plots
 TestBench
 Helios_performance
 logs
+Helios_char
+src/useful_snippets.jl
