@@ -87,7 +87,7 @@ function sim_gfc2023(
     moc_offset=10.0*4.0,
     moc_minval=0.1,
     moc_maxval=1.0,
-    moc_weight=4.0,
+    moc_weight=fill(4.0, length(cf)),
     moc_width=0.5,
     dur_pad_left=0.02,
     moc_delay=0.025,
@@ -95,7 +95,7 @@ function sim_gfc2023(
     clip_left=dur_pad_left == 0.0 ? false : true,
     dur_pad_right=0.0,
     clip_right=dur_pad_right == 0.0 ? false : true,
-)
+)::Vector{Vector{Vector{Float64}}}
     # Calculate pad sizes in samples
     len_pad_left = Int(floor(dur_pad_left*fs))
     len_pad_right = Int(floor(dur_pad_right*fs))
@@ -138,6 +138,12 @@ function sim_gfc2023(
     else
         ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
         ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
+    end
+
+    # If MOC weight is passed as a scalar, replace it with a vector of the same length as cf
+    # filling in the scalar weight
+    if typeof(moc_weight) == Float64
+        moc_weight = fill(moc_weight, length(cf))
     end
 
     # Convert bool powerlaw_include_fast to integer
@@ -258,9 +264,9 @@ function sim_gfc2023(
     return outputs
 end
 
-function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
-    [x[1] for (idx, x) in enumerate(sim_gfc2023(x, [cf]; kwargs...))]
-end
+# function sim_gfc2023(x::Vector{Float64}, cf::Float64; kwargs...)
+#     [x[1] for (idx, x) in enumerate(sim_gfc2023(x, [cf]; kwargs...))]
+# end
 
 function sim_gfc2023_dict(args...; kwargs...)
     control, c1, c2, ihc, expon_hsr, sout1_hsr, sout2_hsr, syn_hsr, expon_lsr, sout1_lsr, sout2_lsr, syn_lsr, hsr, lsr, cn, ic, mocwdr, mocic, gain, gainpostmix = sim_gfc2023(args...; kwargs...)
