@@ -33,6 +33,7 @@ function model!(
     dur_settle::Float64,
     moc_delay::Float64,
     moc_fix_gain::Int64,
+    moc_use_lut::Int64,
     controlout::Vector{Vector{Float64}},
     c1out::Vector{Vector{Float64}},
     c2out::Vector{Vector{Float64}},
@@ -95,6 +96,7 @@ function model!(
             Cdouble,      # dur_settle
             Cdouble,      # moc_delay
             Cint,         # moc_fix_gain
+            Cint,         # moc_use_lut
             Ptr{Ptr{Cdouble}}, # control
             Ptr{Ptr{Cdouble}}, # c1 
             Ptr{Ptr{Cdouble}}, # c2 
@@ -148,6 +150,7 @@ function model!(
         dur_settle,
         moc_delay,
         moc_fix_gain,
+        moc_use_lut,
         controlout, 
         c1out, 
         c2out, 

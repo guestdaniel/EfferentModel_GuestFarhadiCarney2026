@@ -18,9 +18,13 @@ include("singlechannel_vs_multichannel.jl")
 # Test differences between true and approximate power-law adaptation
 include("approximate_powerlaw.jl")
 
+# Test implementation of lookup table 
+include("moc_lookup_table.jl")
+
 # Test implementation of normal PDF function in C
 include("normal_pdf.jl")
 
+# Old tests, preserved for posterity
 # ==========================================================================================
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~ Check whether new model outputs match 2014 model outputs (multichannel)
