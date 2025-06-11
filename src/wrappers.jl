@@ -83,11 +83,11 @@ function sim_gfc2023(
     ic_amp=1.0,
     ic_inh=0.9,
     moc_cutoff=0.64,
-    moc_beta=0.015,
-    moc_offset=10.0*4.0,
+    moc_beta=fill(0.2, length(cf)),
+    moc_offset=fill(5.0, length(cf)),
     moc_minval=0.1,
     moc_maxval=1.0,
-    moc_weight=fill(4.0, length(cf)),
+    moc_weight=fill(1.0, length(cf)),
     moc_width=0.5,
     dur_pad_left=0.02,
     moc_delay=0.025,
@@ -141,9 +141,15 @@ function sim_gfc2023(
     end
 
     # If MOC weight is passed as a scalar, replace it with a vector of the same length as cf
-    # filling in the scalar weight
+    # filling in the scalar weight. Same applies to moc_beta and moc_offset.
     if typeof(moc_weight) == Float64
         moc_weight = fill(moc_weight, length(cf))
+    end
+    if typeof(moc_beta) == Float64
+        moc_beta = fill(moc_beta, length(cf)) 
+    end
+    if typeof(moc_offset) == Float64
+        moc_offset = fill(moc_offset, length(cf))
     end
 
     # Convert bool powerlaw_include_fast to integer

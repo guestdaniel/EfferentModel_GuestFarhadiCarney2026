@@ -24,8 +24,8 @@ function model!(
     ic_amp::Float64,
     ic_inh::Float64,
     moc_cutoff::Float64,
-    moc_beta::Float64,
-    moc_offset::Float64,
+    moc_beta::Vector{Float64},
+    moc_offset::Vector{Float64},
     moc_minval::Float64,
     moc_maxval::Float64,
     moc_weight::Vector{Float64},
@@ -86,8 +86,8 @@ function model!(
             Cdouble,      # ic_amp
             Cdouble,      # ic_inh
             Cdouble,      # moc_cutoff
-            Cdouble,      # moc_beta
-            Cdouble,      # moc_offset
+            Ptr{Cdouble}, # moc_beta
+            Ptr{Cdouble}, # moc_offset
             Cdouble,      # moc_minrate
             Cdouble,      # moc_maxrate
             Ptr{Cdouble}, # moc_weight
