@@ -177,11 +177,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	 * Handle COHC/CIHC/beta/offset/weight vectors by copying data from 
 	 * MATLAB mxArray pointer to dynamically allocated array in C
 	 */
+	// Pull pointers for RHS arguments
 	double *cohc_mex = mxGetPr(prhs[6]);
 	double *cihc_mex = mxGetPr(prhs[7]);
 	double *moc_beta_mex = mxGetPr(prhs[10]);
 	double *moc_offset_mex = mxGetPr(prhs[11]);
 	double *moc_weight_mex = mxGetPr(prhs[12]);
+	// Allocate storage for equivalent vectors
 	double *cohc = (double*) calloc(n_chan, sizeof(double));
 	double *cihc = (double*) calloc(n_chan, sizeof(double));
 	double *moc_beta = (double*) calloc(n_chan, sizeof(double));
@@ -281,7 +283,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		}
 	}
 
-
 	// Run the efferent model via external call to C code
 	model(
 		px, 
@@ -294,13 +295,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		cohc,
 		cihc,
 		species,
-		100.0, // spont
+		100.0,                // spont
 		powerlaw_mode,
-		0.5e-3,  // default value for cn_tau_e (unused)
-		2.0e-3,  // default value for cn_tau_i (unused)
-		1.0e-3,  // default value for cn_delay (unused)
-		1.5,     // default value for cn_A (unused)
-		0.6,     // default value for cn_I (unused)
+		0.5e-3,               // default value for cn_tau_e (unused)
+		2.0e-3,               // default value for cn_tau_i (unused)
+		1.0e-3,               // default value for cn_delay (unused)
+		1.5,                  // default value for cn_A (unused)
+		0.6,                  // default value for cn_I (unused)
 		1.0/(10.0*64.0),      // default value for ic_tau_e (unused)
 		1.0/(10.0*64.0)*1.5,  // default value for ic_tau_i (unused)
 		1.0/(10.0*64.0)*2.0,  // default value for ic_delay (unused)
@@ -315,7 +316,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		moc_width,
 		dur_settle,
 		moc_delay,
-		0,  // freeze gain off
+		0,                    // moc_fix_gain = false
 		controlout,
 		c1out,
 		c2out,
@@ -353,7 +354,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double *ihcouttmp = mxGetPr(plhs[0]);
 	double *anrateout_hsrtmp = mxGetPr(plhs[1]);
 	double *anrateout_lsrtmp = mxGetPr(plhs[2]);
-	double *gaintmp = mxGetPr(plhs[3]);
+	double *gainpostmixtmp = mxGetPr(plhs[3]);
 
 	// Loop through elements via linear indexing, store	elements in column-major order
    	for (int i = 0; i < (n_chan * totalstim); i++) {
@@ -365,7 +366,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		ihcouttmp[i] = ihcout[idx_cf][idx_t];
 		anrateout_hsrtmp[i] = anrateout_hsr[idx_cf][idx_t];
 		anrateout_lsrtmp[i] = anrateout_lsr[idx_cf][idx_t];
-		gaintmp[i] = gain[idx_cf][idx_t];
+		gainpostmixtmp[i] = gainpostmix[idx_cf][idx_t];
 	}
 
 	// Free all dynamically allocated memory

@@ -134,17 +134,27 @@ arguments
     args.ic_amp {mustBeGreaterThan(args.ic_amp, 0.0)} = 1.0
     args.ic_inh {mustBeGreaterThanOrEqual(args.ic_inh, 0.0)} = 0.9
     args.moc_cutoff {mustBeGreaterThanOrEqual(args.moc_cutoff, 0.0)} = 0.64
-    args.moc_beta {mustBeGreaterThanOrEqual(args.moc_beta, 0.0)} = 0.2*ones(size(cf))
-    args.moc_offset {mustBeGreaterThanOrEqual(args.moc_offset, 0.0)} = 5.0*ones(size(cf))
+    args.moc_beta = nan(size(cf))    % nan -> default based on 2025 paper below
+    args.moc_offset = nan(size(cf))  % nan -> default based on 2025 paper below
 	args.moc_minrate = 0.1;
 	args.moc_maxrate = 1.0;
-    args.moc_weight {mustBeGreaterThanOrEqual(args.moc_weight, 0.0)} = ones(size(cf))
-    args.moc_width {mustBeGreaterThanOrEqual(args.moc_width, 0.0)} = 0.5
+    args.moc_weight {mustBeGreaterThanOrEqual(args.moc_weight, 0.0)} = ones(size(cf))  % default based on 2025 paper
+    args.moc_width {mustBeGreaterThanOrEqual(args.moc_width, 0.0)} = 1.0               % default based on 2025 paper
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
 	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.2;
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
 	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.025;
+end
+
+% Handle moc_beta and moc_offset; if they are vectors of nans, we need to
+% replace them with default values from the 2025 paper
+if all(isnan(args.moc_beta))
+	args.moc_beta = 0.045 * peaknorm_gaussian(log2(cf/3e3), 0.0, 2.5);
+end
+
+if all(isnan(args.moc_offset))
+	args.moc_offset = max(5.0 * log2(cf/2e3) + 3.0, 3.0);
 end
 
 % Determine number of samples corresponding to settle time
@@ -286,4 +296,11 @@ if args.clip_settle
 	lsrout = lsrout(:, (len_settle+1):end);
 	gain = gain(:, (len_settle+1):end);
 end
+end
+
+function g = peaknorm_gaussian(x, mu, sigma)
+	% PEAKNORM_GAUSSIAN returns the value of a Gaussian function that peaks
+	% at 1.0, has a standard deviation equation to sigma, and is centered
+	% at mu. 
+	g = exp(-(x-mu) .^ 2 ./ (2*sigma .^ 2));
 end
