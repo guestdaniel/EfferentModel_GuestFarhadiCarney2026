@@ -1,4 +1,4 @@
-function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
+function [ihcout, hsrout, lsrout, gain] = sim_efferent_model(x, cf, args)
 % SIM_EFFERENT_MODEL(x, cf) simulates efferent-model response to row-vector
 % stimulus x at CFs in vector cf. 
 % 
@@ -8,8 +8,7 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   1) Inner hair cell "voltage", in a.u.
 %   2) High-spontaneous-rate auditory-nerve instantaneous rate, in sp/s
 %   3) Low-spontaneous-rate auditory-nerve instantaneous rate, in sp/s
-%   4) Inferior-colliculus (IC) band-enhanced rate, in sp/s
-%   5) Time-varying cochlear gain factor (in [0, 1], where 0==no gain, 1==max gain)
+%   4) Time-varying cochlear gain factor (in [0, 1], where 0==no gain, 1==max gain)
 %
 % SIM_EFFERENT_MODEL(x, cf) passes evaluates the efferent model on the
 % input sound-pressure waveform at particular CFs. 
@@ -53,26 +52,6 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   constants fit computationally to match true power-law adaptation
 %   (powerlaw_mode == 2). 
 %
-% - args.cn_tau_e: Excitatory time constant in CN stage (s)
-%
-% - args.cn_tau_i: Inhibitory time constant in CN stage (s)
-%
-% - args.cn_delay: Inhibitory delay time in CN stage (s)
-%
-% - args.cn_amp: Excitatory strength in CN stage
-%
-% - args.cn_inh: Inhibitory strength in CN stage 
-%
-% - args.ic_tau_e: Excitatory time constant in IC stage (s)
-%
-% - args.ic_tau_i: Inhibitory time constant in IC stage (s)
-%
-% - args.ic_delay: Inhibitory delay time in IC stage (s)
-%
-% - args.ic_amp: Excitatory strength in IC stage
-%
-% - args.ic_inh: Inhibitory strength in IC stage 
-%
 % - args.moc_cutoff: Cutoff of the lowpass filter used in the MOC stage
 %   (Hz). The default value of 0.64 Hz yields a filter that matches that
 %   used in the older single-channel efferent model (i.e., it produces a
@@ -80,34 +59,27 @@ function [ihcout, hsrout, lsrout, icout, gain] = sim_efferent_model(x, cf, args)
 %   matches the constant used in the "old efferent" code, see Farhadi et 
 %   al. 2023).
 %
-% - args.moc_beta_wdr: "beta" parameter in the MOC input-output
-%   nonlinearity for the wide-dynamic-range MOC pathway (a.u.)
+% - args.moc_beta: "beta" parameter in the MOC input-output
+%   nonlinearity for the wide-dynamic-range MOC pathway (a.u.), vector
+%   valued and one for each CF
 %
-% - args.moc_offset_wdr: "offset" parameter in the MOC input-output
-%   nonlinearity for the wide-dynamic-range MOC pathway (a.u.)
+% - args.moc_offset: "offset" parameter in the MOC input-output
+%   nonlinearity for the wide-dynamic-range MOC pathway (a.u.), vector
+%   valued and one for each CF
 %
-% - args.moc_minrate_wdr: Minimum possible gain factor in MOC input-output
+% - args.moc_minrate: Minimum possible gain factor in MOC input-output
 %   nonlinearity for the wide-dynamic-range MOC pathway
 %
-% - args.moc_beta_ic: "beta" parameter in the MOC input-output
-%   nonlinearity for the IC MOC pathway (a.u.)
-%
-% - args.moc_offset_ic: "offset" parameter in the MOC input-output
-%   nonlinearity for the IC MOC pathway (a.u.)
-%
-% - args.moc_weight_wdr: Scalar value multiplied with lowpass-filtered 
+% - args.moc_weight: Scalar value multiplied with lowpass-filtered 
 %   wide-dynamic-range MOC pathway signal before signal is passed through 
 %   MOC input-output nonlinearity
 %
-% - args.moc_weight_ic: Scalar value multiplied with lowpass-filtered IC
+% - args.moc_weight: Scalar value multiplied with lowpass-filtered IC
 %   MOC pathway signal before signal is passed through MOC input-output 
 %   nonlinearity
 %
-% - args.moc_width_wdr: "Width" of the wide-dynamic-range cross-channel
-%   "spread" (octaves). For example, a value of one octave means that each
-%   wide-dynamic-range MOC signal will "spread" to all channels that have
-%   CFs that fall within a band centered on the CF with a width of one
-%   octave (within +/- one-half octave)
+% - args.moc_width: "Width" of the wide-dynamic-range cross-channel
+%   smoothing function (octaves). 
 %
 % - args.noiseType: Integer value determining whether we use empty matrices
 %   (noiseType == -1), matrices of "frozen" fractional Gaussian noise 
@@ -162,26 +134,18 @@ arguments
     args.ic_amp {mustBeGreaterThan(args.ic_amp, 0.0)} = 1.0
     args.ic_inh {mustBeGreaterThanOrEqual(args.ic_inh, 0.0)} = 0.9
     args.moc_cutoff {mustBeGreaterThanOrEqual(args.moc_cutoff, 0.0)} = 0.64
-    args.moc_beta_wdr {mustBeGreaterThanOrEqual(args.moc_beta_wdr, 0.0)} = 0.015;
-    args.moc_offset_wdr {mustBeGreaterThanOrEqual(args.moc_offset_wdr, 0.0)} = 10*4.0; 
+    args.moc_beta {mustBeGreaterThanOrEqual(args.moc_beta, 0.0)} = 0.2*ones(size(cf))
+    args.moc_offset {mustBeGreaterThanOrEqual(args.moc_offset, 0.0)} = 5.0*ones(size(cf))
 	args.moc_minrate_wdr = 0.1;
 	args.moc_maxrate_wdr = 1.0;
-	args.guardrail_mode = "standard"
-    args.moc_beta_ic {mustBeGreaterThanOrEqual(args.moc_beta_ic, 0.0)} = 0.015;
-    args.moc_offset_ic {mustBeGreaterThanOrEqual(args.moc_offset_ic, 0.0)} = 10*4.0;
-	args.moc_maxrate_ic = 1.0;
-    args.moc_weight_wdr {mustBeGreaterThanOrEqual(args.moc_weight_wdr, 0.0)} = 4.0;
-    args.moc_weight_ic {mustBeGreaterThanOrEqual(args.moc_weight_ic, 0.0)} = 4.0;
-    args.moc_width_wdr {mustBeGreaterThanOrEqual(args.moc_width_wdr, 0.0)} = 0.5
+    args.moc_weight {mustBeGreaterThanOrEqual(args.moc_weight, 0.0)} = ones(size(cf))
+    args.moc_width {mustBeGreaterThanOrEqual(args.moc_width, 0.0)} = 0.5
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
 	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.2;
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
 	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.025;
 end
-
-% Determine guardrail COHC values
-moc_minrate_ic = calc_guardrail_cohc(cf, args.species, args.guardrail_mode);
 
 % Determine number of samples corresponding to settle time
 dur_orig = length(x)/args.fs;
@@ -250,7 +214,6 @@ if args.display_info
 
 	% Determine git information that is available
 	[fp, ~, ~] = fileparts(which("sim_efferent_model"));
-% 	[r, s] = system(sprintf("git -C %s describe --tags --first-parent --abbrev=7 --long --dirty --always", fp));
 
 	% Get information about version number
 	fid = fopen(fullfile(fp, "model.c"));
@@ -264,13 +227,8 @@ if args.display_info
 	tic;
 	fprintf("=========================================================\n");
 	fprintf("Running Carney lab efferent model\n");
-	fprintf("Version %s, last updated 6/17/2024\n", version_number);
-	fprintf("!! WARNING !! This is an interim model version not suitable for public use...\n")
-	fprintf("!! WARNING !! In the current model architecture, wdr parameters other than moc_weight_wdr are ignored...\n")
+	fprintf("Version %s, last updated 8/25/2025\n", version_number);
 	fprintf("Running " + string(n_cf) + " channels with...\n")
-% 	if r == 0
-% 		fprintf("	Build:                   %s", s);
-% 	end
 	fprintf("	Path to MATLAB function: %s\n", which("sim_efferent_model"));
 	fprintf("	Path to Mex function:    %s\n", which("sim_efferent_model_mex"));
 	fprintf("	Species:                 " + species_string + "\n")
