@@ -179,6 +179,9 @@ function sim_gfc2023(
     end
     gainpostmix = [ones(len_total) for _ in 1:n_chan]
 
+    # Add length assertion
+    @assert length(gain) == length(cf)
+
     # Run model
     model!(
         stim, 
