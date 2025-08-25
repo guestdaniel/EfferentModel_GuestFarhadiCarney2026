@@ -1,5 +1,5 @@
  /*
-  This is v5.10 of the code for subcortical auditory model model of:
+  This is v6.00 of the code for subcortical auditory model model of:
 
   Guest, D. R., Farhadi, A., ..., and Carney, L. H. (202x). ...
 
@@ -28,7 +28,14 @@
   simulation options for a model of the auditory periphery. The Journal of the Acoustical 
   Society of America, 135(1), 283-286.
 
-  * Farhadi, ... (2023) ... TBD
+  * Farhadi, A., Jennings, S. G., Strickland, E. A., and Carney, L. H. (2023). “Subcortical 
+  auditory model including efferent dynamic gain control with inputs from cochlear nucleus 
+  and inferior colliculus,” The Journal of the Acoustical Society of America, 154, 
+  3644–3659. doi:10.1121/10.0022578
+
+  * Guest, D. R., and Carney, L. H. (2024). “A fast and accurate approximation of power-law 
+  adaptation for auditory computational models,” The Journal of the Acoustical Society of 
+  America, 156, 3954–3957. doi:10.1121/10.0034457
 
   The peripheral stage was modified by Afagh Farhadi to include a sample-by-sample efferent 
   gain control loop, which is controlled by an auditory brainstem and midbrain model 
@@ -159,38 +166,26 @@
  * @param [in] moc_cutoff (Hz) Cutoff value for the simple IIR lowpass filter that is used
  * to lowpass filter MOC input signals before applying the MOC nonlinearity, default value
  * is 0.64 Hz
- * @param [in] moc_beta_wdr Control parameter in the WDR-MOC nonlinearity, governs the slope
+ * ///// START EXPERIMENTAL NEW MOC PARAMETERS /////
+ * @param [in] moc_beta Parameter in the WDR-MOC nonlinearity, governs the slope
  * of the nonlinearity such that smaller values yield more gradual slopes between MOC rate
  * and MOC output gain while larger values yield sharper slopes between MOC rate and MOC
- * output gain, default value is 0.01
- * @param [in] moc_offset_wdr (sp/s) Control parameter in the WDR-MOC nonlinearity, shifts
- * the nonlinearity along the x-axis such that gain control is not applied until the WDR-MOC
- * rate exceeds the offset, default value is 0.0
- * @param [in] moc_minrate_wdr Minimum output value for the WDR-MOC nonlinearity, should be
+ * output gain, default value is 0.015 (per ARO2024 / HWK2024)
+ * @param [in] moc_offset (sp/s) Parameter in the WDR-MOC nonlinearity, shifts the
+ * nonlinearity along the x-axis such that gain control is not applied until the *weighted*
+ * WDR-MOC rate exceeds the offset, default value is 0.0
+ * @param [in] moc_minval Minimum output value for the WDR-MOC nonlinearity, should be
  * in range of [0, 1], default is 0.0
- * @param [in] moc_maxrate_wdr Maximum output value for the WDR-MOC nonlinearity, should be
+ * @param [in] moc_maxval Maximum output value for the WDR-MOC nonlinearity, should be
  * in range of [0, 1], default is 1.0
- * @param [in] moc_beta_ic Control parameter in the IC-MOC nonlinearity, governs the slope
- * of the nonlinearity such that smaller values yield more gradual slopes between MOC rate
- * and MOC output gain while larger values yield sharper slopes between MOC rate and MOC
- * output gain, default value is 0.01
- * @param [in] moc_offset_ic (sp/s) Control parameter in the IC-MOC nonlinearity, shifts the
- * nonlinearity along the x-axis such that gain control is not applied until the IC-MOC rate
- * exceeds the offset, default value is 0.0
- * @param [in] moc_minrate_ic Minimum output value for the IC-MOC nonlinearity, should be in
- * range of [0, 1], default is 0.0
- * @param [in] moc_maxrate_ic Maximum output value for the IC-MOC nonlinearity, should be in
- * range of [0, 1], default is 1.0
- * @param [in] moc_weight_wdr Scalar weight applied to the WDR-MOC rate before it is passed
+ * @param [in] moc_weight (n_chan, 1) Weight applied to the WDR-MOC rate before it is passed
  * through the WDR-MOC nonlinearity and converted into a gain value. Setting this value to
- * 0.0 disables WDR-driven gain control, default is 1.0.
- * @param [in] moc_weight_ic Scalar weight applied to the IC-MOC rate before it is passed
- * through the IC-MOC nonlinearity and converted into a gain value. Setting this value to
- * 0.0 disables IC-driven gain control, default is 1.0.
- * @param [in] moc_width_wdr (oct) Range of CFs over which WDR-MOC gain control signal from
- * a single channel is sent to OHCs. For example, if moc_width_wdr is set to 1.0, then for a
- * given CF, the WDR-MOC gain control signal for that CF will be applied to the total gain
- * of channels within the range of [-1/2, 1/2] octaves around CF.
+ * 0.0 disables WDR-driven gain control. This is a vector-valued parameter where each
+ * element is applied to weight responses from the corresponding CF.
+ * @param [in] moc_width (oct) Range of CFs over which MOC gain control signal from
+ * a single channel is sent to OHCs. This is parametrized in terms of the standard deviation
+ * of a Gaussian weighting function centered at CF.
+ *  * ///// STOP EXPERIMENTAL NEW MOC PARAMETERS /////
  * @param [in] dur_settle (s) Duration of "settle time", during which MOC outputs are fixed
  * at zero and no inputs are provided to the MOC lowpass filters. This is intended to 
  * give the model some time to settle before gain control "kicks in" and begins influencing
@@ -256,19 +251,15 @@ void model(
     double ic_amp, 
     double ic_inh,
     double moc_cutoff, 
-    double moc_beta_wdr, 
-    double moc_offset_wdr, 
-    double moc_minrate_wdr, 
-    double moc_maxrate_wdr, 
-    double moc_beta_ic, 
-    double moc_offset_ic, 
-    double *moc_minrate_ic, 
-    double moc_maxrate_ic, 
-    double moc_weight_wdr, 
-    double moc_weight_ic, 
-    double moc_width_wdr,
+    double *moc_beta, 
+    double *moc_offset, 
+    double moc_minval,
+    double moc_maxval,
+    double *moc_weight, 
+    double moc_width,
     double dur_settle,
     double moc_delay,
+    int moc_fix_gain,
     double **controlout, 
     double **c1out, 
     double **c2out, 
@@ -287,7 +278,8 @@ void model(
     double **icout,
     double **mocwdr, 
     double **mocic, 
-    double **gain
+    double **gain,
+    double **gainpostmix
 ) {
     /* Declare pointers to store convenient references to LSR/HSR pathway stages */
     double** randNums[2] = {randNums_hsr, randNums_lsr};
@@ -348,14 +340,14 @@ void model(
     for (int i = 0; i < n_chan; i++) {
         C1input[i] = (double**) malloc(12 * sizeof(double*));
         for (int j = 0; j < 12; j++) {
-            C1input[i][j] = (double*) malloc(4 * sizeof(double));
+            C1input[i][j] = (double*) calloc(4, sizeof(double));
         }
     }
     double*** C1output = (double***) malloc(n_chan * sizeof(double**));
     for (int i = 0; i < n_chan; i++) {
         C1output[i] = (double**) malloc(12 * sizeof(double*));
         for (int j = 0; j < 12; j++) {
-            C1output[i][j] = (double*) malloc(4 * sizeof(double));
+            C1output[i][j] = (double*) calloc(4, sizeof(double));
         }
     }
     for (int i = 0; i < n_chan; i++) {
@@ -377,14 +369,14 @@ void model(
     for (int i = 0; i < n_chan; i++) {
         C2input[i] = (double**) malloc(12 * sizeof(double*));
         for (int j = 0; j < 12; j++) {
-            C2input[i][j] = (double*) malloc(4 * sizeof(double));
+            C2input[i][j] = (double*) calloc(4, sizeof(double));
         }
     }
     double*** C2output = (double***) malloc(n_chan * sizeof(double**));
     for (int i = 0; i < n_chan; i++) {
         C2output[i] = (double**) malloc(12 * sizeof(double*));
         for (int j = 0; j < 12; j++) {
-            C2output[i][j] = (double*) malloc(4 * sizeof(double));
+            C2output[i][j] = (double*) calloc(4, sizeof(double));
         }
     }
     for (int i = 0; i < n_chan; i++) {
@@ -408,15 +400,36 @@ void model(
     double beta1  = 5e-4; 
     double alpha2 = 1e-2*100e3; 
     double beta2  = 1e-1;
+    double gaininst = 0.0;
 
-    /* Declare variables used in parallel-exponential PLA approximation system */
-    int n_process = 40;                           // how many exponential processes in approx for PLA
-    double coef_slow = 3.42e-2 * (100.0/40.0);    // scalar coefficient used in approx for sout1
-    double tau_short_slow = 6.97e-4;              // short time constant used in approx for sout1
-    double tau_long_slow = 9.56e2;                // long time constant used in approx for sout1
-    double coef_fast = 1.45e2 * (100.0/40.0);     // scalar coefficient used in approx for sout2
-    double tau_short_fast = 9.49e-2;              // short time constant used in approx for sout2
-    double tau_long_fast = 9.81e5;                // long time constant used in approx for sout2
+    /* Tweak alpha1 and alpha2 to get PLA to match, we have to compensate for fs and scale differences */
+    if (powerlaw_mode == 2) {
+        alpha1 = alpha1 / 10e3;  // this was done in updated Synapse code, weights are referenced to that implementation so we have to match
+        alpha2 = alpha2 / 10e3;  // this was done in updated Synapse code, weights are referenced to that implementation so we have to match
+        alpha1 = alpha1 * (tdres / (1/10e3));  // reduce weights by factor of fs/10e3 to compensate for computing more samples
+        alpha2 = alpha2 * (tdres / (1/10e3));  // reduce weights by factor of fs/10e3 to compensate for computing more samples
+    }
+
+    /* Select n_process, tau, and w from Guest and Carney (2024) for PLA approximation */
+    int n_process = 14;  
+    double tau_slow[14];
+    double tau_fast[14];
+    for (int i = 0; i < 14; i++) {
+        tau_slow[i] = 5e-4 * pow(10.0, 1/exp(1.0) * i);
+        tau_fast[i] = 1e-1 * pow(10.0, 1/exp(1.0) * i);
+    }
+    double w_slow[14] = {
+        1054.1349144510866, 235.42021095822022, 351.3091743124357, 99.00123234954474, 
+        55.18423650003196, 28.99454378212968, 6.556134147763605, 6.558380224204848, 
+        1.1576087874250394, 0.995488845827021, 0.3588672871386332, 0.1573449044190812, 
+        0.010428823220777147, 0.08773889583510958
+    };
+    double w_fast[14] = {
+        6.106637716398411, 1.1558964083697898, 1.3095958543425545, 0.785695677692722, 
+        0.21835528692662018, 0.10344785429373701, 0.08413927488982781, 0.001596356536824024, 
+        0.018886711336962816, 0.0008089617759213521, 0.002806098243601203, 0.0006529927704604911, 
+        3.13953727422695e-5, 0.0004490670084957763
+    };
 
     /* Declare other variables used in the AN stage (all vary by channel/fiber type) */
     int n_fiber_type = 2;  // HSR==0, LSR==1
@@ -477,33 +490,16 @@ void model(
     }
 
     /* Calculate parameters for approximate power-law adaptation (sout1) */
-    double delta = (log(tau_long_slow) - log(tau_short_slow)) / (n_process - 1);
-    double tau_temp = 0.0;
     for (int t = 0; t < n_fiber_type; t++) {
         for (int i = 0; i < n_chan; i++) {
             for (int p = 0; p < n_process; p++) {
                 // Initialize exponential process states at 0
                 E1[t][i][p] = 0.0;
-
-                // Determine time constant for this step, convert to decay coef and save
-                tau_temp = exp(log(tau_short_slow) + delta * p);
-                D1[t][i][p] = exp(-(1/(1/tdres)) / tau_temp);
-            }
-        }
-    }
-
-    /* Calculate parameters for approximate power-law adaptation (sout2) */
-    delta = (log(tau_long_fast) - log(tau_short_fast)) / (n_process - 1);
-    tau_temp = 0.0;
-    for (int t = 0; t < n_fiber_type; t++) {
-        for (int i = 0; i < n_chan; i++) {
-            for (int p = 0; p < n_process; p++) {
-                // Initialize exponential process states at 0
                 E2[t][i][p] = 0.0;
 
                 // Determine time constant for this step, convert to decay coef and save
-                tau_temp = exp(log(tau_short_fast) + delta * p);
-                D2[t][i][p] = exp(-(1/(1/tdres)) / tau_temp);
+                D1[t][i][p] = 1 - exp(-(1/(1/tdres)) / tau_slow[p]);
+                D2[t][i][p] = 1 - exp(-(1/(1/tdres)) / tau_fast[p]);
             }
         }
     }
@@ -558,23 +554,26 @@ void model(
         n_cf_per_oct = n_chan/(log2(cf[n_chan-1]) - log2(cf[0]));
     }
 
-    /* Create connectivity matrix for MOC WDR pathway
-    At the end of each step of the time loop, we must determine which MOC signals from other
-    channels are "allowed" to contribute to the gain factor calculated for the present 
-    channel. We require that the distance between the current channel and a given channel,
-    in terms of their CFs, be less than 1/2 of the paramter moc_width_wdr (in octaves). To
-    avoid overhead associated with computation of log2 on each step, we precompute a 
-    connectivity matrix that instantiates this rule and then use it in the loop below. This
-    matrix, moc_connected below, encodes whether channel i should receive MOC WDR 
-    contributions from channel j */
-    int moc_connected[n_chan][n_chan];
+    /* Calculate weight matrix for MOC system
+       Below, on each time step, every channel will produce a gain-factor value based on LSR
+       (and possibly IC) rates, falling in the range (0, 1] and stored in the matrix
+       `gain[c][n]`. We refer to these gain-factor values as "premix" values, because they
+       are determined only by what is happening in the same channel. At the close of the
+       channel loop on each time step, we will then derive "postmix" gain-factor values,
+       stored in `gainpostmix[c][n]`. These values are determined by computing a weighted
+       geometric average of all channels' premix gain-factor values. Each channel has its
+       own set of weights. For an example channel i, these weights are determined by the 
+       following equation:
+           normal_pdf(d, 0.0, moc_weight_wdr)
+       where `normal_pdf` is a function that computes a normalized Gaussian function, `d` is
+       the distance between channel i and channel j CFs in octaves, and `moc_weight_wdr` is 
+       the standard deviation of the Gaussian in octaves. Below, we pre-compute these weights
+       and store them in a matrix before initiating the main time loop.
+    */
+    double moc_wb_weights[n_chan][n_chan];
     for (int i=0; i < n_chan; i++) {
         for (int j=0; j < n_chan; j++) {
-            if ( fabs(log2(cf[i]) - log2(cf[j])) <= (moc_width_wdr/2) ) {
-                moc_connected[i][j] = 1;
-            } else {
-                moc_connected[i][j] = 0;
-            }
+                moc_wb_weights[i][j] = normal_pdf(log2(cf[i]/cf[j]), 0.0, moc_width);
         }
     }
 
@@ -597,12 +596,17 @@ void model(
                                  &wbphase[c], wbgtf[c], wbgtfl[c]);
             wbout = pow((tauwb[c]/TauWBMax[c]), 3) * wbout1 * 10e3 *__max(1, cf[c]/5e3);
 
+            /* Pre-compute scaled gain factor for this channel and time step */
+            if (!((n == 0) | (((n - len_moc_delay) < 0)))) {
+                gaininst = gainpostmix[c][n-len_moc_delay];
+            }
+
             /* Determine time constants for cochlear filters */
             Get_taubm(c, cf, species, Taumax, bmTaumax, bmTaumin, ratiobm);
             if ((n == 0) | (((n - len_moc_delay) < 0))) {  // On first sample or if we have not exceeded delay, use cohc[c]
                 bmTaubm[c] = cohc[c]*(bmTaumax[c]-bmTaumin[c]) + bmTaumin[c];
             } else {                                       // Otherwise use gain[c][n - len_moc_delay]
-                bmTaubm[c] = (gain[c][n - len_moc_delay])*(bmTaumax[c]-bmTaumin[c]) + bmTaumin[c];
+                bmTaubm[c] = gaininst*(bmTaumax[c]-bmTaumin[c]) + bmTaumin[c];
             }
             tauwb[c] = TauWBMax[c] + (bmTaubm[c]-bmTaumax[c]) * 
                 (TauWBMax[c]-TauWBMin[c])/(bmTaumax[c]-bmTaumin[c]);
@@ -614,11 +618,15 @@ void model(
             ohcout = OhcLowPass(ohcnonlinout, tdres, 600, n, 1.0, 2, ohc[c], ohcl[c]);
             controlout[c][n] = NLafterohc(ohcout, bmTaumin[c], bmTaumax[c], 7.0);
 
-            /* Determine time constant and shift of C1 filter poles based on output of OHCs */
+            /* Determine time constant and shift of C1 filter poles based on output of OHCs 
+               If moc_fix_gain == true, then we simply use the gain factor specified by 
+               gain[c][n] to determine tauc1
+               If moc_fix_gain == false, we use either cohc[c] or a delayed copy of gain[c][n]
+             */
             if ((n == 0) | (((n - len_moc_delay) < 0))) {  // On first sample or if we have not exceeded delay, use cohc[c]
                 tauc1 = cohc[c]*(controlout[c][n]-bmTaumin[c]) + bmTaumin[c];
             } else {                                       // Otherwise use gain[c][n - len_moc_delay]
-                tauc1 = (gain[c][n - len_moc_delay])*(controlout[c][n]-bmTaumin[c]) + bmTaumin[c];
+                tauc1 = gaininst*(controlout[c][n]-bmTaumin[c]) + bmTaumin[c];
             }
             rsigma = 1/tauc1 - 1/bmTaumax[c];
             tauwb[c] = TauWBMax[c] + (tauc1-bmTaumax[c]) * 
@@ -667,8 +675,8 @@ void model(
                                             sout1[t][c], sout2[t][c]);
                 } else if (powerlaw_mode == 2) {
                     apply_powerlaw_adaptation_iir(expout[t][c], randNums[t][c], &I1[t][c],
-                        &I2[t][c], E1[t][c], E2[t][c], D1[t][c], D2[t][c], n_process, n,
-                        coef_slow, coef_fast, tdres, sout1[t][c], sout2[t][c]);
+                        &I2[t][c], E1[t][c], E2[t][c], D1[t][c], D2[t][c], w_slow, w_fast, n_process, n,
+                        alpha1, alpha2, tdres, sout1[t][c], sout2[t][c]);
                 }
                 synout[t][c][n] = sout1[t][c][n] + sout2[t][c][n];
 
@@ -727,72 +735,41 @@ void model(
                 filter_lowpass_iir(icout[c], n, moc_d, mocic[c]);
             }
 
-            /* Below, we generate gain-factor value (in [0, 1]) for next sample.
+            /* Below, we transform IC and WDR rates in this current channel into a 
+               "gain factor", which will influence subsequent cochlear gain. In brief,
+               lowpass-filtered IC rates (mocic) and lowpass-filtered LSR rates (mocwdr)
+               are scaled and summed before being passed through a single input-output
+               nonlinearity that maps rates (sp/s) a to gain factor in [0, 1]. 
+             */
+            if (!moc_fix_gain) {
+                gain[c][n] = cohc[c] * moc_nonlinearity(moc_weight[c] * mocwdr[c][n], moc_beta[c], moc_offset[c], moc_maxval, moc_minval);
+            }
+        } // End main channel loop
 
-               Note that the code below temporarily replaces commented code on lines ~750+
-               Previously, we combined IC and WDR signals in a different way, with each 
-               lowpass-filtered control rate passing through its own nonlinearity and then
-               different resulting gain factors being combined via (scaled) multiplication.
-               However, an issue with that approach is that it does not clearly allow
-               the setting of a "guardrail" gain factor value that cannot be exceeded even
-               by (1) combined action of IC- and WDR-driven MOC pathways or (2) combined
-               action of multiple channels' contributions to final gain factor. Here, we've
-               temporarily eliminated the cross-frequency portion of the gain control model 
-               and are returning to calculating gain factors based only on responses in 
-               single channels while the logic of the input-output nonlinearity and multi-
-               channel gain control is worked out. The lowpass-filtered IC response and 
-               lowpass-filtered WDR response are both weighted and then summed before being
-               passed through a single joint input-output nonlinearity. For the time being,
-               the variables that enter into this calculation are retaining their historical
-               names to minimize the workload involved with renaming them.
-            */
-            gain[c][n] = cohc[c] * moc_nonlinearity(moc_weight_ic * mocic[c][n] + moc_weight_wdr * mocwdr[c][n],
-                                           moc_beta_ic, moc_offset_ic, moc_maxrate_ic, moc_minrate_ic[c]);
-
-            // /* Below, we generate gain value (in [0, 1]) for next sample */
-
-            // /* First, calculate IC-path contribution to gain-control signal */
-            // /* To do so, we just pass the output of MOC-IC (mocic) through MOC input-output
-            // nonlinearity */
-            // gain_ic = moc_nonlinearity(moc_weight_ic * mocic[c][n], moc_beta_ic, 
-            //                            moc_offset_ic, moc_maxrate_ic, moc_minrate_ic);
-
-            // /* Next, calculate WDR-path contribution to gain-control signal */
-            // /* To do so, we initialize gain_wdr at 1.0. Then, for those channels with CFs
-            // that are less than moc_width_wdr/2 octaves away from the current channel, we
-            // pass MOC-WDR (mocwdr) outputs through the MOC input-output nonlinearity and
-            // multiply the resulting gain values together with gain_wdr */
-            // gain_wdr = 1.0;
-            // for (int subc = 0; subc < n_chan; subc++) {
-            //     if (moc_connected[c][subc]) {
-            //         gain_wdr = gain_wdr * 
-            //             moc_nonlinearity(moc_weight_wdr * mocwdr[subc][n], moc_beta_wdr, 
-            //                              moc_offset_wdr, moc_maxrate_wdr, moc_minrate_wdr);
-            //     }
-            // }
-
-            // /* Normalize the WDR-driven gain factor */
-            // /* Normalization happens in one of two ways, depending on moc_width_wdr:
-            // 1) If moc_width_wdr == 0.0, then the above loop reduces to 
-            //     >>> gain_wdr = moc_nonlinearity(moc_weight_wdr * mocwdr[c][n]))
-            // i.e., each channel's gain factor is affected only by responses in that channel.
-            // Thus, we assume that no normalization should occur, so the gain_wdr value 
-            // determined by the above block is left unchanged.
-            // 2) If moc_width_wdr > 0.0, then the gain_wdr value determined above reflects
-            // contributions from multiple channels. We seek to normalize the final gain factor
-            // with respect to the number of channels that contribute. Roughly, this value is
-            // n_cf_per_oct * moc_width_wdr. If we denote this value x, we normalize by:
-            //     >>> gain_wdr = gain_wdr ^ (1/x)
-            // By raising to 1/x power, we essentially transform the computation of gain_wdr
-            // value into a geometric mean of the individual channels' gain factors. */
-            // if (moc_width_wdr > 0.0) {
-            //     gain_wdr = pow(gain_wdr, 1/(n_cf_per_oct*moc_width_wdr));
-            // }
-
-            // /* Store final gain result, which is cohc * gain_wdr * gain_ic */
-            // gain[c][n] = cohc[c] * gain_wdr * gain_ic;
+        /* Loop over channels/CFs again once all channels are done being calculated for this 
+           time step. In this next channel loop, we mix gain signals across channels. This
+           cannot take place until the first channel loop is done because we need access to
+           the gain factors in all channels at this time step. Since gain factors naturally
+           live on a log scale, we combine gain factors from different channels according to
+           a geometric average. The temporary variable contr is used to store the number of 
+           contributing channels to each calculation. The final result is stored in the 
+           matrix gainpostmix (i.e., gain after mixing across channels).
+         */
+        if (moc_width > 0.0) {
+            for (int c=0; c < n_chan; c++) {
+                double weight_total = 0.0;
+                for (int subc = 0; subc < n_chan; subc++) {
+                    gainpostmix[c][n] = gainpostmix[c][n] * pow(gain[subc][n], moc_wb_weights[c][subc]);
+                    weight_total = weight_total + moc_wb_weights[c][subc];
+                }
+                gainpostmix[c][n] = pow(gainpostmix[c][n], 1 / weight_total);
+            }
+        } else {
+            for (int c=0; c < n_chan; c++) {
+                gainpostmix[c][n] = gain[c][n];
+            }
         }
-    }
+    } // end main time loop
 
     /* Free dynamic memory */
     for (int i = 0; i < n_chan; i++) {
@@ -829,6 +806,21 @@ void model(
     free(C1output);
     free(C2input);
     free(C2output);
+}
+
+/**
+ * normal_pdf
+ *
+ * Return value of normal distribution probability density function at specified point
+ *
+ * @param x Input to function
+ * @param mu Mean of distribution
+ * @param sigma Standard deviation of distribution
+ */
+double normal_pdf(double x, double mu, double sigma) {
+    double var = pow(sigma, 2.0);
+    double normfac = 1/sqrt(TWOPI * var);
+    return normfac * exp(-1 * pow(x-mu, 2.0)/(2*var));
 }
 
 /**
@@ -911,7 +903,7 @@ double moc_nonlinearity(double x, double beta, double offset, double maxrate,
     if (x < offset) {
         return maxrate;
     } else {
-        return ((maxrate-minrate) * 1.0/(1.0 + pow(beta*(x-offset), 2.0))) + minrate;
+        return ((maxrate-minrate) * 1.0/(1.0 + pow(beta*(x-offset), 2.0))) + minrate; // remove 1.0
     }
 }
 
@@ -1353,96 +1345,100 @@ double WbGammaTone(double x, double tdres, double centerfreq, int n, double tau,
   return(out);
 }
 
+/**
+ * C1ChirpFilt
+ * 
+ * C1-path chirping peripheral filter code.
+ * 
+ * @param x Input value for current time sample
+ * @param tdres Reciprocal of sampling rate (s)
+ * @param cf Characteristic frequency (Hz)
+ * @param n Order of filter
+ * @param taumax 
+ * @param rsigma 
+ * @param C1gain_norm Pointer to the normalized gain value
+ * @param C1initphase Pointer to the initial phase
+ * @param C1input 2D array for input values
+ * @param C1output 2D array for output values
+ * @return Filtered output value
+ */
 double C1ChirpFilt(double x, double tdres,double cf, int n, double taumax, double rsigma,
                    double *C1gain_norm, double *C1initphase, double **C1input, 
-                   double **C1output)
-{
-    // static double C1input[12][4], C1output[12][4];
-
-    double ipw, ipb, rpa, pzero, rzero;
-	double sigma0,fs_bilinear,CF,norm_gain,phase,c1filterout;
+                   double **C1output) {
+    double ipw, ipb, rpa, pzero, rzero, sigma0, fs_bilinear, CF, norm_gain, phase, c1filterout, temp, dy, preal, pimg;
 	int i,r,order_of_pole,half_order_pole,order_of_zero;
-	double temp, dy, preal, pimg;
-
 	COMPLEX p[11]; 
 	
-	/* Defining initial locations of the poles and zeros */
-	/*======== setup the locations of poles and zeros =======*/
-	  sigma0 = 1/taumax;
-	  ipw    = 1.01*cf*TWOPI-50;
-	  ipb    = 0.2343*TWOPI*cf-1104;
-	  rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
-	  pzero  = pow(10,log10(cf)*0.7+1.6)+500;
+    /* Configure locations of poles and zeros based on inputs */    
+    sigma0 = 1/taumax;
+    ipw    = 1.01*cf*TWOPI-50;
+    ipb    = 0.2343*TWOPI*cf-1104;
+    rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
+    pzero  = pow(10,log10(cf)*0.7+1.6)+500;
+    order_of_pole    = 10;             
+    half_order_pole  = order_of_pole/2;
+    order_of_zero    = half_order_pole;
+    fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
+    rzero       = -pzero;
+    CF          = TWOPI*cf;
 
-	/*===============================================================*/     
-         
-     order_of_pole    = 10;             
-     half_order_pole  = order_of_pole/2;
-     order_of_zero    = half_order_pole;
+    /* If this is the first sample, initialize the state variables */ 
+    if (n==0) {		  
+        p[1].x = -sigma0;     
+        p[1].y = ipw;
+        p[5].x = p[1].x - rpa; 
+        p[5].y = p[1].y - ipb;
+        p[3].x = (p[1].x + p[5].x) * 0.5; 
+        p[3].y = (p[1].y + p[5].y) * 0.5;
+        p[2] = compconj(p[1]);    
+        p[4] = compconj(p[3]); 
+        p[6] = compconj(p[5]);
+        p[7] = p[1]; 
+        p[8] = p[2]; 
+        p[9] = p[5]; 
+        p[10] = p[6];
 
-	 fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
-     rzero       = -pzero;
-	 CF          = TWOPI*cf;
-   
-   if (n==0)
-   {		  
-	p[1].x = -sigma0;     
+        /* Unknown ? */
+        (*C1initphase) = 0.0;
+        for (i=1; i<=half_order_pole; i++) {
+            preal     = p[i*2-1].x;
+            pimg      = p[i*2-1].y;
+            (*C1initphase) = (*C1initphase) + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
+        };
 
-    p[1].y = ipw;
+        for (i = 1; i <= (half_order_pole+1); i++) {
+            C1input[i][3] = 0; 
+            C1input[i][2] = 0; 
+            C1input[i][1] = 0;
+            C1output[i][3] = 0; 
+            C1output[i][2] = 0; 
+            C1output[i][1] = 0;
+        }
 
-	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
-
-    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
-
-    p[2]   = compconj(p[1]);    p[4] = compconj(p[3]); p[6] = compconj(p[5]);
-
-    p[7]   = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
-
-	   (*C1initphase) = 0.0;
-       for (i=1;i<=half_order_pole;i++)          
-	   {
-           preal     = p[i*2-1].x;
-		   pimg      = p[i*2-1].y;
-	       (*C1initphase) = (*C1initphase) + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
-	   };
-
-	/*===================== Initialize C1input & C1output =====================*/
-
-      for (i=1;i<=(half_order_pole+1);i++)          
-      {
-		   C1input[i][3] = 0; 
-		   C1input[i][2] = 0; 
-		   C1input[i][1] = 0;
-		   C1output[i][3] = 0; 
-		   C1output[i][2] = 0; 
-		   C1output[i][1] = 0;
-      }
-
-	/*===================== normalize the gain =====================*/
-    
-      (*C1gain_norm) = 1.0;
-      for (r=1; r<=order_of_pole; r++)
-		   (*C1gain_norm) = (*C1gain_norm)*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
-      
-   };
+        /* Compute normalized gain*/
+        (*C1gain_norm) = 1.0;
+        for (r = 1; r <= order_of_pole; r++) {
+            (*C1gain_norm) = (*C1gain_norm)*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
+        }
+    };
      
     norm_gain= sqrt((*C1gain_norm))/pow(sqrt(CF*CF+rzero*rzero),order_of_zero);
-	
 	p[1].x = -sigma0 - rsigma;
-
 	p[1].y = ipw;
-
-	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
-
-    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
-
-    p[2] = compconj(p[1]); p[4] = compconj(p[3]); p[6] = compconj(p[5]);
-
-    p[7] = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
+	p[5].x = p[1].x - rpa; 
+    p[5].y = p[1].y - ipb;
+    p[3].x = (p[1].x + p[5].x) * 0.5; 
+    p[3].y = (p[1].y + p[5].y) * 0.5;
+    p[2] = compconj(p[1]); 
+    p[4] = compconj(p[3]); 
+    p[6] = compconj(p[5]);
+    p[7] = p[1]; 
+    p[8] = p[2]; 
+    p[9] = p[5]; 
+    p[10]= p[6];
 
     phase = 0.0;
-    for (i=1;i<=half_order_pole;i++)          
-    {
+    for (i = 1; i <= half_order_pole; i++) {
            preal = p[i*2-1].x;
 		   pimg  = p[i*2-1].y;
 	       phase = phase-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
@@ -1450,186 +1446,154 @@ double C1ChirpFilt(double x, double tdres,double cf, int n, double taumax, doubl
 
 	rzero = -CF/tan(((*C1initphase)-phase)/order_of_zero);
 
-   /*%==================================================  */
-	/*each loop below is for a pair of poles and one zero */
-   /*%      time loop begins here                         */
-   /*%==================================================  */
- 
-       C1input[1][3]=C1input[1][2]; 
-	   C1input[1][2]=C1input[1][1]; 
-	   C1input[1][1]= x;
+    C1input[1][3]=C1input[1][2]; 
+    C1input[1][2]=C1input[1][1]; 
+    C1input[1][1]= x;
 
-       for (i=1;i<=half_order_pole;i++)          
-       {
-           preal = p[i*2-1].x;
-		   pimg  = p[i*2-1].y;
-		  	   
-           temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
-		   
+    for (i = 1; i <= half_order_pole; i++) {
+        preal = p[i*2-1].x;
+        pimg  = p[i*2-1].y;
+        temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
 
-           /*dy = (input[i][1] + (1-(fs_bilinear+rzero)/(fs_bilinear-rzero))*input[i][2]
-                                 - (fs_bilinear+rzero)/(fs_bilinear-rzero)*input[i][3] );
-           dy = dy+2*output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg);
+        dy = C1input[i][1]*(fs_bilinear-rzero) - 2*rzero*C1input[i][2] - (fs_bilinear+rzero)*C1input[i][3]
+                +2*C1output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
+                -C1output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+        dy = dy/temp;
 
-           dy = dy-output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);*/
-		   
-	       dy = C1input[i][1]*(fs_bilinear-rzero) - 2*rzero*C1input[i][2] - (fs_bilinear+rzero)*C1input[i][3]
-                 +2*C1output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
-			     -C1output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+        C1input[i+1][3] = C1output[i][2]; 
+        C1input[i+1][2] = C1output[i][1]; 
+        C1input[i+1][1] = dy;
 
-		   dy = dy/temp;
+        C1output[i][2] = C1output[i][1]; 
+        C1output[i][1] = dy;
+    }
 
-		   C1input[i+1][3] = C1output[i][2]; 
-		   C1input[i+1][2] = C1output[i][1]; 
-		   C1input[i+1][1] = dy;
-
-		   C1output[i][2] = C1output[i][1]; 
-		   C1output[i][1] = dy;
-       }
-
-	   dy = C1output[half_order_pole][1]*norm_gain;  /* don't forget the gain term */
-	   c1filterout= dy/4.0;   /* signal path output is divided by 4 to give correct C1 filter gain */
+    dy = C1output[half_order_pole][1]*norm_gain;  /* don't forget the gain term */
+    c1filterout= dy/4.0;   /* signal path output is divided by 4 to give correct C1 filter gain */
 	                   
-     return (c1filterout);
+    return (c1filterout);
 }  
 
-/* -------------------------------------------------------------------------------------------- */
-/** Parallelpath C2 filter: same as the signal-path C1 filter with the OHC completely impaired */
-
+/**
+ * C2ChirpFilt
+ * 
+ * C2-path chirping peripheral filter code.
+ * 
+ * @param xx Input value for current time sample?
+ * @param tdres Reciprocal of sampling rate (s)
+ * @param cf Characteristic frequency (Hz)
+ * @param n Order of filter
+ * @param taumax  ??
+ * @param fcohc   ??
+ * @param C2gain_norm Pointer to the normalized gain value
+ * @param C2initphase Pointer to the initial phase
+ * @param C2input 2D array for input values
+ * @param C2output 2D array for output values
+ * @return Filtered output value
+ */
 double C2ChirpFilt(double xx, double tdres,double cf, int n, double taumax, double fcohc,
                    double *C2gain_norm, double *C2initphase, double **C2input, 
-                   double **C2output)
-{
-	double ipw, ipb, rpa, pzero, rzero;
-
-	double sigma0,fs_bilinear,CF,norm_gain,phase,c2filterout;
+                   double **C2output) {
+	double ipw, ipb, rpa, pzero, rzero, sigma0, fs_bilinear, CF, norm_gain,phase, c2filterout, temp, dy, preal, pimg;
 	int    i,r,order_of_pole,half_order_pole,order_of_zero;
-	double temp, dy, preal, pimg;
-
 	COMPLEX p[11]; 	
-    
-    /*================ setup the locations of poles and zeros =======*/
 
-	  sigma0 = 1/taumax;
-	  ipw    = 1.01*cf*TWOPI-50;
-      ipb    = 0.2343*TWOPI*cf-1104;
-	  rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
-	  pzero  = pow(10,log10(cf)*0.7+1.6)+500;
-	/*===============================================================*/     
-         
-     order_of_pole    = 10;             
-     half_order_pole  = order_of_pole/2;
-     order_of_zero    = half_order_pole;
+    /* Configure locations of poles and zeros based on inputs */    
+    sigma0 = 1/taumax;
+    ipw    = 1.01*cf*TWOPI-50;
+    ipb    = 0.2343*TWOPI*cf-1104;
+    rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
+    pzero  = pow(10,log10(cf)*0.7+1.6)+500;
+    order_of_pole    = 10;             
+    half_order_pole  = order_of_pole/2;
+    order_of_zero    = half_order_pole;
+    fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
+    rzero       = -pzero;
+    CF          = TWOPI*cf;
 
-	 fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
-     rzero       = -pzero;
-	 CF          = TWOPI*cf;
-   	    
-    if (n==0)
-    {		  
-	p[1].x = -sigma0;     
+    /* If this is the first sample, initialize the state variables */ 
+    if (n==0) {		  
+        p[1].x = -sigma0;     
+        p[1].y = ipw;
+        p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
+        p[3].x = (p[1].x + p[5].x) * 0.5; 
+        p[3].y = (p[1].y + p[5].y) * 0.5;
+        p[2] = compconj(p[1]); 
+        p[4] = compconj(p[3]); 
+        p[6] = compconj(p[5]);
+        p[7] = p[1]; 
+        p[8] = p[2]; 
+        p[9] = p[5]; 
+        p[10]= p[6];
 
-    p[1].y = ipw;
+        /* Unknown ? */
+        (*C2initphase) = 0.0;
+        for (i = 1; i <= half_order_pole; i++) {
+            preal     = p[i*2-1].x;
+            pimg      = p[i*2-1].y;
+            (*C2initphase) = (*C2initphase) + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
+        };
 
-	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
-
-    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
-
-    p[2] = compconj(p[1]); p[4] = compconj(p[3]); p[6] = compconj(p[5]);
-
-    p[7] = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
-
-	   (*C2initphase) = 0.0;
-       for (i=1;i<=half_order_pole;i++)         
-	   {
-           preal     = p[i*2-1].x;
-		   pimg      = p[i*2-1].y;
-	       (*C2initphase) = (*C2initphase) + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
-	   };
-
-	/*===================== Initialize C2input & C2output =====================*/
-
-      for (i=1;i<=(half_order_pole+1);i++)          
-      {
-		   C2input[i][3] = 0; 
-		   C2input[i][2] = 0; 
-		   C2input[i][1] = 0;
-		   C2output[i][3] = 0; 
-		   C2output[i][2] = 0; 
-		   C2output[i][1] = 0;
-      }
-    
-    /*===================== normalize the gain =====================*/
-    
-     (*C2gain_norm) = 1.0;
-     for (r=1; r<=order_of_pole; r++)
-		   (*C2gain_norm) = (*C2gain_norm)*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
+        /* Normalize gain? */
+        (*C2gain_norm) = 1.0;
+        for (r=1; r<=order_of_pole; r++) {
+            (*C2gain_norm) = (*C2gain_norm)*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
+        }
     };
-     
+
+    /* Do some calculations? */ 
     norm_gain= sqrt((*C2gain_norm))/pow(sqrt(CF*CF+rzero*rzero),order_of_zero);
-    
 	p[1].x = -sigma0*fcohc;
-
 	p[1].y = ipw;
+	p[5].x = p[1].x - rpa; 
+    p[5].y = p[1].y - ipb;
+    p[3].x = (p[1].x + p[5].x) * 0.5; 
+    p[3].y = (p[1].y + p[5].y) * 0.5;
+    p[2] = compconj(p[1]); 
+    p[4] = compconj(p[3]); 
+    p[6] = compconj(p[5]);
+    p[7] = p[1]; 
+    p[8] = p[2]; 
+    p[9] = p[5]; 
+    p[10]= p[6];
 
-	p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
-
-    p[3].x = (p[1].x + p[5].x) * 0.5; p[3].y = (p[1].y + p[5].y) * 0.5;
-
-    p[2] = compconj(p[1]); p[4] = compconj(p[3]); p[6] = compconj(p[5]);
-
-    p[7] = p[1]; p[8] = p[2]; p[9] = p[5]; p[10]= p[6];
-
+    /* Do some more calculations? */
     phase = 0.0;
-    for (i=1;i<=half_order_pole;i++)          
-    {
+    for (i = 1; i <= half_order_pole; i++) {
            preal = p[i*2-1].x;
 		   pimg  = p[i*2-1].y;
 	       phase = phase-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
 	};
 
 	rzero = -CF/tan(((*C2initphase)-phase)/order_of_zero);	
-   /*%==================================================  */
-   /*%      time loop begins here                         */
-   /*%==================================================  */
 
-       C2input[1][3]=C2input[1][2]; 
-	   C2input[1][2]=C2input[1][1]; 
-	   C2input[1][1]= xx;
+    C2input[1][3]=C2input[1][2]; 
+    C2input[1][2]=C2input[1][1]; 
+    C2input[1][1]= xx;
 
-      for (i=1;i<=half_order_pole;i++)          
-      {
-           preal = p[i*2-1].x;
-		   pimg  = p[i*2-1].y;
-		  	   
-           temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
-		   
-           /*dy = (input[i][1] + (1-(fs_bilinear+rzero)/(fs_bilinear-rzero))*input[i][2]
-                                 - (fs_bilinear+rzero)/(fs_bilinear-rzero)*input[i][3] );
-           dy = dy+2*output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg);
+    /* Loop through taps? */
+    for (i = 1; i <= half_order_pole; i++) {
+        preal = p[i*2-1].x;
+        pimg  = p[i*2-1].y;
+        temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
+        dy = C2input[i][1]*(fs_bilinear-rzero) - 2*rzero*C2input[i][2] - (fs_bilinear+rzero)*C2input[i][3]
+                +2*C2output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
+                -C2output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+        dy = dy/temp;
 
-           dy = dy-output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);*/
-		   
-	      dy = C2input[i][1]*(fs_bilinear-rzero) - 2*rzero*C2input[i][2] - (fs_bilinear+rzero)*C2input[i][3]
-                 +2*C2output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
-			     -C2output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+        C2input[i+1][3] = C2output[i][2]; 
+        C2input[i+1][2] = C2output[i][1]; 
+        C2input[i+1][1] = dy;
 
-		   dy = dy/temp;
+        C2output[i][2] = C2output[i][1]; 
+        C2output[i][1] = dy;
+    };
 
-		   C2input[i+1][3] = C2output[i][2]; 
-		   C2input[i+1][2] = C2output[i][1]; 
-		   C2input[i+1][1] = dy;
+    /* Scale output and return */
+    dy = C2output[half_order_pole][1]*norm_gain;
+    c2filterout= dy/4.0;
 
-		   C2output[i][2] = C2output[i][1]; 
-		   C2output[i][1] = dy;
-
-       };
-
-	  dy = C2output[half_order_pole][1]*norm_gain;
-	  c2filterout= dy/4.0;
-	  
-	  return (c2filterout); 
+    return (c2filterout); 
 }   
-
 
 

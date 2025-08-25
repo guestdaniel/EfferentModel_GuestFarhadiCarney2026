@@ -37,6 +37,27 @@
  * @param nrhs Number of return values (i.e., [n]umber [l]eft [h]and [s]ide values)
  * @param prhs mxArray of pointers to input variables (i.e., [p]ointers to [r]eft [h]and
  * [s]ide values). Obtain a pointer with `mexGetPr`.
+ *
+ * The inputs are as follows on the RHS:
+ * - [1] px double *
+ * - [2] randNums_hsr double **
+ * - [3] randNums_lsr double **
+ * - [4] cf double *
+ * - [5] n_chan int
+ * - [6] tdres double
+ * - [7] coch double *
+ * - [8] cihc double *
+ * - [9] species double
+ * - [10] moc_cutoff double
+ * - [11] moc_beta double * 
+ * - [12] moc_offset double *
+ * - [13] moc_weight double *
+ * - [14] moc_width double
+ * - [15] powerlaw_mode double
+ * - [16] moc_minrate double
+ * - [17] moc_maxrate double
+ * - [18] dur_settle double
+ * - [19] moc_delay double
  */
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	/* Declare signature for `model`, the C function for the efferent model. */
@@ -69,19 +90,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		double,     // ic_inh
 		// MOC parameters
 		double,     // moc_cutoff
-		double,     // moc_beta_wdr
-		double,     // moc_offset_wdr
-		double,     // moc_minrate_wdr
-		double,     // moc_maxrate_wdr
-		double,     // moc_beta_ic
-		double,     // moc_offset_ic
-		double *,   // moc_minrate_ic
-		double,     // moc_maxrate_ic
-		double,     // moc_weight_wdr
-		double,     // moc_weight_ic
-		double,     // moc_width_wdr
+		double *,   // moc_beta
+		double *,   // moc_offset
+		double,     // moc_minrate
+		double,     // moc_maxrate
+		double *,   // moc_weight
+		double,     // moc_width
 		double,     // dur_settle
 		double,     // moc_delay
+		int,        // moc_fix_gain
 		// BM/IHC outputs
 		double **,  // controlout
 		double **,  // c1out
@@ -106,18 +123,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		// MOC outputs
 		double **,  // mocwdr
 		double **,  // mocic
-		double **   // gain
+		double **,  // gain
+		double **   // gain_postmix
 	);
 							
 	/* Check for proper number of arguments */
-	if (nrhs != 34) 
+	if (nrhs != 19) 
 	{
-		mexErrMsgTxt("model requires 34 input arguments.");
+		mexErrMsgTxt("model requires 19 input arguments.");
 	}; 
 
-	if (nlhs != 5)  
+	if (nlhs != 4)  
 	{
-		mexErrMsgTxt("model requires 5 output argument.");
+		mexErrMsgTxt("model requires 4 output argument.");
 	};
 
 	/* Get sizes of inputs */
@@ -127,30 +145,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	int n_chan = (int) *mxGetPr(prhs[4]);
     double tdres = *mxGetPr(prhs[5]);
 	int species = (int) *mxGetPr(prhs[8]);
-	double ic_tau_e = *mxGetPr(prhs[9]);
-	double ic_tau_i = *mxGetPr(prhs[10]);
-	double ic_delay = *mxGetPr(prhs[11]);
-	double ic_amp = *mxGetPr(prhs[12]);
-	double ic_inh = *mxGetPr(prhs[13]);
-	double moc_cutoff = *mxGetPr(prhs[14]);
-	double moc_beta_wdr = *mxGetPr(prhs[15]);
-	double moc_offset_wdr = *mxGetPr(prhs[16]);
-	double moc_beta_ic = *mxGetPr(prhs[17]);
-	double moc_offset_ic = *mxGetPr(prhs[18]);
-	double moc_weight_wdr = *mxGetPr(prhs[19]);
-	double moc_weight_ic = *mxGetPr(prhs[20]);
-	double moc_width_wdr = *mxGetPr(prhs[21]);
-	int powerlaw_mode = (int) *mxGetPr(prhs[22]);
-	double cn_tau_e = *mxGetPr(prhs[23]);
-	double cn_tau_i = *mxGetPr(prhs[24]);
-	double cn_delay = *mxGetPr(prhs[25]);
-	double cn_amp = *mxGetPr(prhs[26]);
-	double cn_inh = *mxGetPr(prhs[27]);
-	double moc_minrate_wdr = *mxGetPr(prhs[28]);
-	double moc_maxrate_wdr = *mxGetPr(prhs[29]);
-	double moc_maxrate_ic = *mxGetPr(prhs[31]);
-	double dur_settle = *mxGetPr(prhs[32]);
-	double moc_delay = *mxGetPr(prhs[33]);
+	double moc_cutoff = *mxGetPr(prhs[9]);
+	double moc_width = *mxGetPr(prhs[13]);
+	int powerlaw_mode = (int) *mxGetPr(prhs[14]);
+	double moc_minrate = *mxGetPr(prhs[15]);
+	double moc_maxrate = *mxGetPr(prhs[16]);
+	double dur_settle = *mxGetPr(prhs[17]);
+	double moc_delay = *mxGetPr(prhs[18]);
 
 	/* 
 	 * Handle pressure vector by copying data from MATLAB mxArray pointer to dynamically
@@ -173,16 +174,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	}
 
 	/* 
-	 * Handle COHC/CIHC vectors by copying data from MATLAB mxArray pointer 
-	 * to dynamically allocated array in C
+	 * Handle COHC/CIHC/beta/offset/weight vectors by copying data from 
+	 * MATLAB mxArray pointer to dynamically allocated array in C
 	 */
 	double *cohc_mex = mxGetPr(prhs[6]);
 	double *cihc_mex = mxGetPr(prhs[7]);
+	double *moc_beta_mex = mxGetPr(prhs[10]);
+	double *moc_offset_mex = mxGetPr(prhs[11]);
+	double *moc_weight_mex = mxGetPr(prhs[12]);
 	double *cohc = (double*) calloc(n_chan, sizeof(double));
 	double *cihc = (double*) calloc(n_chan, sizeof(double));
+	double *moc_beta = (double*) calloc(n_chan, sizeof(double));
+	double *moc_offset = (double*) calloc(n_chan, sizeof(double));
+	double *moc_weight = (double*) calloc(n_chan, sizeof(double));
 	for (int i = 0; i < n_chan; i++) {
 		cohc[i] = cohc_mex[i];
 		cihc[i] = cihc_mex[i];
+		moc_beta[i] = moc_beta_mex[i];
+		moc_offset[i] = moc_offset_mex[i];
+		moc_weight[i] = moc_weight_mex[i];
 	}
 
 	/* 
@@ -201,16 +211,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         randNums_lsr[i] = (double*) calloc(totalstim, sizeof(double));
     }
 
-	/*
-	 * Handle moc_minrate_ic by copying data from MATLAB mxArray pointer to
-	 * dynamically allocated array in C.
-	 */
-	double *moc_minrate_ic_mex = mxGetPr(prhs[30]);
-	double *moc_minrate_ic = (double*) calloc(n_chan, sizeof(double));
-	for (int i = 0; i < n_chan; i++){
-		moc_minrate_ic[i] = moc_minrate_ic_mex[i];
-	}
-
 	// Loop through elements via linear indexing, store	elements in row-major order
 	int idx_cf, idx_t;
 	for (int i = 0; i < (totalstim * n_chan); i++) {
@@ -224,7 +224,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	}
 
 	/* 
-	 * Handle return matrices. ALl return matrices are size of (n_chan, totalstim). These 
+	 * Handle return matrices. All return matrices are size of (n_chan, totalstim). These 
 	 * are dynamically allocated and passed to the C routine as pointers. Then, below,
 	 * the data stored in these matrices will be extracted and reformatted into an mxArray
 	 * for return as a pointer to MATLAB.
@@ -249,6 +249,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	double *mocwdr[n_chan];
 	double *mocic[n_chan];
 	double *gain[n_chan];
+	double *gainpostmix[n_chan];
  	for (int i = 0; i < n_chan; i++) {
     	controlout[i]    = (double*) calloc(totalstim, sizeof(double));
     	c1out[i]         = (double*) calloc(totalstim, sizeof(double));
@@ -269,16 +270,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		mocwdr[i]        = (double*) calloc(totalstim, sizeof(double));
 		mocic[i]         = (double*) calloc(totalstim, sizeof(double));
 		gain[i]          = (double*) calloc(totalstim, sizeof(double));
+		gainpostmix[i]   = (double*) calloc(totalstim, sizeof(double));
 	}
 
-	/* 
-	 * Run the efferent model.
-	 * The first four arguments (px, randNums_hsr, randNums_lsr, and cf) are pointers to 
-	 * input arrays or matrices, the last five arguments (ihcout, anrateour_hsr, 
-	 * anrateour_lsr, icout, and gain) are pointers to output matrices, cohc and cihc
-	 * are pointers to input arrays, and the remaining arguments are 
-	 * floating-point or integer values.
-	 */
+	// Set gain and gain postmix to values of 1 by default
+	for (int i = 0; i < n_chan; i++) {
+		for (int j = 0; j < totalstim; j++) {
+			gain[i][j] = 1.0;
+			gainpostmix[i][j] = 1.0;
+		}
+	}
+
+
+	// Run the efferent model via external call to C code
 	model(
 		px, 
 		randNums_hsr,
@@ -292,30 +296,26 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		species,
 		100.0, // spont
 		powerlaw_mode,
-		cn_tau_e,
-		cn_tau_i,
-		cn_delay,
-		cn_amp,
-		cn_inh,
-		ic_tau_e,
-		ic_tau_i,
-		ic_delay,
-		ic_amp,
-		ic_inh,
+		0.5e-3,  // default value for cn_tau_e (unused)
+		2.0e-3,  // default value for cn_tau_i (unused)
+		1.0e-3,  // default value for cn_delay (unused)
+		1.5,     // default value for cn_A (unused)
+		0.6,     // default value for cn_I (unused)
+		1.0/(10.0*64.0),      // default value for ic_tau_e (unused)
+		1.0/(10.0*64.0)*1.5,  // default value for ic_tau_i (unused)
+		1.0/(10.0*64.0)*2.0,  // default value for ic_delay (unused)
+		1.0,                  // default value for ic_A (unused)
+		0.9,                  // default value for ic_I (unused)
 		moc_cutoff,
-		moc_beta_wdr,
-		moc_offset_wdr,
-		moc_minrate_wdr,
-		moc_maxrate_wdr,
-		moc_beta_ic,
-		moc_offset_ic,
-		moc_minrate_ic,
-		moc_maxrate_ic,
-		moc_weight_wdr,
-		moc_weight_ic,
-		moc_width_wdr,
+		moc_beta,
+		moc_offset,
+		moc_minrate,
+		moc_maxrate,
+		moc_weight,
+		moc_width,
 		dur_settle,
 		moc_delay,
+		0,  // freeze gain off
 		controlout,
 		c1out,
 		c2out,
@@ -334,7 +334,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		icout,
 		mocwdr,
 		mocic,
-		gain
+		gain,
+		gainpostmix
 	); 
 
 	/*
@@ -346,15 +347,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 	plhs[0] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL);    
     plhs[1] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL); 
     plhs[2] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL);  
-	plhs[3] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL);    
-    plhs[4] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL); 
+    plhs[3] = mxCreateNumericArray(2, size_output, mxDOUBLE_CLASS, mxREAL); 
 
 	// Obtain pointers to said arrays
 	double *ihcouttmp = mxGetPr(plhs[0]);
 	double *anrateout_hsrtmp = mxGetPr(plhs[1]);
 	double *anrateout_lsrtmp = mxGetPr(plhs[2]);
-	double *icouttmp = mxGetPr(plhs[3]);
-	double *gaintmp = mxGetPr(plhs[4]);
+	double *gaintmp = mxGetPr(plhs[3]);
 
 	// Loop through elements via linear indexing, store	elements in column-major order
    	for (int i = 0; i < (n_chan * totalstim); i++) {
@@ -366,7 +365,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		ihcouttmp[i] = ihcout[idx_cf][idx_t];
 		anrateout_hsrtmp[i] = anrateout_hsr[idx_cf][idx_t];
 		anrateout_lsrtmp[i] = anrateout_lsr[idx_cf][idx_t];
-		icouttmp[i] = icout[idx_cf][idx_t];
 		gaintmp[i] = gain[idx_cf][idx_t];
 	}
 
@@ -393,10 +391,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 		free(mocwdr[i]);
 		free(mocic[i]);
 		free(gain[i]);
+		free(gainpostmix[i]);
 	}
 	free(px);
 	free(cf);
 	free(cohc);
 	free(cihc);
-	free(moc_minrate_ic);
+	free(moc_beta);
+	free(moc_weight);
+	free(moc_offset);
 }

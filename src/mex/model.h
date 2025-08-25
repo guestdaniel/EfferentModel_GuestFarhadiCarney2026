@@ -33,19 +33,15 @@ void model(
     double,     // ic_inh
     // MOC parameters
     double,     // moc_cutoff
-    double,     // moc_beta_wdr
-    double,     // moc_offset_wdr
-    double,     // moc_minrate_wdr
-    double,     // moc_maxrate_wdr
-    double,     // moc_beta_ic
-    double,     // moc_offset_ic
-    double *,   // moc_minrate_ic
-    double,     // moc_maxrate_ic
-    double,     // moc_weight_wdr
-    double,     // moc_weight_ic
-    double,     // moc_width_wdr
+    double *,   // moc_beta
+    double *,   // moc_offset
+    double,     // moc_minval
+    double,     // moc_maxval
+    double *,   // moc_weight
+    double,     // moc_width
     double,     // dur_settle
     double,     // moc_delay
+    int,        // moc_fix_gain
     // BM/IHC outputs
     double **,  // controlout
     double **,  // c1out
@@ -70,11 +66,13 @@ void model(
     // MOC outputs
     double **,  // mocwdr
     double **,  // mocic
-    double **   // gain
+    double **,  // gain
+    double **   // gainpostmix
 );
 
 /* Declare other functions */
 // model.c
+double normal_pdf(double, double, double);
 void middle_ear(double *, double, int, int, double *);
 void Get_tauwb(int, double *, int, int, double *, double *);
 void Get_taubm(int, double *, int, double *, double *, double *, double *);
@@ -105,8 +103,8 @@ void apply_ws1988_adaptation(double *, int, double, double, double, double, doub
 void apply_powerlaw_adaptation(double *, double *, double *, double *, int, double,
                                double, double, double, double, double *, double *);
 void apply_powerlaw_adaptation_iir(double *, double *, double *, double *, double *,
-                               double *, double *, double *, int, int, double,
-                               double, double, double *, double *);
+                               double *, double *, double *, double *, double *, int, int, 
+                               double, double, double, double *, double *);
 // sfie.c
 void get_alpha_norm(double, double, double, double *, double *);
 void filter_alpha(double *, int, double, double *, double *, double *);

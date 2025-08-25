@@ -29,23 +29,23 @@ end
 x = x .* tukeywin(length(x), 0.05)';
 
 % Simulate efferent-model response
-[~, hsr, lsr, ic, gain] = sim_efferent_model(x, cf, display_info=true);
-responses = {hsr, lsr, ic, gain};  % store all output matrices in cell array
+[~, hsr, lsr, gain] = sim_efferent_model(x, cf, display_info=true, noiseType=-1);
+responses = {hsr, lsr, gain};  % store all output matrices in cell array
 
 % Resample responses down to lower sampling rate for plotting
 t_resampled = 0.0:(1/fs_down):(dur - 1/fs_down);
-for ii = 1:4
+for ii = 1:length(responses)
 	responses{ii} = resample(responses{ii}, fs_down, fs, Dimension=2);
 end
 
 % Define labels/limits for plot
-labels = ["HSR", "LSR", "IC BE", "Gain"];
-limits = {[0.0, 600.0], [0.0, 200.0], [0.0, 100.0], [0.0, 1.0]};
+labels = ["HSR", "LSR", "Gain"];
+limits = {[0.0, 600.0], [0.0, 200.0], [0.0, 1.0]};
 
 % Plot as colorplots/neurograms
 figure;
-tiledlayout(4, 1);
-for ii = 1:4
+tiledlayout(length(responses), 1);
+for ii = 1:length(responses)
 	nexttile;
 	imagesc(t_resampled, 1:length(cf), responses{ii});
 	set(gca, 'ydir', 'normal');
@@ -61,98 +61,7 @@ end
 set(gcf, "Units", "normalized");
 set(gcf, "Position", [0.2 0.3 0.5 0.6])
 
-%% Example #2: SAM noise MTF
-% Here, we construct a series of sinusoidally amplitude-modulated (SAM) 
-% noises with various modulation frequencies and measure the mean IC rate
-% in response to each stimulus with and without efferent gain control. The
-% model's IC neuron is nominally a band-enhanced (BE) neuron, which should
-% exhibit bandpass tuning in terms of average rate versus modulation
-% frequency. However, in the absence of efferent gain control, the level 
-% used here (30 dB SPL spectrum level), mostly saturates this neuron and
-% thus only weak modulation tuning is observed. Enabling efferent gain 
-% control improves this coding and enhances the BE shape.
-%
-% Note that we enable/disable efferent gain control simply by altering the
-% values of different parameters. All parameters in the efferent model 
-% have default values, which are documented and specified in
-% `sim_efferent_model.m` in the comments block at the top of the function
-% and in the `arguments` block inside the function. The user can
-% override these defaults with a key=value pair in the function call. 
-%
-% **Key ideas:** adjusting model parameters, modulation coding
-
-% Set parameters
-fs = 100e3;                                      % sample rate (Hz)
-dur = 0.5;                                       % duration (seconds)
-t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
-cf = 1000.0;                                     % CF (Hz)
-fm_low = 2.0;                                    % lowest mod freq (Hz)
-fm_high = 512.0;                                 % highest mod freq (Hz)
-n_fm = 21;                                       % num mod freqs (#)
-level = 30.0;                                    % spectrum level
-depth = 0.0;                                     % modulation depth (dB)
-m = 10^(depth/20);                               % modulation index
-b_bp = fir1(4000, [100 8000]/(fs/2));            % filter coefs
-fms = exp(linspace(log(fm_low), log(fm_high), n_fm));
-
-% Construct stimuli
-stimuli = {};
-parfor idx_fm = 1:n_fm
-	% Construct carrier
-	noise_spl = level+10*log10(fs/2);
-	noise_rms = 10^(noise_spl/20)*20e-6;
-    BBN_Pa = noise_rms*randn(1,dur*fs);
-    BBN_Pa_band = conv(BBN_Pa,b_bp,'same');  % bandpass filter carrier from 0.1-8 kHz
-    pre_mod_rms = rms(BBN_Pa_band);
-
-	% Construct modulator
-	modulator = m*sin(2*pi*fms(idx_fm)*t); 
-
-	% Combine, scale, and store result
-	temp = (1 + modulator) .* BBN_Pa_band;
-	stimuli{idx_fm} = temp * pre_mod_rms / rms(temp);
-end
-
-% Get model responses
-mu_with_eff = zeros(1, n_fm);  % output IC means without efferent gain control
-mu_wout_eff = zeros(1, n_fm);  % output IC means WITH efferent gain control
-for idx_fm = 1:n_fm
-	% Call model w/ efferent system DISABLED
-	[~, ~, ~, ic, ~] = sim_efferent_model(...
-		stimuli{idx_fm},...
-		cf,...
-		moc_weight_wdr=0.0,...  % to disable efferent system, set WDR weight to 0
-		moc_weight_ic=0.0...    % ... and also set IC weight to 0
-	);
-	% Average and store IC rate
-	mu_wout_eff(idx_fm) = mean(ic);  % note: this includes onset response!
-
-	% Call model w/ efferent system enabled
-	[~, ~, ~, ic, ~] = sim_efferent_model(...
-		stimuli{idx_fm},...
-		cf,...
-		moc_weight_wdr=2.0,... % specify a WDR weight for efferent gain control (this is just an example)
-		moc_weight_ic=8.0...   % specify an IC weight for efferent gain control (this is just an example)
-	);
-	
-	% Average and store IC rate
-	mu_with_eff(idx_fm) = mean(ic);  % note: this includes onset response!
-end
-
-% Plot
-figure;
-plot(fms, mu_wout_eff, 'b'); hold on;
-plot(fms, mu_with_eff, 'r'); hold off;
-set(gca, 'xscale', 'log');
-xlabel('Modulation frequency (Hz)');
-ylabel('Firing rate (sp/s)');
-legend(["Without efferent", "With efferent"])
-ylim([0.0, 50.0]);
-set(gcf, "Units", "normalized");
-set(gcf, "Position", [0.2 0.3 0.2 0.25])
-
-
-%% Example #3: Variability in  spontaneous rate
+%% Example #2: Variability in  spontaneous rate
 % In the Zilany/Bruce/Carney et al. models, model versions from 2009 and
 % onward include some amount of fractional Gaussian noise added to the
 % synapse output inside the power-law adaptation loop. This noise has
@@ -201,7 +110,7 @@ for ii = 1:3
 	hold on;
 	for jj = 1:10
 		% Run model
-		[~, hsr, ~, ~, ~] = sim_efferent_model( ...
+		[~, hsr, ~, ~] = sim_efferent_model( ...
 			zeros(1, 50000), ...
 			[1000.0], ...
 			noiseType=noiseTypes(ii) ...
@@ -216,7 +125,7 @@ end
 set(gcf, "Units", "normalized");
 set(gcf, "Position", [0.2 0.3 0.5 0.2])
 
-%% Example #4: Comparison of true vs approximate power law for many pure tones
+%% Example #3: Comparison of true vs approximate power law for many pure tones
 % In the AN model, computation of power-law adaptation is one of the most
 % computationally demanding stages of the model. One way to get around this
 % is to replace "true" power-law adaptation with an approximation composed
@@ -258,9 +167,9 @@ parfor idx_freq = 1:length(freqs)
 	stim = [stim zeros(1, round(dur_post*fs))];
 
 	% Run efferent model with true and approximate power-law adaptation
-	[~, true(:, idx_freq), ~, ~, ~] = ...
+	[~, true(:, idx_freq), ~, ~] = ...
 		sim_efferent_model(stim, freqs(idx_freq), powerlaw_mode=1, noiseType=0);
-	[~, approx(:, idx_freq), ~, ~, ~] = ...
+	[~, approx(:, idx_freq), ~, ~] = ...
 		sim_efferent_model(stim, freqs(idx_freq), powerlaw_mode=2, noiseType=0);	
 end
 
@@ -303,7 +212,7 @@ end
 set(gcf, "Units", "normalized");
 set(gcf, "Position", [0.2 0.3 0.5 0.5])
 
-%% Example #5: Performance benefits of approximate power-law implementation
+%% Example #4: Performance benefits of approximate power-law implementation
 % See above for more details about power-law adaptation approximation. 
 %
 % Here, we test the approximation and compare its performance to the true
@@ -381,7 +290,7 @@ ylabel("Performance gain (true/approx compute time)");
 set(gcf, "Units", "normalized");
 set(gcf, "Position", [0.2 0.3 0.5 0.5])
 
-%% Example #6: COHC and CIHC
+%% Example #5: COHC and CIHC
 % Every channel in the simulation has an associated COHC and CIHC value
 % that governs, respectively, the gain provided by OHCs and the amplitude
 % of IHC responses. Altering these values can simulate different types of
@@ -408,8 +317,8 @@ x = 10^(level/20)*20e-6 * x/rms(x);
 x = x .* tukeywin(length(x), 0.1)';
 
 % Simulate responses
-[~, hsr_nh, ~, ~, ~] = sim_efferent_model(x, cfs, cohc=cohcs_nh, noiseType=-1);
-[~, hsr_hi, ~, ~, ~] = sim_efferent_model(x, cfs, cohc=cohcs_hi, noiseType=-1);
+[~, hsr_nh, ~, ~] = sim_efferent_model(x, cfs, cohc=cohcs_nh, noiseType=-1);
+[~, hsr_hi, ~, ~] = sim_efferent_model(x, cfs, cohc=cohcs_hi, noiseType=-1);
 
 % Plot average rate at each CF
 figure;
@@ -423,7 +332,7 @@ xlabel("CF (Hz)");
 ylabel("Firing rate (sp/s)");
 legend(["Normal hearing", "Hearing impaired"]);
 
-%% Example #7: Single-channel versus multi-channel simulations of gain control
+%% Example #6: Single-channel versus multi-channel simulations of gain control
 % The present model of MOC efferent gain control has a parameter that
 % controls how "wide" the WDR-driven efferent projections are,
 % `moc_width_wdr`. When set to a value of zero, each channel's WDR-driven 
@@ -469,7 +378,7 @@ for idx_level = 1:length(Nos)
 	x = randn(1, round(dur*fs));
 	x = 10^(level/20)*20e-6 * x/rms(x);
 	x = filter(b, a, x);
-	[~, hsr, ~, ~, gain] = sim_efferent_model(x, cf, moc_weight_ic=0.0, moc_weight_wdr=10.0, noiseType=-1);
+	[~, hsr, ~, gain] = sim_efferent_model(x, cf, moc_weight_ic=0.0, moc_weight_wdr=10.0, noiseType=-1);
 	plot(t, gain);
 end
 hold(gca, "off");
@@ -489,7 +398,7 @@ for width = [0 0.5 1.0]
 		x = randn(1, round(dur*fs));
 		x = 10^(level/20)*20e-6 * x/rms(x);
 		x = filter(b, a, x);
-		[~, hsr, ~, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_weight_ic=0.0, moc_weight_wdr=10.0, moc_width_wdr=width);
+		[~, hsr, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_weight_ic=0.0, moc_weight_wdr=10.0, moc_width_wdr=width);
 		plot(t, gain(11, :));  % target CF is 11th channel
 	end
 	hold(gca, "off");
@@ -500,55 +409,28 @@ for width = [0 0.5 1.0]
 	title(sprintf("Multichannel (width = %0.1f oct)", width))
 end
 
-%% Example #8: MOC guardrails
-% The MOC system in the model includes CF-specific "guardrails" that
-% set a floor on the gain factor to prevent threshold and rate-level
-% function shifts that exceed what is observed under electrical stimulation
-% of the MOC bundle (e.g., Guinan and Gifford (1988), Hearing Research).
-% The function `calc_guardrail_cohc` converts from CF to this guardrail
-% COHC value. We can simulate efferent responses to very "strong" stimuli
-% (e.g., loud modulated noises) with very high MOC weights and verify that 
-% the resultant time-varying gain value never exceeds this floor value.
-
+%% Example 7: Rate-level function
+% [[fill in description of RLF]]
 % Set parameters
-fs = 100e3;                                      % sample rate (Hz)
-dur = 2.0;                                       % duration (seconds)
-t = 0.0:(1/fs):(dur - 1/fs);                     % sample times (s)
-fm = 64.0;                                       % mod freq (Hz)
-level = 40.0;                                    % spectrum level
-depth = 0.0;                                     % modulation depth (dB)
-m = 10^(depth/20);                               % modulation index
-b_bp = fir1(4000, [100 8000]/(fs/2));            % filter coefs
+fs = 100e3;
+cf = 10e3;
+levels = 0.0:5.0:90.0;
+dur = 0.03;
 
-% Construct stimulus
-% Construct carrier
-noise_spl = level+10*log10(fs/2);
-noise_rms = 10^(noise_spl/20)*20e-6;
-BBN_Pa = noise_rms*randn(1,dur*fs);
-BBN_Pa_band = conv(BBN_Pa,b_bp,'same');  % bandpass filter carrier from 0.1-8 kHz
-pre_mod_rms = rms(BBN_Pa_band);
+% Simulate response to each RLF stimulus
+rlf = zeros(size(levels));
+for idx_level = 1:length(levels)
+	% Do stim
+	stim = 20e-6 * 10^(levels(idx_level)/20.0) * sin(2*pi * cf * (0.0:(1/fs):(dur - 1/fs))) * sqrt(2);
+	stim = stim .* tukeywin(length(stim), 0.1)';
 
-% Construct modulator
-modulator = m*sin(2*pi*fm*t);
-
-% Combine, scale, and store result
-temp = (1 + modulator) .* BBN_Pa_band;
-stimulus = temp * pre_mod_rms / rms(temp);
-
-% Simulate response
-% Note that we crank up the weights to very high values to ensure that 
-% the MOC system is strongly driven by this stimulus.
-cfs = [0.5e3, 1e3, 2e3, 4e3, 8e3];
-[~, ~, ~, ~, gain] = sim_efferent_model(stimulus, cfs, species=2, moc_weight_ic=20.0, moc_weight_wdr=20.0);
-
-% Plot gain factor over time for many different CFs.
-% We plot a reference line at the minimum allowed COHC for each CF.
-figure; hold on;
-for ii = 1:length(cfs)
-	plot(gain(ii, :), color=colors(ii, :), HandleVisibility="off");
-	yline(calc_guardrail_cohc(cfs(ii), 2), color=colors(ii, :), linestyle="-");
+	% Do sim
+	[~, hsr, ~, ~] = sim_efferent_model(stim, cf, display_info=true, noiseType=-1);
+	rlf(idx_level) = mean(hsr);
 end
-hold off;
-xlabel("Samples");
-ylabel("Gain factor");
-legend(string(cfs));
+
+% Plot
+figure;
+plot(levels, rlf);
+xlim([0 90]);
+ylim([0 500]);

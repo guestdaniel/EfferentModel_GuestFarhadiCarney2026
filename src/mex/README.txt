@@ -17,7 +17,7 @@ This is the Mex wrapper for the Carney lab auditory-nerve and midbrain efferent 
 
 4.  Call `sim_efferent_model` from MATLAB while this folder is on your path 
 	to run the model. The pattern is:
-		`[~, hsr, ~, ~, ~] = sim_efferent_model(x, cf, param1=val1, ..., paramN=valN)`
+		`[~, hsr, ~, ~] = sim_efferent_model(x, cf, param1=val1, ..., paramN=valN)`
 	- The first two arguments are the (1) row-vector sound waveform and 
 	  (2) the row-vector of CFs.
 	- (Matrix-valued) outputs are [ihc, hsr, lsr, ic, gain], each in the 
@@ -38,11 +38,10 @@ This is the Mex wrapper for the Carney lab auditory-nerve and midbrain efferent 
         >> Power-law adaptation is implemented with a new approximation
 		   scheme described in Guest and Carney (20xx)
 		>> "Rabbit" is the default species (i.e., `species=1`)
-		>> The efferent system includes both WDR and IC-driven gain 
-           control. See Farhadi et al. (2023) for more information on
+		>> The efferent system includes only the WDR-driven gain control.
+           See Farhadi et al. (2023) for more information on
            the basic architecture, and Guest et al. (202x) for information 
            on the inclusion of "cross-channel" gain control
-		>> The IC model is a band-enhanced neuron with a BMF near 60-100 Hz
 
 4.  Numerous detailed example simulations and plots are available in another
     m file, `demo.m`. 
@@ -51,6 +50,14 @@ This is the Mex wrapper for the Carney lab auditory-nerve and midbrain efferent 
 Changes to the MATLAB/Mex model code are documented here, while changes
 to the model code itself are documented in separately in the main model
 code in `model_changelog.txt`.
+
+- 8/25/2025, DRG
+  Updated the MATLAB wrapper to be up-to-date with the most recent versions
+  of the efferent model C code and the Julia wrapper. The primary changes
+  are the removal of the IC pathway (it is still in the C code, but does
+  not contribute to responses in the efferent system at the moment) and
+  simplifications to how cross-channel gain control is implemented. More
+  detail can be found in the model changelog.
 
 - 5/31/2024, DRG
   Removed references to `scale_dbspl`, an external function that is not 
