@@ -14,7 +14,7 @@ using ZilanyBruceCarney2014
 
 include("c_interface.jl")
 include("wrappers.jl")
-#include("wrappers_matlab.jl")
+include("wrappers_orig.jl")
 include("utils.jl")
 include("adaptation.jl")  # temporary file for analyzing approximate power law implnt
 include("profile.jl") 
