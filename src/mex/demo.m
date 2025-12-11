@@ -335,7 +335,7 @@ legend(["Normal hearing", "Hearing impaired"]);
 %% Example #6: Single-channel versus multi-channel simulations of gain control
 % The present model of MOC efferent gain control has a parameter that
 % controls how "wide" the WDR-driven efferent projections are,
-% `moc_width_wdr`. When set to a value of zero, each channel's WDR-driven 
+% `moc_width`. When set to a value of zero, each channel's WDR-driven 
 % gain factor is determined only by WDR-pathway responses in that channel. 
 % When set to a value greater than zero, WDR-driven gain factors for a
 % range of channels are geometrically averaged to produce a final
@@ -378,7 +378,7 @@ for idx_level = 1:length(Nos)
 	x = randn(1, round(dur*fs));
 	x = 10^(level/20)*20e-6 * x/rms(x);
 	x = filter(b, a, x);
-	[~, hsr, ~, gain] = sim_efferent_model(x, cf, moc_weight_ic=0.0, moc_weight_wdr=10.0, noiseType=-1);
+	[~, hsr, ~, gain] = sim_efferent_model(x, cf, moc_weight=10.0, noiseType=-1);
 	plot(t, gain);
 end
 hold(gca, "off");
@@ -389,7 +389,7 @@ legend(string(Nos));
 title("Single-channel")
 
 % Next, we plot results for multi-channel simulations with various
-% moc_width_wdr values, looking only at time-varying gain factor from the
+% moc_width values, looking only at time-varying gain factor from the
 % CF in the middle of the simulated range
 for width = [0 0.5 1.0]
 	nexttile; hold(gca, "on");
@@ -398,7 +398,7 @@ for width = [0 0.5 1.0]
 		x = randn(1, round(dur*fs));
 		x = 10^(level/20)*20e-6 * x/rms(x);
 		x = filter(b, a, x);
-		[~, hsr, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_weight_ic=0.0, moc_weight_wdr=10.0, moc_width_wdr=width);
+		[~, hsr, ~, gain] = sim_efferent_model(x, cfs, noiseType=-1, moc_weight=10.0, moc_width=width);
 		plot(t, gain(11, :));  % target CF is 11th channel
 	end
 	hold(gca, "off");
