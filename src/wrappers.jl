@@ -1,58 +1,15 @@
-export sim_gfc2023, sim_gfc2023_dict
-
-"""
-    calc_guardrail_cohc(cf, species[, guardrail_mode="median"])
-
-Calculates a "guardrail" COHC value at a given `cf` for `species`
-
-Based on a series of simulations reported in [[cite]], guardrail COHC values are values of
-COHC for a specific CF and species that prevent ΔL and ΔTH values due to efferent activity
-from exceeding what is plausible given MOC electrical stimulation experiments. These 
-simualtions were parametrized in terms of normalized cochlear distance according to:
-    Greenwood, D. D. (1990). A cochlear frequency-position function for several species—29
-    years later. The Journal of the Acoustical Society of America, 87(6), 2592–2605.
-    https://doi.org/10.1121/1.399052
-Hence, below we convert CF to a cochlear distance based on species and then determine an
-appropriate COHC value based on the mappings described in [[cite]].
-"""
-function calc_guardrail_cohc(cf, species, guardrail_mode="standard")
-    # Convert from CF to cochlear distance `cd`, depending on speices
-    if species == "cat"
-        cd = log10(cf/456.0 + 0.8)/2.1
-    elseif species == "human"
-        cd = log10(cf/165.4 + 0.88)/2.1
-    else
-        error("Only cat and human are accepted as species.")
-    end
-
-    # Map from cochlear distance to guardrail COHC
-    if guardrail_mode == "none" 
-        cohc = 0.0
-    # if "standard", use lm between cochlear distance and log(cohc)
-    elseif guardrail_mode == "standard"
-        cohc = exp(-2.003942 + 1.753976 * cd)  # linear regression coefs deteremined in [[cite]]
-    elseif guardrail_mode == "standard+5"
-        cohc = exp(-2.452641 + 1.942155 * cd)  # linear regression coefs deteremined in [[cite]]
-    elseif guardrail_mode == "standard+10"
-        cohc = exp(-3.010872 + 2.252671 * cd)  # linear regression coefs deteremined in [[cite]]
-    elseif guardrail_mode == "standard+15"
-        cohc = exp(-3.665091 + 2.659225 * cd)  # linear regression coefs deteremined in [[cite]]
-    elseif guardrail_mode == "standard+20"
-        cohc = exp(-4.587940 + 3.358810 * cd)  # linear regression coefs deteremined in [[cite]]
-    else
-        error("guradrail_mode not recognized!")
-    end
-    return cohc
-end
+export sim_gfc2023, sim_gfc2023!, sim_gfc2023_dict
 
 """ 
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
 Simulates full model output for sound-pressure input
 
-# Arguments
-- `input::Vector{Float64}`: sound-pressure waveform (Pa)
+# Positional arguments 
+- `x::Vector{Float64}`: sound-pressure waveform (Pa)
 - `cf::Float64`: characteristic frequency of the fiber in Hz
+
+# Keyword arguments
 - `fs::Float64`: sampling rate of the *input* in Hz
 - `cohc::Float64`:
 - `cihc::Float64`:
@@ -151,9 +108,6 @@ function sim_gfc2023(
     if typeof(moc_offset) == Float64
         moc_offset = fill(moc_offset, length(cf))
     end
-
-    # Convert bool powerlaw_include_fast to integer
-#    powerlaw_include_fast = Int64(powerlaw_include_fast)
 
     # Pre-allocate memory
     controlout = [zeros(len_total) for _ in 1:n_chan]
@@ -273,6 +227,260 @@ function sim_gfc2023(
     return outputs
 end
 
+""" 
+    sim_gfc2023!(mem, input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
+
+Simulates full model output for sound-pressure input in place using pre-allocated memory mem
+
+# Arguments
+- `ffGn_hsr::Vector{Vector{Float64}}`:
+- `ffGn_lsr::Vector{Vector{Float64}}`:
+- `controlout::Vector{Vector{Float64}}`:
+- `c1out::Vector{Vector{Float64}}`:
+- `c2out::Vector{Vector{Float64}}`:
+- `ihcout::Vector{Vector{Float64}}`:
+- `expout_hsr::Vector{Vector{Float64}}`:
+- `sout1_hsr::Vector{Vector{Float64}}`:
+- `sout2_hsr::Vector{Vector{Float64}}`:
+- `synout_hsr::Vector{Vector{Float64}}`:
+- `expout_lsr::Vector{Vector{Float64}}`:
+- `sout1_lsr::Vector{Vector{Float64}}`:
+- `sout2_lsr::Vector{Vector{Float64}}`:
+- `synout_lsr::Vector{Vector{Float64}}`:
+- `hsrout::Vector{Vector{Float64}}`:
+- `lsrout::Vector{Vector{Float64}}`:
+- `cnout::Vector{Vector{Float64}}`:
+- `icout::Vector{Vector{Float64}}`:
+- `mocwdr::Vector{Vector{Float64}}`:
+- `mocic::Vector{Vector{Float64}}`:
+- `gain::Vector{Vector{Float64}}`:
+- `gainpostmix::Vector{Vector{Float64}}`:
+- `x::Vector{Float64}`: sound-pressure waveform (Pa)
+- `cf::Float64`: characteristic frequency of the fiber in Hz
+- `fs::Float64`: sampling rate of the *input* in Hz
+- kwargs...
+
+# Returns
+- `output::Vector{Float64}`: synapse output (unknown units?), length is `length(input)`
+"""
+function sim_gfc2023!(
+    ffGn_hsr::Vector{Vector{Float64}},
+    ffGn_lsr::Vector{Vector{Float64}},
+    controlout::Vector{Vector{Float64}},
+    c1out::Vector{Vector{Float64}},
+    c2out::Vector{Vector{Float64}},
+    ihcout::Vector{Vector{Float64}},
+    expout_hsr::Vector{Vector{Float64}},
+    sout1_hsr::Vector{Vector{Float64}},
+    sout2_hsr::Vector{Vector{Float64}},
+    synout_hsr::Vector{Vector{Float64}},
+    expout_lsr::Vector{Vector{Float64}},
+    sout1_lsr::Vector{Vector{Float64}},
+    sout2_lsr::Vector{Vector{Float64}},
+    synout_lsr::Vector{Vector{Float64}},
+    hsrout::Vector{Vector{Float64}},
+    lsrout::Vector{Vector{Float64}},
+    cnout::Vector{Vector{Float64}},
+    icout::Vector{Vector{Float64}},
+    mocwdr::Vector{Vector{Float64}},
+    mocic::Vector{Vector{Float64}},
+    gain::Vector{Vector{Float64}},
+    gainpostmix::Vector{Vector{Float64}},
+    x::Vector{Float64}, 
+    cf::Vector{Float64}; 
+    fs::Float64=100e3,
+    cohc::Vector{Float64}=ones(size(cf)),
+    cihc::Vector{Float64}=ones(size(cf)),
+    species::String="human",
+    powerlaw_mode=2,
+    cn_tau_e=0.5e-3,
+    cn_tau_i=2.0e-3,
+    cn_delay=1.0e-3,
+    cn_amp=1.5,
+    cn_inh=0.6,
+    ic_tau_e=1.0/(10.0*64.0),  # BMF = 64 Hz
+    ic_tau_i=1.0/(10.0*64.0)*1.5,
+    ic_delay=1.0/(10.0*64.0)*2.0,
+    ic_amp=1.0,
+    ic_inh=0.9,
+    moc_cutoff=0.64,
+    moc_beta=fill(0.2, length(cf)),
+    moc_offset=fill(5.0, length(cf)),
+    moc_minval=0.1,
+    moc_maxval=1.0,
+    moc_weight=fill(1.0, length(cf)),
+    moc_width=0.5,
+    dur_pad_left=0.02,
+    moc_delay=0.025,
+    moc_fix_gain=false,
+    clip_left=dur_pad_left == 0.0 ? false : true,
+    dur_pad_right=0.0,
+    clip_right=dur_pad_right == 0.0 ? false : true,
+)::Vector{Vector{Vector{Float64}}}
+    # Calculate pad sizes in samples
+    len_pad_left = Int(floor(dur_pad_left*fs))
+    len_pad_right = Int(floor(dur_pad_right*fs))
+    len_stim = length(x)
+    len_total = len_pad_left + len_stim + len_pad_right
+
+    # Pad x
+    stim = vcat(zeros(len_pad_left), x, zeros(len_pad_right))
+
+    # Calculate n_chan
+    n_chan = length(cf)
+
+    # Convert human-readable arguments into C-side floats/ints
+    species_flag = Dict(
+        "cat" => 1,
+        "human" => 2,
+        "human_glasberg" => 3
+    )[species]
+
+    # If MOC weight is passed as a scalar, replace it with a vector of the same length as cf
+    # filling in the scalar weight. Same applies to moc_beta and moc_offset.
+    if typeof(moc_weight) == Float64
+        moc_weight = fill(moc_weight, length(cf))
+    end
+    if typeof(moc_beta) == Float64
+        moc_beta = fill(moc_beta, length(cf)) 
+    end
+    if typeof(moc_offset) == Float64
+        moc_offset = fill(moc_offset, length(cf))
+    end
+
+    # Add length assertion
+    @assert length(gain) == length(cf)
+
+    # Run model
+    model!(
+        stim, 
+        ffGn_hsr,
+        ffGn_lsr,
+        cf,
+        n_chan,
+        1/fs, 
+        len_total, 
+        cohc, 
+        cihc, 
+        species_flag, 
+        100.0,
+        powerlaw_mode,
+        cn_tau_e,
+        cn_tau_i,
+        cn_delay,
+        cn_amp,
+        cn_inh,
+        ic_tau_e,
+        ic_tau_i,
+        ic_delay,
+        ic_amp,
+        ic_inh,
+        moc_cutoff,
+        moc_beta,
+        moc_offset,
+        moc_minval,
+        moc_maxval,
+        moc_weight,
+        moc_width,
+        dur_pad_left,
+        moc_delay,
+        Int(moc_fix_gain),
+        controlout, 
+        c1out, 
+        c2out, 
+        ihcout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
+        cnout,
+        icout,
+        mocwdr,
+        mocic,
+        gain,
+        gainpostmix,
+    )
+
+    # Return
+    outputs = [
+        controlout, 
+        c1out, 
+        c2out, 
+        ihcout, 
+        expout_hsr, 
+        sout1_hsr, 
+        sout2_hsr, 
+        synout_hsr,
+        expout_lsr, 
+        sout1_lsr, 
+        sout2_lsr, 
+        synout_lsr,
+        hsrout, 
+        lsrout, 
+        cnout, 
+        icout, 
+        mocwdr, 
+        mocic, 
+        gain, 
+        gainpostmix
+    ]
+    if clip_left | clip_right
+        outputs = map(outputs) do output
+            output = map(output) do channel
+                idx_left = clip_left ? (len_pad_left+1) : 1
+                idx_right = clip_right ? length(channel) - len_pad_right : length(channel)
+                channel = channel[idx_left:idx_right]
+            end
+        end
+    end
+    return outputs
+end
+
+"""
+    get_ffGn(len_total, fractional, n_chan; fs=100e3)
+
+Function to prepare ffGn inputs for sim_gfc2023 and sim_gfc2023!
+"""
+function get_ffGn(len_total, fractional, n_chan, fs=100e3)
+    # Synthesize ffGn
+    if fractional
+        ffGn_hsr = map(1:n_chan) do _
+            ffGn_native(
+                len_total,
+                1/fs,
+                0.9,
+                1.0,
+                100.0,
+            )
+        end
+        ffGn_lsr = map(1:n_chan) do _
+            ffGn_native(
+                len_total,
+                1/fs,
+                0.9,
+                1.0,
+                0.1,
+            )
+        end
+    else
+        ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
+        ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
+    end
+
+    return ffGn_hsr, ffGn_lsr
+end
+
+"""
+    sim_gfc2023_dict(args...; kwargs...)
+
+Wrapper around `sim_gfc2023` that returns outputs as a dictionary.
+"""
 function sim_gfc2023_dict(args...; kwargs...)
     control, c1, c2, ihc, expon_hsr, sout1_hsr, sout2_hsr, syn_hsr, expon_lsr, sout1_lsr, sout2_lsr, syn_lsr, hsr, lsr, cn, ic, mocwdr, mocic, gain, gainpostmix = sim_gfc2023(args...; kwargs...)
     return Dict(
