@@ -1,4 +1,39 @@
 export sim_gfc2023, sim_gfc2023!, sim_gfc2023_dict
+export GFC2023_Mem, update_ffGn!, zero_state!
+
+"""
+    get_ffGn(len_total, fractional, n_chan; fs=100e3)
+
+Function to prepare ffGn inputs for sim_gfc2023 and sim_gfc2023!
+"""
+function get_ffGn(len_total, fractional, n_chan, fs=100e3)
+    # Synthesize ffGn
+    if fractional
+        ffGn_hsr = map(1:n_chan) do _
+            ffGn_native(
+                len_total,
+                1/fs,
+                0.9,
+                1.0,
+                100.0,
+            )
+        end
+        ffGn_lsr = map(1:n_chan) do _
+            ffGn_native(
+                len_total,
+                1/fs,
+                0.9,
+                1.0,
+                0.1,
+            )
+        end
+    else
+        ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
+        ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
+    end
+
+    return ffGn_hsr, ffGn_lsr
+end
 
 """ 
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
@@ -228,7 +263,8 @@ function sim_gfc2023(
 end
 
 """ 
-    sim_gfc2023!(mem, input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
+    sim_gfc2023!(mem..., input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
+    sim_gfc2023!(mem::GFC2023_Mem, input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
 Simulates full model output for sound-pressure input in place using pre-allocated memory mem
 
@@ -442,38 +478,45 @@ function sim_gfc2023!(
     return outputs
 end
 
-"""
-    get_ffGn(len_total, fractional, n_chan; fs=100e3)
-
-Function to prepare ffGn inputs for sim_gfc2023 and sim_gfc2023!
-"""
-function get_ffGn(len_total, fractional, n_chan, fs=100e3)
-    # Synthesize ffGn
+function sim_gfc2023!(mem::GFC2023_Mem, args...; fractional=false, clean=false, kwargs...)
+    # If fractional, we should first fill the ffGn values in
     if fractional
-        ffGn_hsr = map(1:n_chan) do _
-            ffGn_native(
-                len_total,
-                1/fs,
-                0.9,
-                1.0,
-                100.0,
-            )
-        end
-        ffGn_lsr = map(1:n_chan) do _
-            ffGn_native(
-                len_total,
-                1/fs,
-                0.9,
-                1.0,
-                0.1,
-            )
-        end
-    else
-        ffGn_hsr = [zeros(len_total) for _ in 1:n_chan]
-        ffGn_lsr = [zeros(len_total) for _ in 1:n_chan]
+        update_ffGn!(mem)
     end
 
-    return ffGn_hsr, ffGn_lsr
+    # If clean, we should zero out memory state before running
+    if clean
+        zero_state!(mem)
+    end
+
+    # Pass to sim_gfc2023! standard method
+    return sim_gfc2023!(
+        mem.ffGn_hsr,
+        mem.ffGn_lsr,
+        mem.controlout,
+        mem.c1out,
+        mem.c2out,
+        mem.ihcout,
+        mem.expout_hsr,
+        mem.sout1_hsr,
+        mem.sout2_hsr,
+        mem.synout_hsr,
+        mem.expout_lsr,
+        mem.sout1_lsr,
+        mem.sout2_lsr,
+        mem.synout_lsr,
+        mem.hsrout,
+        mem.lsrout,
+        mem.cnout,
+        mem.icout,
+        mem.mocwdr,
+        mem.mocic,
+        mem.gain,
+        mem.gainpostmix,
+        args...; 
+        fs=mem.fs,
+        kwargs...
+    )
 end
 
 """
@@ -507,3 +550,158 @@ function sim_gfc2023_dict(args...; kwargs...)
     )
 end
 
+"""
+    GFC2023_Mem
+
+Structure to hold pre-allocated memory for sim_gfc2023!
+"""
+struct GFC2023_Mem
+    # Scalar arguments that determine memory size
+    fs::Float64
+    len_total::Int
+    n_chan::Int
+
+    # Pre-allocated memory
+    ffGn_hsr::Vector{Vector{Float64}}
+    ffGn_lsr::Vector{Vector{Float64}}
+    controlout::Vector{Vector{Float64}}
+    c1out::Vector{Vector{Float64}}
+    c2out::Vector{Vector{Float64}}
+    ihcout::Vector{Vector{Float64}}
+    expout_hsr::Vector{Vector{Float64}}
+    sout1_hsr::Vector{Vector{Float64}}
+    sout2_hsr::Vector{Vector{Float64}}
+    synout_hsr::Vector{Vector{Float64}}
+    expout_lsr::Vector{Vector{Float64}}
+    sout1_lsr::Vector{Vector{Float64}}
+    sout2_lsr::Vector{Vector{Float64}}
+    synout_lsr::Vector{Vector{Float64}}
+    hsrout::Vector{Vector{Float64}}
+    lsrout::Vector{Vector{Float64}}
+    cnout::Vector{Vector{Float64}}
+    icout::Vector{Vector{Float64}}
+    mocwdr::Vector{Vector{Float64}}
+    mocic::Vector{Vector{Float64}}
+    gain::Vector{Vector{Float64}}
+    gainpostmix::Vector{Vector{Float64}}
+end
+
+# Method for GFC2023_Mem in terms of len_total and n_chan
+function GFC2023_Mem(len_total::Int64, n_chan::Int64, fs::Float64=100e3)
+    # Start by initializing empty zerod ffGN (fractional == false)
+    ffGn_hsr, ffGn_lsr = get_ffGn(len_total, false, n_chan, fs)
+
+    # Pre-allocate memory for intermediate/output variables; all values are initialized 
+    # at 0, except for gain and gainpostmix, which are initialized at 1. 
+    controlout = [zeros(len_total) for _ in 1:n_chan]
+    c1out = [zeros(len_total) for _ in 1:n_chan]
+    c2out = [zeros(len_total) for _ in 1:n_chan]
+    ihcout = [zeros(len_total) for _ in 1:n_chan]
+    expout_hsr = [zeros(len_total) for _ in 1:n_chan]
+    sout1_hsr = [zeros(len_total) for _ in 1:n_chan]
+    sout2_hsr = [zeros(len_total) for _ in 1:n_chan]
+    synout_hsr = [zeros(len_total) for _ in 1:n_chan]
+    expout_lsr = [zeros(len_total) for _ in 1:n_chan]
+    sout1_lsr = [zeros(len_total) for _ in 1:n_chan]
+    sout2_lsr = [zeros(len_total) for _ in 1:n_chan]
+    synout_lsr = [zeros(len_total) for _ in 1:n_chan]
+    hsrout = [zeros(len_total) for _ in 1:n_chan]
+    lsrout = [zeros(len_total) for _ in 1:n_chan]
+    cnout = [zeros(len_total) for _ in 1:n_chan]
+    icout = [zeros(len_total) for _ in 1:n_chan]
+    mocwdr = [zeros(len_total) for _ in 1:n_chan]
+    mocic = [zeros(len_total) for _ in 1:n_chan]
+    gain = [ones(len_total) for _ in 1:n_chan]
+    gainpostmix = [ones(len_total) for _ in 1:n_chan]
+
+    # Wrap everything in GFC2023_Mem struct call
+    GFC2023_Mem(
+        fs,
+        len_total,
+        n_chan,
+        ffGn_hsr,
+        ffGn_lsr,
+        controlout,
+        c1out,
+        c2out,
+        ihcout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
+        cnout,
+        icout,
+        mocwdr,
+        mocic,
+        gain,
+        gainpostmix
+    )
+end
+
+# Method for GFC2023_Mem that matches function signature of sim_gfc2023!
+function GFC2023_Mem(
+    x::Vector{Float64}, 
+    cfs::Vector{Float64}; 
+    fs=100e3,
+    dur_pad_left=0.02,
+    dur_pad_right=0.0,
+)
+    len_total = length(x) + Int(floor(dur_pad_left*fs)) + Int(floor(dur_pad_right*fs)) 
+    n_chan = length(cfs)
+    return GFC2023_Mem(len_total, n_chan, fs)
+end
+
+# Method for GFC2023_Mem that fills in ffGn values when fractional == true
+function update_ffGn!(mem::GFC2023_Mem)
+    # Synthesize ffGn
+    for i in eachindex(mem.ffGn_hsr)
+        mem.ffGn_hsr[i] .= ffGn_native(
+            mem.len_total,
+            1/mem.fs,
+            0.9,
+            1.0,
+            100.0,
+        )
+        mem.ffGn_lsr[i] .= ffGn_native(
+            mem.len_total,
+            1/mem.fs,
+            0.9,
+            1.0,
+            0.1,
+        )
+    end
+end
+
+# Method for GFC2023_Mem that zeros out state variables
+function zero_state!(mem::GFC2023_Mem)
+    for chan in 1:mem.n_chan
+        fill!(mem.ffGn_hsr[chan], 0.0)
+        fill!(mem.ffGn_lsr[chan], 0.0)
+        fill!(mem.controlout[chan], 0.0)
+        fill!(mem.c1out[chan], 0.0)
+        fill!(mem.c2out[chan], 0.0)
+        fill!(mem.ihcout[chan], 0.0)
+        fill!(mem.expout_hsr[chan], 0.0)
+        fill!(mem.sout1_hsr[chan], 0.0)
+        fill!(mem.sout2_hsr[chan], 0.0)
+        fill!(mem.synout_hsr[chan], 0.0)
+        fill!(mem.expout_lsr[chan], 0.0)
+        fill!(mem.sout1_lsr[chan], 0.0)
+        fill!(mem.sout2_lsr[chan], 0.0)
+        fill!(mem.synout_lsr[chan], 0.0)
+        fill!(mem.hsrout[chan], 0.0)
+        fill!(mem.lsrout[chan], 0.0)
+        fill!(mem.cnout[chan], 0.0)
+        fill!(mem.icout[chan], 0.0)
+        fill!(mem.mocwdr[chan], 0.0)
+        fill!(mem.mocic[chan], 0.0)
+        fill!(mem.gain[chan], 1.0)
+        fill!(mem.gainpostmix[chan], 1.0)
+    end
+end
