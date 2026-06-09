@@ -4,7 +4,7 @@ using ZilanyBruceCarney2014
 using AuditoryMidbrain
 using Statistics
 using DSP
-using Helios
+using EfferentModel_GuestFarhadiCarney2026
 
 # Test implementation of SFIE in C
 #include("sfie_implementation.jl")

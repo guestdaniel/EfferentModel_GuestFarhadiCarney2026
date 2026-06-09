@@ -1,5 +1,5 @@
 using Test
-using Helios
+using EfferentModel_GuestFarhadiCarney2026
 using Statistics
 using Distributions
 using Libdl
@@ -13,7 +13,7 @@ using Libdl
         y = pdf(Normal(param...), x)
 
         # Calculate using direct implementation in C
-        lib = Libdl.dlopen("C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so")
+        lib = Libdl.dlopen(joinpath(@__DIR__, "..", "src", "model", "libgfc2023.so"))
         modelfunc = Libdl.dlsym(lib, :normal_pdf)
         ŷ = map(x) do _x
             ccall(

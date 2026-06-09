@@ -6,8 +6,10 @@
         @test begin
             b_julia, a_julia = AuditoryMidbrain.get_α_normalized(τ, 100e3, 1.0)
             b_c = zeros(2); a_c = zeros(3);
+            lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2023.so"))
+            modelfunc = Libdl.dlsym(lib, :get_alpha_norm)
             ccall(
-                (:get_alpha_norm, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
+                modelfunc,
                 Cvoid,
                 (
                     Cdouble,
@@ -18,6 +20,7 @@
                 ),
                 τ, 100e3, 1.0, b_c, a_c,
             )
+            Libdl.dlclose(lib)
             (b_c ≈ b_julia) & (a_c ≈ a_julia)
         end
     end
@@ -35,9 +38,11 @@
         b, a = AuditoryMidbrain.get_α_normalized(1e-3, 100e3, 1.0)
         x = sin.(2π .* 250.0 .* (0.0:(1/100e3):(0.1 - 1/100e3)))
         y_c = zeros(length(x))
+        lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2023.so"))
+        modelfunc = Libdl.dlsym(lib, :filter_alpha)
         for i = 0:1:(length(x)-1)
             ccall(
-                (:filter_alpha, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
+                modelfunc,
                 Cvoid,
                 (
                     Ptr{Cdouble},
@@ -52,6 +57,7 @@
         end
 
         # Compare
+        Libdl.dlclose(lib)
         y_c ≈ y_julia
     end
 end

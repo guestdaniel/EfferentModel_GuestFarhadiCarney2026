@@ -78,12 +78,16 @@ function postprocess_simulations(
     downsample=true,
     avoid_irregularities=true,
 )
+    # Open lib
+    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2023.so"))
+    modelfunc = Libdl.dlsym(lib, :delay_cat)
+
     # If we're looking at control, c1, or c2 in an old model, we need to shift signal by 
     # delaypoint samples to accomodate the fact that we shifted delay from immediately after
     # IHC in original code to immediately after middle ear filter in new code
     if (model == "zbc2014") & (stage in ["control", "c1", "c2"])
         delay = ccall(
-            (:delay_cat, "C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so"),
+            modelfunc,
             Cdouble,
             (
                 Cdouble,
@@ -132,6 +136,9 @@ function postprocess_simulations(
             sim = sim[50:end]
         end
     end
+
+    # Close lib
+    Libdl.dlclose(lib)
 
     return sim
 end

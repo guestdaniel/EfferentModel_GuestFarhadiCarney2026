@@ -1,4 +1,4 @@
-module Helios
+module EfferentModel_GuestFarhadiCarney2026
 
 using DrWatson
 using DSP
@@ -17,5 +17,5 @@ include("utils.jl")
 
 include("test_utils.jl")
 
-end # module Helios
+end 
 

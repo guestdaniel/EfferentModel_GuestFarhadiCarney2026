@@ -55,7 +55,7 @@ function model!(
     gainpostmix::Vector{Vector{Float64}},
 )
     # Open library using Libdl (is there any overhead here?)
-    lib = Libdl.dlopen("C:\\Users\\dguest2\\cl_code\\Helios\\src\\model\\libgfc2023.so")
+    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2023.so"))
     modelfunc = Libdl.dlsym(lib, :model)
 
     # Place call

@@ -47,8 +47,10 @@ function sim_orig(
     c2out = zeros(length(x))
     c2vihcout = zeros(length(x))
     controlout = zeros(length(x))
+    lib = Libdl.dlopen(joinpath(@__DIR__, "..", "external", "julia", "libzbc2014debug.so"))
+    modelfunc = Libdl.dlsym(lib, :IHCDEBUG)
     ccall(
-        (:IHCDEBUG, "C:\\Users\\dguest2\\cl_code\\Helios\\external\\julia\\libzbc2014debug.so"),
+        modelfunc,
         Cvoid,                   # return type
         (                        # arg types
             Ptr{Cdouble},        # px
@@ -77,8 +79,9 @@ function sim_orig(
     sout2 = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
     len_noise = Int(ceil((length(ihcout) + 2 * floor(7500 / (cf / 1e3))) * 1/fs * 10e3))
     ffGn = zeros(len_noise)
+    modelfunc = Libdl.dlsym(lib, :SYNAPSEDEBUG)
     ccall(
-        (:SYNAPSEDEBUG, "C:\\Users\\dguest2\\cl_code\\Helios\\external\\julia\\libzbc2014debug.so"),
+        modelfunc,
         Cvoid,                   # return type
         (                        # arg types
             Ptr{Cdouble},        # px
@@ -118,7 +121,7 @@ function sim_orig(
     sout1_lsr = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
     sout2_lsr = zeros(Int(ceil((length(ihcout)+2*delaypoint) * 1/100e3 * 10e3)))
     ccall(
-        (:SYNAPSEDEBUG, "C:\\Users\\dguest2\\cl_code\\Helios\\external\\julia\\libzbc2014debug.so"),
+        modelfunc,
         Cvoid,                   # return type
         (                        # arg types
             Ptr{Cdouble},        # px
@@ -143,6 +146,7 @@ function sim_orig(
 
     hsr = synout ./ (1.0 .+ 0.75e-3 .* synout)
     lsr = synout_lsr ./ (1.0 .+ 0.75e-3 .* synout_lsr)
+    Libdl.dlclose(lib)
 
     # Return
     return controlout, c1out, c1vihcout, c2out, c2vihcout, ihcout, synout, exponout, powerlawin, sout1, sout2, hsr, lsr
