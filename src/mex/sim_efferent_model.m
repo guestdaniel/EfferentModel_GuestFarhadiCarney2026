@@ -28,9 +28,7 @@ function [ihcout, hsrout, lsrout, gain] = sim_efferent_model(x, cf, args)
 % - x: Vector containing input sound-pressure waveform (Pa)
 %
 % - cf: Vector containing characteristic frequencies for each channel 
-%   in the simulation (Hz). For multi-channel simulations, we operate 
-%   under the assumption that CFs are in order from lowest to highest and
-%   are equidistant on a log-frequency scale.
+%   in the simulation (Hz).
 %
 % - args.fs: Sampling rate of the simulation (Hz). Note that inputs must be 
 %   sampled at this sampling rate. 

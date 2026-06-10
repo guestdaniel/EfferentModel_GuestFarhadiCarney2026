@@ -210,18 +210,83 @@ end
 """ 
     sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
-Simulates full model output for sound-pressure input
+Simulates full model output for sound-pressure waveform `input` at given `cf` values.
+
+This function accepts a sound-pressure waveform `input` and returns an array of
+model outputs from final model output stages (e.g., "HSR rate") and intermediate
+model stages. The model is configured using keyword arguments, with the default
+values usually matching what was used in Guest, Farhadi, and Carney (2026).
 
 # Positional arguments 
 - `x::Vector{Float64}`: sound-pressure waveform (Pa)
-- `cf::Float64`: characteristic frequency of the fiber in Hz
+- `cf::Vector{Float64}`: characteristic frequencies (CFs) of the population (Hz).
 
 # Keyword arguments
-- `fs::Float64`: sampling rate of the *input* in Hz
-- `cohc::Float64`:
-- `cihc::Float64`:
-- `species::String`:
-- `fractional::Bool`: 
+- `gain::Vector{Vector{Float64}}`: an optional argument that when provided will
+   use the gain factors specified in this input, instead of dynamically computed
+   gain factors, to determine cochlear gain at each time step. The size of this
+   input must be computed to match the size of other internal state variables.
+   This system allows replication of the CAS simulations from the Guest,
+   Farhadi, and Carney (2026) paper, but is not generally intended for outside
+   use. It is recommended to leave this at the default value.
+- `fs::Float64`: sampling rate of both the input and the simulation, default 100
+   kHz (Hz)
+- `cohc::Vector{Float64}`: vector containing values for the COHC parameter in CF
+   channel; a value of 0 indicates no contribution of OHCs in that channel,
+   while a value of 1 indicates full (normal) contribution of OHCs in that
+   channel. The default is a vector of 1s, indicating normal OHC function across
+   all channels.
+- `cihc::Float64`: vector containing values for the CIHC parameter in CF
+   channel; a value of 0 indicates no C1-IHC transduction in that channel, while
+   a value of 1 indicates full (normal) C1-IHC transduction in that channel. The
+   default is a vector of 1s, indicating normal IHC function across all
+   channels.
+- `species::String`: which species to simulate in the basilar membrane/IHC
+  stage; options are "cat", "human", and "human\\_glasberg". The default is
+  "human", which uses the human cochlear tuning curve from Shera et al. (2002).
+  The "human\\_glasberg" option uses the human cochlear tuning curve from Glasberg
+  and Moore (1990). "cat" uses the original cat tuning from the earlier model
+  papers.
+- `fractional::Bool`: whether or not to include fractional Gaussian noise (fGn). 
+   If `true`, fGn will be synthesized and passed into the model; if `false`, the
+   fGn inputs to the model will be set to zero. The default is `false`. The 
+   frozen-noise option from the MATLAB wrapper is not available.
+- `powerlaw_mode::Int`: which implementation of power-law adaptation (PLA) to use,
+   either a value of 1 indicating true PLA (very slow) or a value of 2 indicating
+   approximate PLA using multiple exponential processes (much faster). The
+   default is 2.
+- `moc_cutoff::Float64`: cutoff frequency for the MOC lowpass filter (kHz);
+   default is 0.64 kHz.
+- `moc_beta::Vector{Float64}`: vector of input-output nonlinearity slopes (beta)
+   for each channel; the default is based on the 2026 paper.
+- `moc_offset::Vector{Float64}`: vector of input-output nonlinearity offsets 
+   for each channel; the default is based on the 2026 paper.
+- `moc_minval::Float64`: minimum value for the MOC nonlinearity; default is 0.1.
+- `moc_maxval::Float64`: maximum value for the MOC nonlinearity; default is 1.0.
+- `moc_weight::Vector{Float64}`: vector of weights for the MOC effect in each 
+   channel. The default is 1.0 for all channels, indicating normal/full MOC 
+   strength, while a value of 0 in all channels completely disables MOC gain 
+   control.
+- `moc_width::Float64`: standard deviation of the Gaussian function that
+   determines the amount of gain-factor smoothing across channels (oct); the
+   default is 0.9 oct.
+- `moc_delay::Float64`: hard delay in the MOC pathway (s); the default is 0.025 s.
+- `dur_pad_left::Float64`: duration of zero-padding to add to the beginning of
+   the input vector (s); default is 0.02 s. Note that some non-zero time is needed
+   to allow the model to stabilize before the stimulus arrives.
+- `moc_fix_gain::Bool`: whether or not to dynamically compute gain or use
+   the precomputed values in the `gain` input. The default is `false`.
+- `clip_left::Bool`: whether or not to clip the beginning of the output to 
+   remove the zero-padded time samples. The default is `true` if `dur_pad_left >
+   0`, and `false` otherwise. Note that clipping can entail substantial overhead
+   due to the need to copy data into new arrays after each model call.
+- `dur_pad_right::Float64`: duration of zero-padding to add to the end of the
+  input vector (s); default is 0.0 s. This time can be increased to a non-zero
+   value if you wish to observe model responses after the end of the stimulus.
+- `clip_right::Bool`: whether or not to clip the end of the output to remove
+  the zero-padded time samples. The default is `true` if `dur_pad_right > 0`,
+  and `false` otherwise. Note that clipping can entail substantial overhead due
+  to the need to copy data into new arrays after each model call.
 
 # Returns
 - `output::Vector{Float64}`: synapse output (unknown units?), length is `length(input)`
