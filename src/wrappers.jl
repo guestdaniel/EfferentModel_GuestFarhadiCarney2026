@@ -1,10 +1,14 @@
 export sim_gfc2023, sim_gfc2023!, sim_gfc2023_dict, sim_gfc2023_dict!
 export GFC2023_Mem, update_ffGn!, zero_state!
 
-# ##################################################################################################
-# GFC2023_Mem structure to store pre-allocated memory for sim_gfc2023!
-# ##################################################################################################
+# ##############################################################################
+function peaknorm_gaussian(x, μ=0.0, σ=1.0, w=1.0, o=0.0) 
+    w * exp(-(x-μ)^2/(2σ^2)) + o
+end
 
+# ##############################################################################
+# GFC2023_Mem structure to store pre-allocated memory for sim_gfc2023!
+# ##############################################################################
 """
     GFC2023_Mem
 
@@ -243,12 +247,12 @@ function sim_gfc2023(
     ic_amp=1.0,
     ic_inh=0.9,
     moc_cutoff=0.64,
-    moc_beta=fill(0.2, length(cf)),
-    moc_offset=fill(5.0, length(cf)),
+    moc_beta=0.045 .* peaknorm_gaussian.(log2.(cf ./ 3e3), 0.0, 2.5),
+    moc_offset=max.(5.0 * log2.(cf ./ 2e3) + 3.0, 3.0),
     moc_minval=0.1,
     moc_maxval=1.0,
     moc_weight=fill(1.0, length(cf)),
-    moc_width=0.5,
+    moc_width=0.9,
     dur_pad_left=0.02,
     moc_delay=0.025,
     moc_fix_gain=false,
@@ -508,12 +512,12 @@ function sim_gfc2023!(
     ic_amp=1.0,
     ic_inh=0.9,
     moc_cutoff=0.64,
-    moc_beta=fill(0.2, length(cf)),
-    moc_offset=fill(5.0, length(cf)),
+    moc_beta=0.045 .* peaknorm_gaussian.(log2.(cf ./ 3e3), 0.0, 2.5),
+    moc_offset=max.(5.0 * log2.(cf ./ 2e3) + 3.0, 3.0),
     moc_minval=0.1,
     moc_maxval=1.0,
     moc_weight=fill(1.0, length(cf)),
-    moc_width=0.5,
+    moc_width=0.9,
     dur_pad_left=0.02,
     moc_delay=0.025,
     moc_fix_gain=false,

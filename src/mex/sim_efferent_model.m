@@ -138,11 +138,11 @@ arguments
     args.moc_offset = nan(size(cf))  % nan -> default based on 2025 paper below
 	args.moc_minrate = 0.1;
 	args.moc_maxrate = 1.0;
-    args.moc_weight {mustBeGreaterThanOrEqual(args.moc_weight, 0.0)} = ones(size(cf))  % default based on 2025 paper
-    args.moc_width {mustBeGreaterThanOrEqual(args.moc_width, 0.0)} = 1.0               % default based on 2025 paper
+    args.moc_weight {mustBeGreaterThanOrEqual(args.moc_weight, 0.0)} = ones(size(cf))  
+    args.moc_width {mustBeGreaterThanOrEqual(args.moc_width, 0.0)} = 0.9               
     args.noiseType {mustBeMember(args.noiseType, [-1, 0, 1])} = 1
 	args.display_info {mustBeMember(args.display_info, [0, 1])} = 0
-	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.2;
+	args.dur_settle {mustBeGreaterThanOrEqual(args.dur_settle, 0.0)} = 0.02;
 	args.clip_settle {mustBeMember(args.clip_settle, [0, 1])} = 1
 	args.moc_delay {mustBeGreaterThanOrEqual(args.moc_delay, 0.0)} = 0.025;
 end
