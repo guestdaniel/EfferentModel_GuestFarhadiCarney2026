@@ -217,6 +217,21 @@ model outputs from final model output stages (e.g., "HSR rate") and intermediate
 model stages. The model is configured using keyword arguments, with the default
 values usually matching what was used in Guest, Farhadi, and Carney (2026).
 
+A few other functions are available to interface with the model:
+- `sim_gfc2023!`: This version of the function is modifying; it does not 
+   pre-allocate memory for each model stage, but instead accepts pre-allocated
+   arrays as inputs to store model stage responses. This is more efficient
+   when calling the model repeatedly. The recommended route for using this
+   function variant is to first create a `GFC2023_Mem` struct to hold the
+   pre-allocated memory, and then use the function signature
+   `sim_gfc2023!(mem::GFC2023_Mem, input, cf; kwargs...)` to call the model.
+- `sim_gfc2023_dict` and `sim_gfc2023_dict!`: These versions of the function 
+   take the same inputs as the non-dict versions, but return the outputs in a
+   dict instead of an array. This can be much more convenient for referencing
+   specific outputs in subsequent code and avoids the need to remember the order
+   of outputs in the array. The dict keys match the variable names listed below
+   in the "Returns" documentation below.
+
 # Positional arguments 
 - `x::Vector{Float64}`: sound-pressure waveform (Pa)
 - `cf::Vector{Float64}`: characteristic frequencies (CFs) of the population (Hz).
@@ -289,7 +304,7 @@ values usually matching what was used in Guest, Farhadi, and Carney (2026).
   to the need to copy data into new arrays after each model call.
 
 Returns arrive of the type `Vector{Vector{Vector{Float64}}}`, where the first
-dimension corresponds to the different output variables (e.g., "sout1_hsr"), the
+dimension corresponds to the different output variables (e.g., "sout1\\_hsr"), the
 second dimension corresponds to the different channels (CFs), and the third
 dimension corresponds to time. Each individual return listed below is one element
 of the outer vector. Their names below match the dictionary keys used to fetch
@@ -547,7 +562,9 @@ end
     sim_gfc2023!(mem..., input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
     sim_gfc2023!(mem::GFC2023_Mem, input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
-Simulates full model output for sound-pressure input in place using pre-allocated memory mem
+Simulates full model output for sound-pressure input in place.
+
+In-place/modifying variant of the model wrapper; see `sim_gfc2023` for details.
 
 # Arguments
 - `ffGn_hsr::Vector{Vector{Float64}}`:
@@ -804,6 +821,8 @@ end
     sim_gfc2023_dict(args...; kwargs...)
 
 Wrapper around `sim_gfc2023` that returns outputs as a dictionary.
+
+Dict-output variant of the model wrapper; see `sim_gfc2023` for details.
 """
 function sim_gfc2023_dict(args...; kwargs...)
     control, c1, c2, ihc, expon_hsr, sout1_hsr, sout2_hsr, syn_hsr, expon_lsr, sout1_lsr, sout2_lsr, syn_lsr, hsr, lsr, cn, ic, mocwdr, mocic, gain, gainpostmix = sim_gfc2023(args...; kwargs...)
