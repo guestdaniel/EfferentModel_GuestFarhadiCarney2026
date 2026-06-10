@@ -208,7 +208,7 @@ end
 # ##################################################################################################
 
 """ 
-    sim_gfc2023(input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
+    sim_gfc2023(input::Vector{Float64}, cfs::Vector{Float64}; kwargs...)
 
 Simulates full model output for sound-pressure waveform `input` at given `cf` values.
 
@@ -236,17 +236,17 @@ values usually matching what was used in Guest, Farhadi, and Carney (2026).
    while a value of 1 indicates full (normal) contribution of OHCs in that
    channel. The default is a vector of 1s, indicating normal OHC function across
    all channels.
-- `cihc::Float64`: vector containing values for the CIHC parameter in CF
+- `cihc::Vector{Float64}`: vector containing values for the CIHC parameter in CF
    channel; a value of 0 indicates no C1-IHC transduction in that channel, while
    a value of 1 indicates full (normal) C1-IHC transduction in that channel. The
    default is a vector of 1s, indicating normal IHC function across all
    channels.
 - `species::String`: which species to simulate in the basilar membrane/IHC
-  stage; options are "cat", "human", and "human\\_glasberg". The default is
-  "human", which uses the human cochlear tuning curve from Shera et al. (2002).
-  The "human\\_glasberg" option uses the human cochlear tuning curve from Glasberg
-  and Moore (1990). "cat" uses the original cat tuning from the earlier model
-  papers.
+   stage; options are "cat", "human", and "human\\_glasberg". The default is
+   "human", which uses the human cochlear tuning curve from Shera et al. (2002).
+   The "human\\_glasberg" option uses the human cochlear tuning curve from Glasberg
+   and Moore (1990). "cat" uses the original cat tuning from the earlier model
+   papers.
 - `fractional::Bool`: whether or not to include fractional Gaussian noise (fGn). 
    If `true`, fGn will be synthesized and passed into the model; if `false`, the
    fGn inputs to the model will be set to zero. The default is `false`. The 
@@ -255,8 +255,8 @@ values usually matching what was used in Guest, Farhadi, and Carney (2026).
    either a value of 1 indicating true PLA (very slow) or a value of 2 indicating
    approximate PLA using multiple exponential processes (much faster). The
    default is 2.
-- `moc_cutoff::Float64`: cutoff frequency for the MOC lowpass filter (kHz);
-   default is 0.64 kHz.
+- `moc_cutoff::Float64`: cutoff frequency for the MOC lowpass filter (Hz);
+   default is 0.64 Hz.
 - `moc_beta::Vector{Float64}`: vector of input-output nonlinearity slopes (beta)
    for each channel; the default is based on the 2026 paper.
 - `moc_offset::Vector{Float64}`: vector of input-output nonlinearity offsets 
@@ -288,8 +288,52 @@ values usually matching what was used in Guest, Farhadi, and Carney (2026).
   and `false` otherwise. Note that clipping can entail substantial overhead due
   to the need to copy data into new arrays after each model call.
 
+Returns arrive of the type `Vector{Vector{Vector{Float64}}}`, where the first
+dimension corresponds to the different output variables (e.g., "sout1_hsr"), the
+second dimension corresponds to the different channels (CFs), and the third
+dimension corresponds to time. Each individual return listed below is one element
+of the outer vector. Their names below match the dictionary keys used to fetch
+them in `sim_gfc2023_dict`, which returns these outputs instead organized in
+a dict of type `Dict{String, Vector{Vector{Float64}}}`.
+
 # Returns
-- `output::Vector{Float64}`: synapse output (unknown units?), length is `length(input)`
+- `controlout::Vector{Vector{Float64}}`: control signal output from the cochlear
+   model (a.u.)
+- `c1out::Vector{Vector{Float64}}`: output of the C1 stage (a.u.)
+- `c2out::Vector{Vector{Float64}}`: output of the C2 stage (a.u.)
+- `ihcout::Vector{Vector{Float64}}`: output of the IHC stage, analogous to IHC
+   receptor potential (a.u.)
+- `expout_hsr::Vector{Vector{Float64}}`: output of the exponential adaptation
+   stage for HSR fibers (a.u.)
+- `sout1_hsr::Vector{Vector{Float64}}`: output of the slow PLA stage HSR fibers
+   (a.u.)
+- `sout2_hsr::Vector{Vector{Float64}}`: output of the fast PLA stage HSR fibers
+   (a.u.)
+- `syn_hsr::Vector{Vector{Float64}}`: total synaptic output before accounting
+   for refractoriness for HSR fibers (sp/s)
+- `expout_lsr::Vector{Vector{Float64}}`: output of the exponential adaptation
+   stage for LSR fibers (a.u.)
+- `sout1_lsr::Vector{Vector{Float64}}`: output of the slow PLA stage LSR fibers
+   (a.u.)
+- `sout2_lsr::Vector{Vector{Float64}}`: output of the fast PLA stage LSR fibers
+   (a.u.)
+- `syn_lsr::Vector{Vector{Float64}}`: total synaptic output before accounting
+   for refractoriness for LSR fibers (sp/s)
+- `hsr::Vector{Vector{Float64}}`: instantaneous firing rate of HSR fibers
+   after approximately accounting for absolute refractoriness (sp/s)
+- `lsr::Vector{Vector{Float64}}`: instantaneous firing rate of LSR fibers
+   after approximately accounting for absolute refractoriness (sp/s)
+- `cn::Vector{Vector{Float64}}`: output of the cochlear nucleus stage (sp/s),
+   unused in the model 
+- `ic::Vector{Vector{Float64}}`: output of the inferior colliculus stage (sp/s),
+   unused in the model with default params.
+- `mocwdr::Vector{Vector{Float64}}`: output of the LSR -> MOC lowpass filter (sp/s)
+- `mocic::Vector{Vector{Float64}}`: output of the IC -> MOC lowpass filter
+   (sp/s), unused in the model
+- `gain::Vector{Vector{Float64}}`: cochlear gain factor for each time step
+   BEFORE gain smoothing ([0, 1])
+- `gainpostmix::Vector{Vector{Float64}}`: cochlear gain factor for each time
+   step AFTER gain smoothing ([0, 1])
 """
 function sim_gfc2023(
     x::Vector{Float64},
