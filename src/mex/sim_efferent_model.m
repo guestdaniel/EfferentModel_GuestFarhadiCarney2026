@@ -1,25 +1,20 @@
 function [ihcout, hsrout, lsrout, gain] = sim_efferent_model(x, cf, args)
-% SIM_EFFERENT_MODEL(x, cf) simulates efferent-model response to row-vector
-% stimulus x at CFs in vector cf. 
+% SIM_EFFERENT_MODEL(x, cf) simulates a peripheral model response to stimulus x 
+% at CFs in vector cf with MOC gain control.
 % 
 % Returned values are matrices of size (n_chan, n_sample), where 
-% `n_sample=length(x)` and `n_chan=length(cf)`. The various output matrices 
-% are described below:
-%   1) Inner hair cell "voltage", in a.u.
-%   2) High-spontaneous-rate auditory-nerve instantaneous rate, in sp/s
-%   3) Low-spontaneous-rate auditory-nerve instantaneous rate, in sp/s
+% `n_sample==length(x)` and `n_chan==length(cf)`. The output matrices are:
+%   1) Inner hair cell "voltage" (a.u.)
+%   2) High-spontaneous-rate auditory-nerve instantaneous rate (sp/s)
+%   3) Low-spontaneous-rate auditory-nerve instantaneous rate (sp/s)
 %   4) Time-varying cochlear gain factor (in [0, 1], where 0==no gain, 1==max gain)
-%
-% SIM_EFFERENT_MODEL(x, cf) passes evaluates the efferent model on the
-% input sound-pressure waveform at particular CFs. 
 %
 % SIM_EFFERENT_MODEL(x, cf, species=2) runs the efferent model for a 
 % species value of 2 (which corresponds to human tuning based on data from 
 % Shera). Other model parameters, such as sampling rate or IC model
 % parameters, are adjusted the same way by specifying a key-value
-% combinations (e.g., ic_tau_e=0.5e-3 would set the inhibitory IC delay to
-% 0.5 ms, or moc_cutoff=2.0 would set the MOC lowpass cutoff to 2 Hz). See
-% below for more details about available parameters and their default
+% combinations (e.g., or moc_cutoff=2.0 would set the MOC lowpass cutoff to 2
+% Hz). See below for more details about available parameters and their default
 % values (which are always used unless otherwise specified).
 %
 % To examine a changelog, please see `README.txt`
@@ -66,20 +61,19 @@ function [ihcout, hsrout, lsrout, gain] = sim_efferent_model(x, cf, args)
 %   valued and one for each CF
 %
 % - args.moc_minrate: Minimum possible gain factor in MOC input-output
-%   nonlinearity for the wide-dynamic-range MOC pathway
+%   nonlinearity for the wide-dynamic-range MOC pathway (default 0.1)
 %
-% - args.moc_weight: Scalar value multiplied with lowpass-filtered 
-%   wide-dynamic-range MOC pathway signal before signal is passed through 
-%   MOC input-output nonlinearity
+% - args.moc_maxrate: Minimum possible gain factor in MOC input-output
+%   nonlinearity for the wide-dynamic-range MOC pathway (default 1.0)
 %
-% - args.moc_weight: Scalar value multiplied with lowpass-filtered IC
-%   MOC pathway signal before signal is passed through MOC input-output 
-%   nonlinearity
+% - args.moc_weight: Vector of weights that control MOC gain control; a value of
+%   0 disables gain control in a channel, while a value of 1 enables gain 
+%   control in a channel.
 %
 % - args.moc_width: "Width" of the wide-dynamic-range cross-channel
 %   smoothing function (octaves). 
 %
-% - args.noiseType: Integer value determining whether we use empty matrices
+% - args.noiseType: Integer value determining whether we use matrices of zeros
 %   (noiseType == -1), matrices of "frozen" fractional Gaussian noise 
 %   (noiseType == 0), or matrices of "fresh" fractional Gaussian noise based
 %   on the current global RNG state (noiseType == 1) as inputs for the
@@ -88,7 +82,7 @@ function [ihcout, hsrout, lsrout, gain] = sim_efferent_model(x, cf, args)
 %
 % - args.dur_settle: How long to simulate responses to silence before
 %   simulating a response to input time-pressure waveform (s). Default of 
-%   0.01 s (10 ms). This duration of time gives the various dynamic stages
+%   0.02 s (20 ms). This duration of time gives the various dynamic stages
 %   of the model (e.g., AN adaptation, efferent gain control) a chance to
 %   "settle in" to a more steady-state response regime before simulating
 %   the stimulus response. If this is set to too short an interval, you may
