@@ -107,6 +107,13 @@ This function takes two required arguments `x` and `cfs` where `x` is a required
 Other arguments are passed as optional keyword arguments, using either the `func('key', 'value')` syntax or the `func(key=value)` syntax.
 For additional information about how to use the function, refer to the comment block via `help sim_efferent_model` and to the extensive demo script located at `src/mex/demo.m`.
 
+## Tips and customization
+This model was designed to replicate data from the auditory nerve in anesthetized cat.
+Given that many researchers are interested in simulating responses in very different scenarios (e.g., awake, human), there may be interest in modifying the strength and CF-weighting of the MOC reflex in the model.
+To do so, we recommend using the parameter `moc_beta`.
+Its default value, which matches the value suggested in the 2026 JASA article, can be seen in the source code for the wrappers (`wrappers.jl` or `sim_efferent_model.m`) and combines an overall weight (`0.045`) with a CF-weighting function.
+Increasing the overall weight will steepen the MOC-IO nonlinearity slope and cause the MOC reflex to engage at lower levels and increase more rapidly with sound level.
+
 # Testing
 The Julia package also includes an automated "test suite" of programs that test specific aspects of the model responses.
 The majority of these tests compare model responses in the absence of MOC feedback (i.e., `moc_weight=0`) to the "baseline" model described in Zilany, Bruce, and Carney (2014)'s JASA article to quantify the extent to which modifications to the model code to add MOC feedback affected model responses in undesired ways.
