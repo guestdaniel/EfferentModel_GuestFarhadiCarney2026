@@ -171,10 +171,21 @@ end
 
 """
     get_ffGn(len_total, fractional, n_chan; fs=100e3)
+    get_ffGn_monaural(len_total, fractional, n_chan; fs=100e3)
+    get_ffGn_binaural(len_total, fractional, n_chan; fs=100e3)
 
 Function to prepare ffGn inputs for sim_gfc2023 and sim_gfc2023!
+
+Synthesizes fractional Gaussian noise for use in AN model simulations according
+to the procedures described in the relevant model papers (Zilany et al., 2009).
+`get_ffGN` is a thin wrapper for compatibility around a monaural version, 
+`get_ffGn_monaural`, and a binaural version, `get_ffGn_binaural`.
 """
-function get_ffGn(len_total, fractional, n_chan, fs=100e3)
+function get_ffGn(args...)
+    get_ffGn_monaural(args...)
+end
+
+function get_ffGn_monaural(len_total, fractional, n_chan, fs=100e3)
     # Synthesize ffGn
     if fractional
         ffGn_hsr = map(1:n_chan) do _
@@ -202,6 +213,40 @@ function get_ffGn(len_total, fractional, n_chan, fs=100e3)
 
     return ffGn_hsr, ffGn_lsr
 end
+
+function get_ffGn_binaural(len_total, fractional, n_chan, fs=100e3)
+    # Synthesize ffGn
+    if fractional
+        ffGn_hsr = map(1:2) do _
+            map(1:n_chan) do _
+                ffGn_native(
+                    len_total,
+                    1 / fs,
+                    0.9,
+                    1.0,
+                    100.0,
+                )
+            end
+        end
+        ffGn_lsr = map(1:2) do _
+            map(1:n_chan) do _
+                ffGn_native(
+                    len_total,
+                    1 / fs,
+                    0.9,
+                    1.0,
+                    0.1,
+                )
+            end
+        end
+    else
+        ffGn_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        ffGn_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    end
+
+    return ffGn_hsr, ffGn_lsr
+end
+
 
 # ##################################################################################################
 # Primary model wrapper code
