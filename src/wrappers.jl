@@ -372,7 +372,7 @@ function sim_gfc2023(
     ic_inh=0.9,
     moc_cutoff=0.64,
     moc_beta=0.045 .* peaknorm_gaussian.(log2.(cf ./ 3e3), 0.0, 2.5),
-    moc_offset=max.(5.0 * log2.(cf ./ 2e3) + 3.0, 3.0),
+    moc_offset=max.(5.0 * log2.(cf ./ 2e3) .+ 3.0, 3.0),
     moc_minval=0.1,
     moc_maxval=1.0,
     moc_weight=fill(1.0, length(cf)),
