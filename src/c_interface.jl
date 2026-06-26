@@ -55,8 +55,8 @@ function model!(
     gainpostmix::Vector{Vector{Float64}},
 )
     # Open library using Libdl (is there any overhead here?)
-    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2023.so"))
-    modelfunc = Libdl.dlsym(lib, :model)
+    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026.so"))
+    modelfunc = Libdl.dlsym(lib, :model_monaural)
 
     # Place call
     ccall(
@@ -171,6 +171,177 @@ function model!(
     )
 
     # Close library so it can be reloaded
+    Libdl.dlclose(lib)
+end
+
+function model_binaural!(
+    px::Vector{Vector{Float64}},
+    ffGn_hsr::Vector{Vector{Vector{Float64}}},
+    ffGn_lsr::Vector{Vector{Vector{Float64}}},
+    cf::Vector{Float64},
+    n_chan::Int64,
+    tdres::Float64,
+    totalstim::Int64,
+    cohc::Vector{Vector{Float64}},
+    cihc::Vector{Vector{Float64}},
+    species::Int64,
+    spont::Float64,
+    powerlaw_mode::Int64,
+    cn_tau_e::Float64,
+    cn_tau_i::Float64,
+    cn_delay::Float64,
+    cn_amp::Float64,
+    cn_inh::Float64,
+    ic_tau_e::Float64,
+    ic_tau_i::Float64,
+    ic_delay::Float64,
+    ic_amp::Float64,
+    ic_inh::Float64,
+    moc_cutoff::Float64,
+    moc_beta::Vector{Float64},
+    moc_offset::Vector{Float64},
+    moc_minval::Float64,
+    moc_maxval::Float64,
+    moc_weight::Vector{Float64},
+    moc_width::Float64,
+    dur_settle::Float64,
+    moc_delay::Float64,
+    moc_fix_gain::Int64,
+    controlout::Vector{Vector{Vector{Float64}}},
+    c1out::Vector{Vector{Vector{Float64}}},
+    c2out::Vector{Vector{Vector{Float64}}},
+    ihcout::Vector{Vector{Vector{Float64}}},
+    expout_hsr::Vector{Vector{Vector{Float64}}},
+    sout1_hsr::Vector{Vector{Vector{Float64}}},
+    sout2_hsr::Vector{Vector{Vector{Float64}}},
+    synout_hsr::Vector{Vector{Vector{Float64}}},
+    expout_lsr::Vector{Vector{Vector{Float64}}},
+    sout1_lsr::Vector{Vector{Vector{Float64}}},
+    sout2_lsr::Vector{Vector{Vector{Float64}}},
+    synout_lsr::Vector{Vector{Vector{Float64}}},
+    hsrout::Vector{Vector{Vector{Float64}}},
+    lsrout::Vector{Vector{Vector{Float64}}},
+    cnout::Vector{Vector{Vector{Float64}}},
+    icout::Vector{Vector{Vector{Float64}}},
+    mocwdr::Vector{Vector{Vector{Float64}}},
+    mocic::Vector{Vector{Vector{Float64}}},
+    gain::Vector{Vector{Vector{Float64}}},
+    gainpostmix::Vector{Vector{Vector{Float64}}},
+)
+    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026.so"))
+    modelfunc = Libdl.dlsym(lib, :model_binaural)
+
+    ccall(
+        modelfunc,
+        Cvoid,
+        (
+            Ptr{Ptr{Cdouble}},          # px
+            Ptr{Ptr{Ptr{Cdouble}}},     # ffGn_hsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # ffGn_lsr
+            Ptr{Cdouble},               # cf
+            Cint,                       # n_chan
+            Cdouble,                    # tdres
+            Cint,                       # totalstim
+            Ptr{Ptr{Cdouble}},          # cohc
+            Ptr{Ptr{Cdouble}},          # cihc
+            Cint,                       # species
+            Cdouble,                    # spont
+            Cint,                       # powerlaw_mode
+            Cdouble,                    # cn_tau_e
+            Cdouble,                    # cn_tau_i
+            Cdouble,                    # cn_delay
+            Cdouble,                    # cn_amp
+            Cdouble,                    # cn_inh
+            Cdouble,                    # ic_tau_e
+            Cdouble,                    # ic_tau_i
+            Cdouble,                    # ic_delay
+            Cdouble,                    # ic_amp
+            Cdouble,                    # ic_inh
+            Cdouble,                    # moc_cutoff
+            Ptr{Cdouble},               # moc_beta
+            Ptr{Cdouble},               # moc_offset
+            Cdouble,                    # moc_minval
+            Cdouble,                    # moc_maxval
+            Ptr{Cdouble},               # moc_weight
+            Cdouble,                    # moc_width
+            Cdouble,                    # dur_settle
+            Cdouble,                    # moc_delay
+            Cint,                       # moc_fix_gain
+            Ptr{Ptr{Ptr{Cdouble}}},     # controlout
+            Ptr{Ptr{Ptr{Cdouble}}},     # c1out
+            Ptr{Ptr{Ptr{Cdouble}}},     # c2out
+            Ptr{Ptr{Ptr{Cdouble}}},     # ihcout
+            Ptr{Ptr{Ptr{Cdouble}}},     # expout_hsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # sout1_hsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # sout2_hsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # synout_hsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # expout_lsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # sout1_lsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # sout2_lsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # synout_lsr
+            Ptr{Ptr{Ptr{Cdouble}}},     # hsrout
+            Ptr{Ptr{Ptr{Cdouble}}},     # lsrout
+            Ptr{Ptr{Ptr{Cdouble}}},     # cnout
+            Ptr{Ptr{Ptr{Cdouble}}},     # icout
+            Ptr{Ptr{Ptr{Cdouble}}},     # mocwdr
+            Ptr{Ptr{Ptr{Cdouble}}},     # mocic
+            Ptr{Ptr{Ptr{Cdouble}}},     # gain
+            Ptr{Ptr{Ptr{Cdouble}}},     # gainpostmix
+        ),
+        px,
+        ffGn_hsr,
+        ffGn_lsr,
+        cf,
+        n_chan,
+        tdres,
+        totalstim,
+        cohc,
+        cihc,
+        species,
+        spont,
+        powerlaw_mode,
+        cn_tau_e,
+        cn_tau_i,
+        cn_delay,
+        cn_amp,
+        cn_inh,
+        ic_tau_e,
+        ic_tau_i,
+        ic_delay,
+        ic_amp,
+        ic_inh,
+        moc_cutoff,
+        moc_beta,
+        moc_offset,
+        moc_minval,
+        moc_maxval,
+        moc_weight,
+        moc_width,
+        dur_settle,
+        moc_delay,
+        moc_fix_gain,
+        controlout,
+        c1out,
+        c2out,
+        ihcout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
+        cnout,
+        icout,
+        mocwdr,
+        mocic,
+        gain,
+        gainpostmix,
+    )
+
     Libdl.dlclose(lib)
 end
 
