@@ -174,7 +174,7 @@ function model!(
     Libdl.dlclose(lib)
 end
 
-function model_binaural!(
+function model!(
     px::Vector{Vector{Float64}},
     ffGn_hsr::Vector{Vector{Vector{Float64}}},
     ffGn_lsr::Vector{Vector{Vector{Float64}}},
