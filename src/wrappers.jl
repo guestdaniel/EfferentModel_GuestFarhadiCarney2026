@@ -14,64 +14,87 @@ end
 
 Structure to hold pre-allocated memory for sim_gfc2023!
 """
-struct GFC2023_Mem
+struct GFC2023_Mem{T}
     # Scalar arguments that determine memory size
     fs::Float64
     len_total::Int
     n_chan::Int
 
     # Pre-allocated memory
-    ffGn_hsr::Vector{Vector{Float64}}
-    ffGn_lsr::Vector{Vector{Float64}}
-    controlout::Vector{Vector{Float64}}
-    c1out::Vector{Vector{Float64}}
-    c2out::Vector{Vector{Float64}}
-    ihcout::Vector{Vector{Float64}}
-    expout_hsr::Vector{Vector{Float64}}
-    sout1_hsr::Vector{Vector{Float64}}
-    sout2_hsr::Vector{Vector{Float64}}
-    synout_hsr::Vector{Vector{Float64}}
-    expout_lsr::Vector{Vector{Float64}}
-    sout1_lsr::Vector{Vector{Float64}}
-    sout2_lsr::Vector{Vector{Float64}}
-    synout_lsr::Vector{Vector{Float64}}
-    hsrout::Vector{Vector{Float64}}
-    lsrout::Vector{Vector{Float64}}
-    cnout::Vector{Vector{Float64}}
-    icout::Vector{Vector{Float64}}
-    mocwdr::Vector{Vector{Float64}}
-    mocic::Vector{Vector{Float64}}
-    gain::Vector{Vector{Float64}}
-    gainpostmix::Vector{Vector{Float64}}
+    ffGn_hsr::T
+    ffGn_lsr::T
+    controlout::T
+    c1out::T
+    c2out::T
+    ihcout::T
+    expout_hsr::T
+    sout1_hsr::T
+    sout2_hsr::T
+    synout_hsr::T
+    expout_lsr::T
+    sout1_lsr::T
+    sout2_lsr::T
+    synout_lsr::T
+    hsrout::T
+    lsrout::T
+    cnout::T
+    icout::T
+    mocwdr::T
+    mocic::T
+    gain::T
+    gainpostmix::T
 end
 
 # Method for GFC2023_Mem in terms of len_total and n_chan
-function GFC2023_Mem(len_total::Int64, n_chan::Int64, fs::Float64=100e3)
+function GFC2023_Mem(len_total::Int64, n_chan::Int64, fs::Float64=100e3; binaural=false)
     # Start by initializing empty zerod ffGN (fractional == false)
     ffGn_hsr, ffGn_lsr = get_ffGn(len_total, false, n_chan, fs)
 
     # Pre-allocate memory for intermediate/output variables; all values are initialized 
     # at 0, except for gain and gainpostmix, which are initialized at 1. 
-    controlout = [zeros(len_total) for _ in 1:n_chan]
-    c1out = [zeros(len_total) for _ in 1:n_chan]
-    c2out = [zeros(len_total) for _ in 1:n_chan]
-    ihcout = [zeros(len_total) for _ in 1:n_chan]
-    expout_hsr = [zeros(len_total) for _ in 1:n_chan]
-    sout1_hsr = [zeros(len_total) for _ in 1:n_chan]
-    sout2_hsr = [zeros(len_total) for _ in 1:n_chan]
-    synout_hsr = [zeros(len_total) for _ in 1:n_chan]
-    expout_lsr = [zeros(len_total) for _ in 1:n_chan]
-    sout1_lsr = [zeros(len_total) for _ in 1:n_chan]
-    sout2_lsr = [zeros(len_total) for _ in 1:n_chan]
-    synout_lsr = [zeros(len_total) for _ in 1:n_chan]
-    hsrout = [zeros(len_total) for _ in 1:n_chan]
-    lsrout = [zeros(len_total) for _ in 1:n_chan]
-    cnout = [zeros(len_total) for _ in 1:n_chan]
-    icout = [zeros(len_total) for _ in 1:n_chan]
-    mocwdr = [zeros(len_total) for _ in 1:n_chan]
-    mocic = [zeros(len_total) for _ in 1:n_chan]
-    gain = [ones(len_total) for _ in 1:n_chan]
-    gainpostmix = [ones(len_total) for _ in 1:n_chan]
+    if binaural
+        controlout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        c1out = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        c2out = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        ihcout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        expout_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        sout1_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        sout2_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        synout_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        expout_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        sout1_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        sout2_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        synout_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        hsrout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        lsrout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        cnout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        icout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        mocwdr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+        mocic = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2] 
+        gain = [[ones(len_total) for _ in 1:n_chan] for _ in 1:2]
+        gainpostmix = [[ones(len_total) for _ in 1:n_chan] for _ in 1:2]
+    else
+        controlout = [zeros(len_total) for _ in 1:n_chan]
+        c1out = [zeros(len_total) for _ in 1:n_chan]
+        c2out = [zeros(len_total) for _ in 1:n_chan]
+        ihcout = [zeros(len_total) for _ in 1:n_chan]
+        expout_hsr = [zeros(len_total) for _ in 1:n_chan]
+        sout1_hsr = [zeros(len_total) for _ in 1:n_chan]
+        sout2_hsr = [zeros(len_total) for _ in 1:n_chan]
+        synout_hsr = [zeros(len_total) for _ in 1:n_chan]
+        expout_lsr = [zeros(len_total) for _ in 1:n_chan]
+        sout1_lsr = [zeros(len_total) for _ in 1:n_chan]
+        sout2_lsr = [zeros(len_total) for _ in 1:n_chan]
+        synout_lsr = [zeros(len_total) for _ in 1:n_chan]
+        hsrout = [zeros(len_total) for _ in 1:n_chan]
+        lsrout = [zeros(len_total) for _ in 1:n_chan]
+        cnout = [zeros(len_total) for _ in 1:n_chan]
+        icout = [zeros(len_total) for _ in 1:n_chan]
+        mocwdr = [zeros(len_total) for _ in 1:n_chan]
+        mocic = [zeros(len_total) for _ in 1:n_chan]
+        gain = [ones(len_total) for _ in 1:n_chan]
+        gainpostmix = [ones(len_total) for _ in 1:n_chan]
+    end
 
     # Wrap everything in GFC2023_Mem struct call
     GFC2023_Mem(
@@ -110,16 +133,17 @@ function GFC2023_Mem(
     fs=100e3,
     dur_pad_left=0.02,
     dur_pad_right=0.0,
+    binaural=false,
 )
     len_total = length(x) + Int(floor(dur_pad_left * fs)) + Int(floor(dur_pad_right * fs))
     n_chan = length(cfs)
-    return GFC2023_Mem(len_total, n_chan, fs)
+    return GFC2023_Mem(len_total, n_chan, fs; binaural=binaural)
 end
 
 # Method for GFC2023_Mem that fills in ffGn values when fractional == true
-function update_ffGn!(mem::GFC2023_Mem)
+function update_ffGn!(mem::GFC2023_Mem{Vector{Vector{Float64}}})
     # Synthesize ffGn
-    for i in eachindex(mem.ffGn_hsr)
+    for i in 1:mem.n_chan
         mem.ffGn_hsr[i] .= ffGn_native(
             mem.len_total,
             1 / mem.fs,
@@ -137,8 +161,31 @@ function update_ffGn!(mem::GFC2023_Mem)
     end
 end
 
+function update_ffGn!(mem::GFC2023_Mem{Vector{Vector{Vector{Float64}}}})
+    # Synthesize ffGn
+    for e in 1:2
+        for i in 1:mem.n_chan
+            mem.ffGn_hsr[e][i] .= ffGn_native(
+                mem.len_total,
+                1 / mem.fs,
+                0.9,
+                1.0,
+                100.0,
+            )
+            mem.ffGn_lsr[e][i] .= ffGn_native(
+                mem.len_total,
+                1 / mem.fs,
+                0.9,
+                1.0,
+                0.1,
+            )
+        end
+    end
+end
+
+
 # Method for GFC2023_Mem that zeros out state variables
-function zero_state!(mem::GFC2023_Mem)
+function zero_state!(mem::GFC2023_Mem{Vector{Vector{Float64}}})
     for chan in 1:mem.n_chan
         fill!(mem.ffGn_hsr[chan], 0.0)
         fill!(mem.ffGn_lsr[chan], 0.0)
@@ -164,6 +211,36 @@ function zero_state!(mem::GFC2023_Mem)
         fill!(mem.gainpostmix[chan], 1.0)
     end
 end
+
+function zero_state!(mem::GFC2023_Mem{Vector{Vector{Vector{Float64}}}})
+    for e in 1:2
+        for chan in 1:mem.n_chan
+            fill!(mem.ffGn_hsr[e][chan], 0.0)
+            fill!(mem.ffGn_lsr[e][chan], 0.0)
+            fill!(mem.controlout[e][chan], 0.0)
+            fill!(mem.c1out[e][chan], 0.0)
+            fill!(mem.c2out[e][chan], 0.0)
+            fill!(mem.ihcout[e][chan], 0.0)
+            fill!(mem.expout_hsr[e][chan], 0.0)
+            fill!(mem.sout1_hsr[e][chan], 0.0)
+            fill!(mem.sout2_hsr[e][chan], 0.0)
+            fill!(mem.synout_hsr[e][chan], 0.0)
+            fill!(mem.expout_lsr[e][chan], 0.0)
+            fill!(mem.sout1_lsr[e][chan], 0.0)
+            fill!(mem.sout2_lsr[e][chan], 0.0)
+            fill!(mem.synout_lsr[e][chan], 0.0)
+            fill!(mem.hsrout[e][chan], 0.0)
+            fill!(mem.lsrout[e][chan], 0.0)
+            fill!(mem.cnout[e][chan], 0.0)
+            fill!(mem.icout[e][chan], 0.0)
+            fill!(mem.mocwdr[e][chan], 0.0)
+            fill!(mem.mocic[e][chan], 0.0)
+            fill!(mem.gain[e][chan], 1.0)
+            fill!(mem.gainpostmix[e][chan], 1.0)
+        end
+    end
+end
+
 
 # ##################################################################################################
 # Fractional Gaussian noise help code
