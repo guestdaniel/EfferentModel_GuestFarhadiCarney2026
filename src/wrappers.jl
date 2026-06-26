@@ -133,12 +133,25 @@ function GFC2023_Mem(
     fs=100e3,
     dur_pad_left=0.02,
     dur_pad_right=0.0,
-    binaural=false,
 )
     len_total = length(x) + Int(floor(dur_pad_left * fs)) + Int(floor(dur_pad_right * fs))
     n_chan = length(cfs)
-    return GFC2023_Mem(len_total, n_chan, fs; binaural=binaural)
+    return GFC2023_Mem(len_total, n_chan, fs; binaural=false)
 end
+
+# Method for GFC2023_Mem that matches function signature of sim_gfc2023!
+function GFC2023_Mem(
+    x::Vector{Vector{Float64}},
+    cfs::Vector{Float64};
+    fs=100e3,
+    dur_pad_left=0.02,
+    dur_pad_right=0.0,
+)
+    len_total = length(x[1]) + Int(floor(dur_pad_left * fs)) + Int(floor(dur_pad_right * fs))
+    n_chan = length(cfs)
+    return GFC2023_Mem(len_total, n_chan, fs; binaural=true)
+end
+
 
 # Method for GFC2023_Mem that fills in ffGn values when fractional == true
 function update_ffGn!(mem::GFC2023_Mem{Vector{Vector{Float64}}})
