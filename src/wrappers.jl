@@ -344,13 +344,21 @@ end
 
 """ 
     sim_gfc2023(input::Vector{Float64}, cfs::Vector{Float64}; kwargs...)
+    sim_gfc2023(input::Vector{Vector{Float64}}, cfs::Vector{Float64}; kwargs...)
 
-Simulates full model output for sound-pressure waveform `input` at given `cf` values.
+Simulates full model output for sound `input` at given `cf` values.
 
 This function accepts a sound-pressure waveform `input` and returns an array of
 model outputs from final model output stages (e.g., "HSR rate") and intermediate
 model stages. The model is configured using keyword arguments, with the default
 values usually matching what was used in Guest, Farhadi, and Carney (2026).
+Two variants are available:
+- If the input is a single time-pressure waveform, the function will simulate
+  a "monaural" response using the model described in Guest, Farhadi, and Carney.
+- If the input is two time-pressure waveforms in a vector together (i.e., 
+  `x` is type Vector{Vector{Float64}}), the first element will be treated as
+  input to a "left" ear and the second element will be treated as input to a 
+  "right" ear; the model will be simulated binaurally, as described in [[XXX]].
 
 A few other functions are available to interface with the model:
 - `sim_gfc2023!`: This version of the function is modifying; it does not 
@@ -693,7 +701,195 @@ function sim_gfc2023(
     return outputs
 end
 
-""" 
+function sim_gfc2023(
+    x::Vector{Vector{Float64}},
+    cf::Vector{Float64};
+    gain::Vector{Vector{Vector{Float64}}}=[[Float64[]]],
+    fs::Float64=100e3,
+    cohc::Vector{Vector{Float64}}=[ones(length(cf)), ones(length(cf))],
+    cihc::Vector{Vector{Float64}}=[ones(length(cf)), ones(length(cf))],
+    species::String="human",
+    fractional=false,
+    powerlaw_mode=2,
+    cn_tau_e=0.5e-3,
+    cn_tau_i=2.0e-3,
+    cn_delay=1.0e-3,
+    cn_amp=1.5,
+    cn_inh=0.6,
+    ic_tau_e=1.0 / (10.0 * 64.0),
+    ic_tau_i=1.0 / (10.0 * 64.0) * 1.5,
+    ic_delay=1.0 / (10.0 * 64.0) * 2.0,
+    ic_amp=1.0,
+    ic_inh=0.9,
+    moc_cutoff=0.64,
+    moc_beta=0.045 .* peaknorm_gaussian.(log2.(cf ./ 3e3), 0.0, 2.5),
+    moc_offset=max.(5.0 * log2.(cf ./ 2e3) .+ 3.0, 3.0),
+    moc_minval=0.1,
+    moc_maxval=1.0,
+    moc_weight=fill(1.0, length(cf)),
+    moc_width=0.9,
+    dur_pad_left=0.02,
+    moc_delay=0.025,
+    moc_fix_gain=false,
+    clip_left=dur_pad_left == 0.0 ? false : true,
+    dur_pad_right=0.0,
+    clip_right=dur_pad_right == 0.0 ? false : true,
+)::Vector{Vector{Vector{Vector{Float64}}}}
+    # Calculate pad sizes in samples
+    len_pad_left = Int(floor(dur_pad_left * fs))
+    len_pad_right = Int(floor(dur_pad_right * fs))
+    len_stim = length(x[1])
+    len_total = len_pad_left + len_stim + len_pad_right
+
+    # Pad each ear independently
+    stim = [vcat(zeros(len_pad_left), x[ear], zeros(len_pad_right)) for ear in 1:2]
+
+    # Calculate n_chan
+    n_chan = length(cf)
+
+    # Convert human-readable arguments into C-side floats/ints
+    species_flag = Dict(
+        "cat" => 1,
+        "human" => 2,
+        "human_glasberg" => 3
+    )[species]
+
+    # Synthesize ffGn
+    ffGn_hsr, ffGn_lsr = get_ffGn_binaural(len_total, fractional, n_chan, fs)
+
+    # If MOC weight is passed as a scalar, replace it with a vector of the same length as cf
+    # filling in the scalar weight. Same applies to moc_beta and moc_offset.
+    if typeof(moc_weight) == Float64
+        moc_weight = fill(moc_weight, length(cf))
+    end
+    if typeof(moc_beta) == Float64
+        moc_beta = fill(moc_beta, length(cf))
+    end
+    if typeof(moc_offset) == Float64
+        moc_offset = fill(moc_offset, length(cf))
+    end
+
+    # Pre-allocate memory
+    controlout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    c1out = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    c2out = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    ihcout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    expout_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    sout1_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    sout2_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    synout_hsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    expout_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    sout1_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    sout2_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    synout_lsr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    hsrout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    lsrout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    cnout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    icout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    mocwdr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    mocic = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
+    if isempty(gain[1][1])
+        gain = [[ones(len_total) for _ in 1:n_chan] for _ in 1:2]
+    end
+    gainpostmix = [[ones(len_total) for _ in 1:n_chan] for _ in 1:2]
+
+    # Add length assertion
+    @assert length(gain[1]) == length(cf)
+
+    # Run model
+    model!(
+        stim,
+        ffGn_hsr,
+        ffGn_lsr,
+        cf,
+        n_chan,
+        1 / fs,
+        len_total,
+        cohc,
+        cihc,
+        species_flag,
+        100.0,
+        powerlaw_mode,
+        cn_tau_e,
+        cn_tau_i,
+        cn_delay,
+        cn_amp,
+        cn_inh,
+        ic_tau_e,
+        ic_tau_i,
+        ic_delay,
+        ic_amp,
+        ic_inh,
+        moc_cutoff,
+        moc_beta,
+        moc_offset,
+        moc_minval,
+        moc_maxval,
+        moc_weight,
+        moc_width,
+        dur_pad_left,
+        moc_delay,
+        Int(moc_fix_gain),
+        controlout,
+        c1out,
+        c2out,
+        ihcout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
+        cnout,
+        icout,
+        mocwdr,
+        mocic,
+        gain,
+        gainpostmix,
+    )
+
+    # Return
+    outputs = [
+        controlout,
+        c1out,
+        c2out,
+        ihcout,
+        expout_hsr,
+        sout1_hsr,
+        sout2_hsr,
+        synout_hsr,
+        expout_lsr,
+        sout1_lsr,
+        sout2_lsr,
+        synout_lsr,
+        hsrout,
+        lsrout,
+        cnout,
+        icout,
+        mocwdr,
+        mocic,
+        gain,
+        gainpostmix
+    ]
+    if clip_left | clip_right
+        outputs = map(outputs) do output
+            map(output) do ear_data
+                map(ear_data) do channel
+                    idx_left = clip_left ? (len_pad_left + 1) : 1
+                    idx_right = clip_right ? length(channel) - len_pad_right : length(channel)
+                    channel[idx_left:idx_right]
+                end
+            end
+        end
+    end
+    return outputs
+end
+
+"""
     sim_gfc2023!(mem..., input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
     sim_gfc2023!(mem::GFC2023_Mem, input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
 
