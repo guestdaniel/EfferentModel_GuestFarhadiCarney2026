@@ -353,14 +353,14 @@ model outputs from final model output stages (e.g., "HSR rate") and intermediate
 model stages. The model is configured using keyword arguments, with the default
 values usually matching what was used in Guest, Farhadi, and Carney (2026).
 Two variants are available:
-- If the input is a single time-pressure waveform, the function will simulate
+1) If the input is a single time-pressure waveform, the function will simulate
   a "monaural" response using the model described in Guest, Farhadi, and Carney.
-- If the input is two time-pressure waveforms in a vector together (i.e., 
+2) If the input is two time-pressure waveforms in a vector together (i.e., 
   `x` is type Vector{Vector{Float64}}), the first element will be treated as
   input to a "left" ear and the second element will be treated as input to a 
   "right" ear; the model will be simulated binaurally, as described in [[XXX]].
 
-A few other functions are available to interface with the model:
+A few other variants are available to interface with the model:
 - `sim_gfc2023!`: This version of the function is modifying; it does not 
    pre-allocate memory for each model stage, but instead accepts pre-allocated
    arrays as inputs to store model stage responses. This is more efficient
@@ -375,26 +375,42 @@ A few other functions are available to interface with the model:
    of outputs in the array. The dict keys match the variable names listed below
    in the "Returns" documentation below.
 
-# Positional arguments 
-- `x::Vector{Float64}`: sound-pressure waveform (Pa)
+Except where otherwise mentioned, the types of the inputs and outputs are as
+follows: For monaural simulations, per-channel inputs (e.g., `cohc`, `cihc`)
+are `Vector{Float64}` (indexed by channel) and each output array is
+`Vector{Vector{Float64}}` (channel × time). For binaural simulations, all of
+these gain a leading ear dimension: per-channel inputs become
+`Vector{Vector{Float64}}` (ear × channel) and each output array becomes
+`Vector{Vector{Vector{Float64}}}` (ear × channel × time). The full return
+value correspondingly shifts from `Vector{Vector{Vector{Float64}}}` (monaural)
+to `Vector{Vector{Vector{Vector{Float64}}}}` (binaural). By convention, ear
+index 1 is the left ear and ear index 2 is the right ear.
+
+# Positional arguments
+- `x`: sound-pressure waveform (Pa). `Vector{Float64}`, i.e., a single
+   sound-pressure waveform, maps to the monaural model.
+   `Vector{Vector{Float64}}`, i.e., two sound pressure waveforms stored together
+   in a vector, maps to the binaural model. By convention in the binaural case,
+   the first input is the left ear/audio channel and the second input is the 
+   right ear/audio channel.
 - `cf::Vector{Float64}`: characteristic frequencies (CFs) of the population (Hz).
 
 # Keyword arguments
-- `gain::Vector{Vector{Float64}}`: an optional argument that when provided will
-   use the gain factors specified in this input, instead of dynamically computed
-   gain factors, to determine cochlear gain at each time step. The size of this
-   input must be computed to match the size of other internal state variables.
-   This system allows replication of the CAS simulations from the Guest,
-   Farhadi, and Carney (2026) paper, but is not generally intended for outside
-   use. It is recommended to leave this at the default value.
+- `gain`: an optional argument that when provided will use the gain factors
+   specified in this input, instead of dynamically computed gain factors, to
+   determine cochlear gain at each time step. The size of this input must be
+   computed to match the size of other internal state variables. This system
+   allows replication of the CAS simulations from the Guest, Farhadi, and Carney
+   (2026) paper, but is not generally intended for outside use. It is
+   recommended to leave this at the default value.
 - `fs::Float64`: sampling rate of both the input and the simulation, default 100
    kHz (Hz)
-- `cohc::Vector{Float64}`: vector containing values for the COHC parameter in CF
+- `cohc`: vector containing values for the COHC parameter in CF
    channel; a value of 0 indicates no contribution of OHCs in that channel,
    while a value of 1 indicates full (normal) contribution of OHCs in that
    channel. The default is a vector of 1s, indicating normal OHC function across
    all channels.
-- `cihc::Vector{Float64}`: vector containing values for the CIHC parameter in CF
+- `cihc`: vector containing values for the CIHC parameter in CF
    channel; a value of 0 indicates no C1-IHC transduction in that channel, while
    a value of 1 indicates full (normal) C1-IHC transduction in that channel. The
    default is a vector of 1s, indicating normal IHC function across all
@@ -446,52 +462,42 @@ A few other functions are available to interface with the model:
   and `false` otherwise. Note that clipping can entail substantial overhead due
   to the need to copy data into new arrays after each model call.
 
-Returns arrive of the type `Vector{Vector{Vector{Float64}}}`, where the first
-dimension corresponds to the different output variables (e.g., "sout1\\_hsr"), the
-second dimension corresponds to the different channels (CFs), and the third
-dimension corresponds to time. Each individual return listed below is one element
-of the outer vector. Their names below match the dictionary keys used to fetch
-them in `sim_gfc2023_dict`, which returns these outputs instead organized in
-a dict of type `Dict{String, Vector{Vector{Float64}}}`.
+For monaural simulations, returns a `Vector{Vector{Vector{Float64}}}` where
+the dimensions are (output variable, channel, time). For binaural simulations,
+returns a `Vector{Vector{Vector{Vector{Float64}}}}` where the dimensions are
+(output variable, ear, channel, time). Each individual return listed below is
+one element of the outer vector. Their names below match the dictionary keys
+used to fetch them in `sim_gfc2023_dict`, which returns these outputs organized
+in a `Dict{String, Vector{Vector{Float64}}}` (monaural) or
+`Dict{String, Vector{Vector{Vector{Float64}}}}` (binaural).
 
 # Returns
-- `controlout::Vector{Vector{Float64}}`: control signal output from the cochlear
-   model (a.u.)
-- `c1out::Vector{Vector{Float64}}`: output of the C1 stage (a.u.)
-- `c2out::Vector{Vector{Float64}}`: output of the C2 stage (a.u.)
-- `ihcout::Vector{Vector{Float64}}`: output of the IHC stage, analogous to IHC
-   receptor potential (a.u.)
-- `expout_hsr::Vector{Vector{Float64}}`: output of the exponential adaptation
-   stage for HSR fibers (a.u.)
-- `sout1_hsr::Vector{Vector{Float64}}`: output of the slow PLA stage HSR fibers
-   (a.u.)
-- `sout2_hsr::Vector{Vector{Float64}}`: output of the fast PLA stage HSR fibers
-   (a.u.)
-- `syn_hsr::Vector{Vector{Float64}}`: total synaptic output before accounting
-   for refractoriness for HSR fibers (sp/s)
-- `expout_lsr::Vector{Vector{Float64}}`: output of the exponential adaptation
-   stage for LSR fibers (a.u.)
-- `sout1_lsr::Vector{Vector{Float64}}`: output of the slow PLA stage LSR fibers
-   (a.u.)
-- `sout2_lsr::Vector{Vector{Float64}}`: output of the fast PLA stage LSR fibers
-   (a.u.)
-- `syn_lsr::Vector{Vector{Float64}}`: total synaptic output before accounting
-   for refractoriness for LSR fibers (sp/s)
-- `hsr::Vector{Vector{Float64}}`: instantaneous firing rate of HSR fibers
-   after approximately accounting for absolute refractoriness (sp/s)
-- `lsr::Vector{Vector{Float64}}`: instantaneous firing rate of LSR fibers
-   after approximately accounting for absolute refractoriness (sp/s)
-- `cn::Vector{Vector{Float64}}`: output of the cochlear nucleus stage (sp/s),
-   unused in the model 
-- `ic::Vector{Vector{Float64}}`: output of the inferior colliculus stage (sp/s),
-   unused in the model with default params.
-- `mocwdr::Vector{Vector{Float64}}`: output of the LSR -> MOC lowpass filter (sp/s)
-- `mocic::Vector{Vector{Float64}}`: output of the IC -> MOC lowpass filter
-   (sp/s), unused in the model
-- `gain::Vector{Vector{Float64}}`: cochlear gain factor for each time step
-   BEFORE gain smoothing ([0, 1])
-- `gainpostmix::Vector{Vector{Float64}}`: cochlear gain factor for each time
-   step AFTER gain smoothing ([0, 1])
+- `controlout`: control signal output from the cochlear model (a.u.)
+- `c1out`: output of the C1 stage (a.u.)
+- `c2out`: output of the C2 stage (a.u.)
+- `ihcout`: output of the IHC stage, analogous to IHC receptor potential (a.u.)
+- `expout_hsr`: output of the exponential adaptation stage for HSR fibers (a.u.)
+- `sout1_hsr`: output of the slow PLA stage HSR fibers (a.u.)
+- `sout2_hsr`: output of the fast PLA stage HSR fibers (a.u.)
+- `syn_hsr`: total synaptic output before accounting for refractoriness for HSR
+   fibers (sp/s)
+- `expout_lsr`: output of the exponential adaptation stage for LSR fibers (a.u.)
+- `sout1_lsr`: output of the slow PLA stage LSR fibers (a.u.)
+- `sout2_lsr`: output of the fast PLA stage LSR fibers (a.u.)
+- `syn_lsr`: total synaptic output before accounting for refractoriness for LSR
+   fibers (sp/s)
+- `hsr`: instantaneous firing rate of HSR fibers after approximately accounting
+   for absolute refractoriness (sp/s)
+- `lsr`: instantaneous firing rate of LSR fibers after approximately accounting
+   for absolute refractoriness (sp/s)
+- `cn`: output of the cochlear nucleus stage (sp/s), unused in the model
+- `ic`: output of the inferior colliculus stage (sp/s), unused in the model
+   with default params.
+- `mocwdr`: output of the LSR -> MOC lowpass filter (sp/s)
+- `mocic`: output of the IC -> MOC lowpass filter (sp/s), unused in the model
+- `gain`: cochlear gain factor for each time step BEFORE gain smoothing ([0, 1])
+- `gainpostmix`: cochlear gain factor for each time step AFTER gain smoothing
+   ([0, 1])
 """
 function sim_gfc2023(
     x::Vector{Float64},
