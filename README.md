@@ -1,5 +1,6 @@
 # Introduction
-This is the "wrapper" code for the Guest, Farhadi, and Carney (2026) medial olivocochlear (MOC) reflex model, published in JASA.
+This is the "wrapper" code for the Guest and Carney (202x) bilateral medial olivocochlear (MOC) reflex model.
+This is a two-eared generalization of the Guest, Farhadi, and Carney (2026) model, published in JASA.
 The wrapper code makes it easy to generate model responses from the MOC model in the high-level programming languages MATLAB and Julia.
 
 If you want to inspect the source code of the model and wrappers, refer to [File structure](#file-structure) below.

@@ -10,9 +10,19 @@ end
 # GFC2023_Mem structure to store pre-allocated memory for sim_gfc2023!
 # ##############################################################################
 """
-    GFC2023_Mem
+    GFC2023_Mem{T}
+    GFC2023_Mem(len_total, n_chan, fs=100e3; binaural=false)
+    GFC2023_Mem(x::Vector{Float64}, cfs; fs=100e3, dur_pad_left=0.02, dur_pad_right=0.0)
+    GFC2023_Mem(x::Vector{Vector{Float64}}, cfs; fs=100e3, dur_pad_left=0.02, dur_pad_right=0.0)
 
-Structure to hold pre-allocated memory for sim_gfc2023!
+Structure to hold pre-allocated memory for `sim_gfc2023!`.
+
+The type parameter `T` is `Vector{Vector{Float64}}` for monaural simulations and
+`Vector{Vector{Vector{Float64}}}` for binaural simulations, and determines the
+shape of all 22 pre-allocated output arrays stored in the struct. The recommended
+way to construct a `GFC2023_Mem` is to pass the same `x` and `cfs` that will be
+passed to `sim_gfc2023!`, which automatically selects the correct `T` and sizes
+all arrays to match.
 """
 struct GFC2023_Mem{T}
     # Scalar arguments that determine memory size
@@ -268,8 +278,12 @@ Function to prepare ffGn inputs for sim_gfc2023 and sim_gfc2023!
 
 Synthesizes fractional Gaussian noise for use in AN model simulations according
 to the procedures described in the relevant model papers (Zilany et al., 2009).
-`get_ffGN` is a thin wrapper for compatibility around a monaural version, 
+`get_ffGn` is a thin wrapper for compatibility around a monaural version,
 `get_ffGn_monaural`, and a binaural version, `get_ffGn_binaural`.
+`get_ffGn_monaural` returns a tuple `(ffGn_hsr, ffGn_lsr)` where each element
+is a `Vector{Vector{Float64}}` (channel × time). `get_ffGn_binaural` returns
+the same tuple with each element shaped `Vector{Vector{Vector{Float64}}}`
+(ear × channel × time).
 """
 function get_ffGn(args...)
     get_ffGn_monaural(args...)
@@ -896,43 +910,46 @@ function sim_gfc2023(
 end
 
 """
-    sim_gfc2023!(mem..., input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
-    sim_gfc2023!(mem::GFC2023_Mem, input, cf; fs=100e3, fs_synapse=10e3, power_law="approximate", fractional=false, n_rep=1)
+    sim_gfc2023!(ffGn_hsr, ffGn_lsr, controlout, ..., gainpostmix, x, cf; kwargs...)
+    sim_gfc2023!(mem::GFC2023_Mem, x, cf; fractional=false, clean=false, kwargs...)
 
-Simulates full model output for sound-pressure input in place.
+Simulates full model output for sound-pressure input `x` in place.
 
-In-place/modifying variant of the model wrapper; see `sim_gfc2023` for details.
+In-place/modifying variant of `sim_gfc2023`; see that function for a full
+description of keyword arguments and return values. The recommended interface
+is the `GFC2023_Mem` form, which bundles the 22 pre-allocated output buffers
+and the sampling rate into a single struct. The explicit positional-arg form
+is available for cases where manual buffer management is preferred.
 
-# Arguments
-- `ffGn_hsr::Vector{Vector{Float64}}`:
-- `ffGn_lsr::Vector{Vector{Float64}}`:
-- `controlout::Vector{Vector{Float64}}`:
-- `c1out::Vector{Vector{Float64}}`:
-- `c2out::Vector{Vector{Float64}}`:
-- `ihcout::Vector{Vector{Float64}}`:
-- `expout_hsr::Vector{Vector{Float64}}`:
-- `sout1_hsr::Vector{Vector{Float64}}`:
-- `sout2_hsr::Vector{Vector{Float64}}`:
-- `synout_hsr::Vector{Vector{Float64}}`:
-- `expout_lsr::Vector{Vector{Float64}}`:
-- `sout1_lsr::Vector{Vector{Float64}}`:
-- `sout2_lsr::Vector{Vector{Float64}}`:
-- `synout_lsr::Vector{Vector{Float64}}`:
-- `hsrout::Vector{Vector{Float64}}`:
-- `lsrout::Vector{Vector{Float64}}`:
-- `cnout::Vector{Vector{Float64}}`:
-- `icout::Vector{Vector{Float64}}`:
-- `mocwdr::Vector{Vector{Float64}}`:
-- `mocic::Vector{Vector{Float64}}`:
-- `gain::Vector{Vector{Float64}}`:
-- `gainpostmix::Vector{Vector{Float64}}`:
-- `x::Vector{Float64}`: sound-pressure waveform (Pa)
-- `cf::Float64`: characteristic frequency of the fiber in Hz
-- `fs::Float64`: sampling rate of the *input* in Hz
-- kwargs...
+The type of `x` determines whether the monaural or binaural model is called,
+following the same dispatch rules as `sim_gfc2023`. The types of the 22 buffer
+arguments must match: `Vector{Vector{Float64}}` per buffer for monaural, or
+`Vector{Vector{Vector{Float64}}}` per buffer for binaural.
+
+# Arguments (`GFC2023_Mem` form)
+- `mem::GFC2023_Mem`: pre-allocated memory struct; see `GFC2023_Mem` for details.
+- `x`: sound-pressure waveform(s) (Pa); see `sim_gfc2023` for type conventions.
+- `cf::Vector{Float64}`: characteristic frequencies (CFs) of the population (Hz).
+- `fractional::Bool`: if `true`, regenerates ffGn before running; default `false`.
+- `clean::Bool`: if `true`, zeros all state arrays before running; default `false`.
+- `kwargs...`: passed through to the underlying explicit-arg method; see
+  `sim_gfc2023` for the full list.
+
+# Arguments (explicit buffer form)
+- `ffGn_hsr`, `ffGn_lsr`: pre-allocated fractional Gaussian noise buffers.
+- `controlout`, `c1out`, `c2out`, `ihcout`, `expout_hsr`, `sout1_hsr`,
+  `sout2_hsr`, `synout_hsr`, `expout_lsr`, `sout1_lsr`, `sout2_lsr`,
+  `synout_lsr`, `hsrout`, `lsrout`, `cnout`, `icout`, `mocwdr`, `mocic`,
+  `gain`, `gainpostmix`: pre-allocated output buffers, written in place.
+- `x`: sound-pressure waveform(s) (Pa); see `sim_gfc2023` for type conventions.
+- `cf::Vector{Float64}`: characteristic frequencies (CFs) of the population (Hz).
+- `kwargs...`: see `sim_gfc2023` for the full list.
 
 # Returns
-- `output::Vector{Float64}`: synapse output (unknown units?), length is `length(input)`
+Same structure as `sim_gfc2023`: `Vector{Vector{Vector{Float64}}}` for monaural
+or `Vector{Vector{Vector{Vector{Float64}}}}` for binaural. When clipping is
+disabled, the returned arrays are the pre-allocated buffers themselves; when
+clipping is enabled, new arrays are allocated for the clipped result.
 """
 function sim_gfc2023!(
     ffGn_hsr::Vector{Vector{Float64}},
