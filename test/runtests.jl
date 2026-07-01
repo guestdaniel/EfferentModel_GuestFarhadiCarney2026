@@ -6,6 +6,7 @@ using Statistics
 using DSP
 using EfferentModel_GuestFarhadiCarney2026
 
+## Monaural tests
 # Test implementation of SFIE in C
 #include("sfie_implementation.jl")
 
@@ -20,3 +21,7 @@ include("approximate_powerlaw.jl")
 
 # Test implementation of normal PDF function in C
 include("normal_pdf.jl")
+
+## Binaural tests
+# Test binaural vs monaural model responses
+include("binaural.jl")
