@@ -77,8 +77,7 @@ On Windows, if shown multiple options, you *must* select the "MinGW64 Compiler (
 This limitation arise from Microsoft's lack of support for variable-length arrays in their C compilers for Windows.
 
 Next, run the compilation script: 
-1. Run the `src/mex/compile_mex.m` script in MATLAB.
-Note that this script should be run from the `mex` folder, so please first change your working directory in MATLAB to that folder.
+1. Change your working directory in MATLAB to the src/mex folder. Run >>compile_mex in the command window, or open compile_mex.m nad run it frmo the 'play' button in the editor.
 A successful compilation results in Mex files being generated in the folder that are specific to your platform: `*.mexw64` for Windows, `*.mexa64` for Linux, or `*.mexmaci64` and `*.mexmaca64` for Intel and Apple Silicon MacOS, respectively.
 
 Please contact the authors for support.
@@ -103,8 +102,9 @@ For additional information about how to use the function, refer to the help by s
 
 ## MATLAB
 There is one function that users can call to generate model responses, `sim_efferent_model`.
-This function takes two required arguments `x` and `cfs` where `x` is a required positional argument containing a single time-pressure waveform in units of Pa and `cfs` is a required positional argument containing a vector of characteristic frequencies in units of Hz.
-Other arguments are passed as optional keyword arguments, using either the `func('key', 'value')` syntax or the `func(key=value)` syntax.
+This function takes two required arguments `x` and `cfs` where `x` is a required positional argument containing a single time-pressure waveform in units of Pa and `cfs` is a required positional argument containing a vector of characteristic frequencies in units of Hz. Note that the signal `x` must be created with a sampling rate that matches the model's sampling rate, `fs` (default/recommended rate is 100 kHz).
+Other input arguments are passed as optional keyword arguments, using either the `func('key', 'value')` syntax or the `func(key=value)` syntax.
+The function's output arguments are matrices of signals representing the responses of inner hair cells (ihcout), high-spontaneous-rate auditory-nerve (AN) fibers (hsrout), low-spontaneous-rate AN fibers (lsrout), and the time-varying cochlear gain factor (gain). 
 For additional information about how to use the function, refer to the comment block via `help sim_efferent_model` and to the extensive demo script located at `src/mex/demo.m`.
 
 ## Tips and customization
