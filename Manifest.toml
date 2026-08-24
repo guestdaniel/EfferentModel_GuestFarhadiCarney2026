@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.2"
+julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "4efc2b8a0e34887803d011d3b2a8cc0f3a4eccc8"
+project_hash = "4781cb272d0c5650e1fd52c820784baa3053fb47"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -71,7 +71,9 @@ version = "1.11.0"
 
 [[deps.AuditoryMidbrain]]
 deps = ["AuditorySignalUtils", "BenchmarkTools", "ColorSchemes", "Colors", "DSP", "Plots", "ProgressMeter"]
-path = "C:\\Users\\dguest2\\AuditoryMidbrain.jl\\"
+git-tree-sha1 = "85111edfad730a78d5b5b4afecb9092ab55ea2d2"
+repo-rev = "main"
+repo-url = "git@github.com:guestdaniel/AuditoryMidbrain.jl"
 uuid = "1f0c5aff-cd3a-4ea8-abe2-b20da302f73b"
 version = "0.1.0"
 
@@ -982,7 +984,7 @@ version = "1.11.0"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2025.5.20"
+version = "2025.11.4"
 
 [[deps.MutableShiftedArrays]]
 git-tree-sha1 = "11bd72985ed85ff31564b2c60cc50f88ebd7acbf"
@@ -1133,7 +1135,7 @@ version = "0.44.2+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.12.0"
+version = "1.12.1"
 weakdeps = ["REPL"]
 
     [deps.Pkg.extensions]

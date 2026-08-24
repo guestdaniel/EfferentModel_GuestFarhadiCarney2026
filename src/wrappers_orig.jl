@@ -47,7 +47,7 @@ function sim_orig(
     c2out = zeros(length(x))
     c2vihcout = zeros(length(x))
     controlout = zeros(length(x))
-    lib = Libdl.dlopen(joinpath(@__DIR__, "..", "external", "julia", "libzbc2014debug.so"))
+    lib = Libdl.dlopen(joinpath(@__DIR__, "..", "external", "julia", "libzbc2014debug." * Libdl.dlext))
     modelfunc = Libdl.dlsym(lib, :IHCDEBUG)
     ccall(
         modelfunc,

@@ -24,5 +24,7 @@ UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 ZilanyBruceCarney2014 = "83795400-82fe-439b-8fdc-4e65948642a8"
 
 [sources]
-AuditoryMidbrain = {path = "C:\\Users\\dguest2\\AuditoryMidbrain.jl\\"}
 ZilanyBruceCarney2014 = {rev = "main", url = "https://github.com/guestdaniel/ZilanyBruceCarney2014.jl"}
+
+[compat]
+AuditoryMidbrain = "0.1.0"

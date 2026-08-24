@@ -13,7 +13,7 @@ using Libdl
         y = pdf(Normal(param...), x)
 
         # Calculate using direct implementation in C
-        lib = Libdl.dlopen(joinpath(@__DIR__, "..", "src", "model", "libgfc2023.so"))
+        lib = Libdl.dlopen(joinpath(@__DIR__, "..", "src", "model", "libgfc2026." * Libdl.dlext))
         modelfunc = Libdl.dlsym(lib, :normal_pdf)
         ŷ = map(x) do _x
             ccall(

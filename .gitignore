@@ -4,6 +4,7 @@ outputs
 *.svg
 *.o
 *.so
+*.dylib
 model_temp
 test/performance/tracking_untracked.jl
 Helios_plots

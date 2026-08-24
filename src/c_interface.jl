@@ -55,7 +55,7 @@ function model!(
     gainpostmix::Vector{Vector{Float64}},
 )
     # Open library using Libdl (is there any overhead here?)
-    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026.so"))
+    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026." * Libdl.dlext))
     modelfunc = Libdl.dlsym(lib, :model_monaural)
 
     # Place call
@@ -228,7 +228,7 @@ function model!(
     gain::Vector{Vector{Vector{Float64}}},
     gainpostmix::Vector{Vector{Vector{Float64}}},
 )
-    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026.so"))
+    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026." * Libdl.dlext))
     modelfunc = Libdl.dlsym(lib, :model_binaural)
 
     ccall(

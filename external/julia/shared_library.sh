@@ -8,3 +8,16 @@ gcc -c -Wall -fPIC -O3 complex.c
 
 # Step 2: Compile everything together into a shared library object
 gcc -shared -o libzbc2014debug.so model_IHC_debug.o model_Synapse_debug.o complex.o
+
+case "$(uname -s)" in
+    Linux*)
+        gcc -shared -o libzbc2014debug.so model_IHC_debug.o model_Synapse_debug.o complex.o
+        ;;
+    Darwin*)
+        gcc -shared -o libzbc2014debug.dylib model_IHC_debug.o model_Synapse_debug.o complex.o
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        gcc -shared -o libzbc2014debug.so model_IHC_debug.o model_Synapse_debug.o complex.o
+        ;;
+    *)          echo "Unsupported OS: $(uname -s)" >&2; exit 1 ;;
+esac
