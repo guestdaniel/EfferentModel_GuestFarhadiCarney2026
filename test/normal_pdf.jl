@@ -1,5 +1,5 @@
 using Test
-using EfferentModel_GuestFarhadiCarney2026
+using caplab_binaural_efferent_model
 using Statistics
 using Distributions
 using Libdl

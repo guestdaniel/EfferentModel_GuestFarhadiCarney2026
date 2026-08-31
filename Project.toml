@@ -1,10 +1,9 @@
-name = "EfferentModel_GuestFarhadiCarney2026"
+name = "caplab_binaural_efferent_model"
 uuid = "bd60d82c-a384-44fa-b544-3af1e39361be"
-version = "0.1.0"
-authors = ["Daniel Guest <guest121@umn.edu>"]
+version = "0.2.0"
+authors = ["Daniel Guest <daniel-guest@uiowa.edu>"]
 
 [deps]
-AuditoryMidbrain = "1f0c5aff-cd3a-4ea8-abe2-b20da302f73b"
 AuditorySignalUtils = "20759599-9703-4078-b9af-37a489742e5c"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -25,6 +24,3 @@ ZilanyBruceCarney2014 = "83795400-82fe-439b-8fdc-4e65948642a8"
 
 [sources]
 ZilanyBruceCarney2014 = {rev = "main", url = "https://github.com/guestdaniel/ZilanyBruceCarney2014.jl"}
-
-[compat]
-AuditoryMidbrain = "0.1.0"

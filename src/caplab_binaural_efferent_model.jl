@@ -1,4 +1,4 @@
-module EfferentModel_GuestFarhadiCarney2026
+module caplab_binaural_efferent_model
 
 using DrWatson
 using DSP
