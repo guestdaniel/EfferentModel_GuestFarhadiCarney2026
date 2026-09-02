@@ -79,7 +79,7 @@ function postprocess_simulations(
     avoid_irregularities=true,
 )
     # Open lib
-    lib = Libdl.dlopen(joinpath(@__DIR__, "model", "libgfc2026." * Libdl.dlext))
+    lib = Libdl.dlopen(joinpath(@__DIR__, "..", "deps", "model", "libgfc2026." * Libdl.dlext))
     modelfunc = Libdl.dlsym(lib, :delay_cat)
 
     # If we're looking at control, c1, or c2 in an old model, we need to shift signal by 
