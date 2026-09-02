@@ -1,3 +1,0 @@
-[submodule "src/model"]
-	path = src/model
-	url = git@github.com:guestdaniel/NGAM.git
