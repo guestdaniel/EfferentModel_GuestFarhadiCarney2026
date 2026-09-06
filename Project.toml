@@ -1,10 +1,9 @@
 name = "caplab_binaural_efferent_model"
 uuid = "bd60d82c-a384-44fa-b544-3af1e39361be"
-version = "0.3.0"
+version = "0.3.2"
 authors = ["Daniel Guest <daniel-guest@uiowa.edu>"]
 
 [deps]
-AuditorySignalUtils = "20759599-9703-4078-b9af-37a489742e5c"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
@@ -20,7 +19,5 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
-ZilanyBruceCarney2014 = "83795400-82fe-439b-8fdc-4e65948642a8"
-
-[sources]
-ZilanyBruceCarney2014 = {rev = "main", url = "https://github.com/guestdaniel/ZilanyBruceCarney2014.jl"}
+caplab_signals = "d2c79caf-ff6d-42b5-a7ab-185ce865a153"
+caplab_zbc2014 = "e6e7f8da-39d5-454e-9769-793fa81b0d40"

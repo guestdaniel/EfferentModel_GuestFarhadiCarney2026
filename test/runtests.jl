@@ -1,9 +1,10 @@
 using Test
-using AuditorySignalUtils
-using ZilanyBruceCarney2014
 using Statistics
 using DSP
 using caplab_binaural_efferent_model
+
+using caplab_zbc2014
+using caplab_signals
 
 ## Monaural tests
 # Test implementation of SFIE in C
