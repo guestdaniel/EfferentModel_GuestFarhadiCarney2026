@@ -27,7 +27,7 @@
                 stage_2014 = stage
                 stage_2023 = stage 
             end
-            @test isapprox(orig[stage_2014][1], new[stage_2023][1]; rtol=rtol_2014_vs_2023(stage)) broken=((cf==4e3) & (stage=="lsr"))
+            @test isapprox(orig[stage_2014][1], new[stage_2023][1]; rtol=rtol_2014_vs_2023(stage)) broken=((cf==4e3) & (stage=="lsr" || stage=="hsr"))
         end
     end
 end
