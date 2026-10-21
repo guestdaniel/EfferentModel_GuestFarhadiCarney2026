@@ -1554,8 +1554,10 @@ void model_binaural(
         for (int c = 0; c < n_chan; c++) {
             float premix_left = gainpostmix[0][c][n];
             float premix_right = gainpostmix[1][c][n];
-            gainpostmix[0][c][n] = pow(premix_left, 2.0/3.0) * pow(premix_right, 1.0/3.0);
-            gainpostmix[1][c][n] = pow(premix_left, 1.0/3.0) * pow(premix_right, 2.0/3.0);
+            /* gainpostmix[0][c][n] = pow(premix_left, 2.0/3.0) * pow(premix_right, 1.0/3.0); */
+            /* gainpostmix[1][c][n] = pow(premix_left, 1.0/3.0) * pow(premix_right, 2.0/3.0); */
+            gainpostmix[0][c][n] = pow(premix_left, 1.5) * premix_right;  // logic: ispilateral reflex L -> L is stronger than the contralateral R -> L reflex
+            gainpostmix[1][c][n] = premix_left * pow(premix_right, 1.5);  // logic: ipsilateral reflex R -> R is stronger than the contralateral L -> R reflex
         }
     } // end main time loop
 
