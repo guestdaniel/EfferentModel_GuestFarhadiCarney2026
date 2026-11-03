@@ -138,6 +138,18 @@ void model_binaural(
 );
 
 
+/* Per-channel constants of the C1/C2 chirp filters, computed once by chirp_init */
+typedef struct {
+    double CF;            /* 2*pi*cf (rad/s) */
+    double sigma0;        /* 1/taumax */
+    double ipw, ipb, rpa; /* pole-location parameters */
+    double fs_bilinear;   /* bilinear-transform constant */
+    double initphase;     /* phase of the poles in the absence of OHC control */
+    double norm_gain;     /* output gain normalization */
+    COMPLEX p_fixed[11];  /* fixed poles of the C2 filter */
+    double rzero_fixed;   /* fixed zero of the C2 filter */
+} ChirpConst;
+
 /* Declare other functions */
 // model.c
 double normal_pdf(double, double, double);
@@ -145,15 +157,18 @@ void middle_ear(double *, double, int, int, double *);
 void Get_tauwb(int, double *, int, int, double *, double *);
 void Get_taubm(int, double *, int, double *, double *, double *, double *);
 double gain_groupdelay(double, double, double, double, int *);
+double groupdelay_cos(double, double, double);
+double gain_groupdelay_cos(double, double, double, int *);
 double WbGammaTone(double, double, double, int, double, double, int, double *, 
                    COMPLEX *, COMPLEX *);
 double Boltzman(double, double, double, double, double);
 double NLafterohc(double, double, double, double);
+void NLafterohc_params(double, double, double, double *, double *);
+double NLafterohc_apply(double, double, double, double, double);
 double OhcLowPass(double, double, double, int, double, int, double *, double *);
-double C1ChirpFilt(double, double,double, int, double, double, double *, double *, 
-                   double **, double **);
-double C2ChirpFilt(double, double,double, int, double, double, double *, double *, 
-                   double **, double **);
+void chirp_init(double, double, double, double, ChirpConst *);
+double C1ChirpFilt(double, const ChirpConst *, double, double **, double **);
+double C2ChirpFilt(double, const ChirpConst *, double **, double **);
 double NLogarithm(double, double, double, double);
 double IhcLowPass(double, double, double, int, double, int, double *, double *);
 double delay_cat(double);

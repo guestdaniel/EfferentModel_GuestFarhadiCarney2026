@@ -339,12 +339,14 @@ void model_monaural(
         ohcl[i] = (double*) calloc(4, sizeof(double));
     }
 
+    /* Declare per-channel constants shared by the C1 and C2 chirp filters (set below) */
+    ChirpConst chirp[n_chan];
+
+    /* Declare other per-channel constants that are computed once (set below) */
+    double gd_cos[n_chan];              /* cosine term of gain_groupdelay */
+    double nl_minR[n_chan], nl_s0[n_chan];  /* parameters of NLafterohc */
+
     /* Declare and initialize state variables for C1ChirpFilt filter */
-    double C1gain_norm[n_chan], C1initphase[n_chan];
-    for (int i = 0; i < n_chan; i++) {
-        C1gain_norm[i] = 0.0;
-        C1initphase[i] = 0.0;
-    }
     double*** C1input = (double***) malloc(n_chan * sizeof(double**));
     for (int i = 0; i < n_chan; i++) {
         C1input[i] = (double**) malloc(12 * sizeof(double*));
@@ -369,11 +371,6 @@ void model_monaural(
     }
 
     /* Declare and initialize state variables for C2ChirpFilt filter */
-    double C2gain_norm[n_chan], C2initphase[n_chan];
-    for (int i = 0; i < n_chan; i++) {
-        C2gain_norm[i] = 0.0;
-        C2initphase[i] = 0.0;
-    }
     double*** C2input = (double***) malloc(n_chan * sizeof(double**));
     for (int i = 0; i < n_chan; i++) {
         C2input[i] = (double**) malloc(12 * sizeof(double*));
@@ -473,8 +470,13 @@ void model_monaural(
         bmTaubm[c] = cohc[c]*(bmTaumax[c]-bmTaumin[c]) + bmTaumin[c];
         tauwb[c] = TauWBMax[c] + (bmTaubm[c]-bmTaumax[c]) * 
             (TauWBMax[c]-TauWBMin[c])/(bmTaumax[c]-bmTaumin[c]);
-        wbgain[c] = gain_groupdelay(tdres, centerfreq[c], cf[c], tauwb[c], &grdelay[c]);
+        gd_cos[c] = groupdelay_cos(tdres, centerfreq[c], cf[c]);
+        wbgain[c] = gain_groupdelay_cos(tdres, gd_cos[c], tauwb[c], &grdelay[c]);
         tmpgain[c][0] = wbgain[c];
+
+        /* Compute constants of the OHC nonlinearity and the chirp filters */
+        NLafterohc_params(bmTaumin[c], bmTaumax[c], 7.0, &nl_minR[c], &nl_s0[c]);
+        chirp_init(tdres, cf[c], bmTaumax[c], 1/ratiobm[c], &chirp[c]);
         lasttmpgain[c] = wbgain[c];
 
         /* Calculate delay time introduced by cochlea/hair cells/synapse/etc
@@ -532,8 +534,8 @@ void model_monaural(
         cn_i_tmp[i] = (double*) calloc(totalstim, sizeof(double));
     }
 
-    double ic_B_e[2], ic_A_e[3], ic_B_i[2], ic_A_i[3];
-    int ic_len_delay = (int) floor(ic_delay * 1/tdres);
+    double ic_B_e[n_chan][2], ic_A_e[n_chan][3], ic_B_i[n_chan][2], ic_A_i[n_chan][3];
+    int ic_len_delay[n_chan];
     double *ic_i[n_chan];
     double *ic_e_tmp[n_chan];
     double *ic_i_tmp[n_chan];
@@ -550,6 +552,24 @@ void model_monaural(
     /* Calculate CN params (constant across CFs) */
     get_alpha_norm(cn_tau_e, 1/tdres, 1.0, cn_B_e, cn_A_e);
     get_alpha_norm(cn_tau_i, 1/tdres, 1.0, cn_B_i, cn_A_i);
+
+    /* Calculate IC params for each channel */
+    for (int c = 0; c < n_chan; c++) {
+        if (cf[c]/4.0 > 64.0) {
+            /* Since this is a high CF (cf/4 > 64 Hz), we use the reference values */
+            ic_len_delay[c] = (int) floor(ic_delay * 1/tdres);
+            get_alpha_norm(ic_tau_e, 1/tdres, 1.0, ic_B_e[c], ic_A_e[c]);
+            get_alpha_norm(ic_tau_i, 1/tdres, 1.0, ic_B_i[c], ic_A_i[c]);
+        } else {
+            /* Since this is a low CF channel (cf/4 < 64 Hz), we scale the IC params with CF */
+            ic_tau_e_tmp = 1.0 / (10.0 * cf[c]/4.0);
+            ic_tau_i_tmp = ic_tau_e_tmp * 1.5;
+            ic_delay_tmp = ic_tau_e_tmp * 2.0;
+            ic_len_delay[c] = (int) floor(ic_delay_tmp * 1/tdres);
+            get_alpha_norm(ic_tau_e_tmp, 1/tdres, 1.0, ic_B_e[c], ic_A_e[c]);
+            get_alpha_norm(ic_tau_i_tmp, 1/tdres, 1.0, ic_B_i[c], ic_A_i[c]);
+        }
+    }
 
     /* Calculate variables for the MOC stage */
     double moc_d = exp(-TWOPI * (moc_cutoff/(1/tdres)));
@@ -610,22 +630,11 @@ void model_monaural(
                 gaininst = gainpostmix[c][n-len_moc_delay];
             }
 
-            /* Determine time constants for cochlear filters */
-            Get_taubm(c, cf, species, Taumax, bmTaumax, bmTaumin, ratiobm);
-            if ((n == 0) | (((n - len_moc_delay) < 0))) {  // On first sample or if we have not exceeded delay, use cohc[c]
-                bmTaubm[c] = cohc[c]*(bmTaumax[c]-bmTaumin[c]) + bmTaumin[c];
-            } else {                                       // Otherwise use gain[c][n - len_moc_delay]
-                bmTaubm[c] = gaininst*(bmTaumax[c]-bmTaumin[c]) + bmTaumin[c];
-            }
-            tauwb[c] = TauWBMax[c] + (bmTaubm[c]-bmTaumax[c]) * 
-                (TauWBMax[c]-TauWBMin[c])/(bmTaumax[c]-bmTaumin[c]);
-            wbgain[c] = gain_groupdelay(tdres, centerfreq[c], cf[c], tauwb[c], &grdelay[c]);
-
             /* Pass the control-path signal through the OHC model (nonlinear transduction and 
             lowpass filtering) */
             ohcnonlinout = Boltzman(wbout, 7.0, 12.0, 5.0, 5.0);
             ohcout = OhcLowPass(ohcnonlinout, tdres, 600, n, 1.0, 2, ohc[c], ohcl[c]);
-            controlout[c][n] = NLafterohc(ohcout, bmTaumin[c], bmTaumax[c], 7.0);
+            controlout[c][n] = NLafterohc_apply(ohcout, bmTaumin[c], bmTaumax[c], nl_minR[c], nl_s0[c]);
 
             /* Determine time constant and shift of C1 filter poles based on output of OHCs 
                If moc_fix_gain == true, then we simply use the gain factor specified by 
@@ -642,7 +651,7 @@ void model_monaural(
                 (TauWBMax[c]-TauWBMin[c])/(bmTaumax[c]-bmTaumin[c]);
 
             /* Do some sort of groupdelay manipulation??? TODO Clarify */
-            wb_gain = gain_groupdelay(tdres, centerfreq[c], cf[c], tauwb[c], &grdelay[c]);
+            wb_gain = gain_groupdelay_cos(tdres, gd_cos[c], tauwb[c], &grdelay[c]);
             if ((grdelay[c]+n) < totalstim) {
                 tmpgain[c][grdelay[c]+n] = wb_gain;
             }
@@ -653,14 +662,10 @@ void model_monaural(
             lasttmpgain[c] = wbgain[c];
 
             /* Apply signal-path C1 filter */
-            c1out[c][n] = C1ChirpFilt(me_curr, tdres, cf[c], n, bmTaumax[c], rsigma, 
-                                      &C1gain_norm[c], &C1initphase[c], C1input[c], 
-                                      C1output[c]);
+            c1out[c][n] = C1ChirpFilt(me_curr, &chirp[c], rsigma, C1input[c], C1output[c]);
 
             /* Apply parallel-path C2 filter */
-            c2out[c][n] = C2ChirpFilt(me_curr, tdres, cf[c], n, bmTaumax[c], 1/ratiobm[c], 
-                                      &C2gain_norm[c], &C2initphase[c], C2input[c], 
-                                      C2output[c]);
+            c2out[c][n] = C2ChirpFilt(me_curr, &chirp[c], C2input[c], C2output[c]);
 
             /* Apply IHC model: NL input-output function and lowpass filtering */
             c1vihctmp  = NLogarithm(cihc[c]*c1out[c][n], 0.1, 3.0, cf[c]);
@@ -704,32 +709,12 @@ void model_monaural(
             cntmp = tdres * (cn_amp*cn_e_tmp[c][n] - (cn_amp*cn_inh)*cn_i_tmp[c][n]);
             cnout[c][n] = hw_rectify(cntmp);
 
-            /* Update IC parameters based on CF */
-            if (cf[c]/4.0 > 64.0) {
-                /* Since this is a high CF (cf/4 > 64 Hz), we merely update back to ref values */
-                ic_len_delay = (int) floor(ic_delay * 1/tdres);
-                get_alpha_norm(ic_tau_e, 1/tdres, 1.0, ic_B_e, ic_A_e);
-                get_alpha_norm(ic_tau_i, 1/tdres, 1.0, ic_B_i, ic_A_i);
-
-           } else {
-                /* Since this is a low CF channel (cf/4 < 64 Hz), we need to calc temp values of IC params */
-                ic_tau_e_tmp = 1.0 / (10.0 * cf[c]/4.0);
-                ic_tau_i_tmp = ic_tau_e_tmp * 1.5;
-                ic_delay_tmp = ic_tau_e_tmp * 2.0;
-
-                /* Update IC delay value and parameters values */
-                /* Since this is a high CF (cf/4 > 64 Hz), we merely update back to ref values */
-                ic_len_delay = (int) floor(ic_delay_tmp * 1/tdres);
-                get_alpha_norm(ic_tau_e_tmp, 1/tdres, 1.0, ic_B_e, ic_A_e);
-                get_alpha_norm(ic_tau_i_tmp, 1/tdres, 1.0, ic_B_i, ic_A_i);
-           }
-
             /* Delay CN output for SFIE inferior colliculus inhibitory pathway */
-            delay_signal(cnout[c], n, ic_len_delay, ic_i[c]);
+            delay_signal(cnout[c], n, ic_len_delay[c], ic_i[c]);
 
-            /* Apply SFIE filters for inferior colliculus stage */
-            filter_alpha(cnout[c], n, 1/tdres, ic_B_e, ic_A_e, ic_e_tmp[c]);
-            filter_alpha(ic_i[c], n, 1/tdres, ic_B_i, ic_A_i, ic_i_tmp[c]);
+            /* Apply SFIE filters for inferior colliculus stage (IC params depend on CF) */
+            filter_alpha(cnout[c], n, 1/tdres, ic_B_e[c], ic_A_e[c], ic_e_tmp[c]);
+            filter_alpha(ic_i[c], n, 1/tdres, ic_B_i[c], ic_A_i[c], ic_i_tmp[c]);
 
             /* Compute output signal and rectify */
             ictmp = tdres * (ic_amp*ic_e_tmp[c][n] - (ic_amp*ic_inh)*ic_i_tmp[c][n]);
@@ -1084,14 +1069,14 @@ void model_binaural(
         }
     }
 
+    /* Declare per-channel constants shared by the C1 and C2 chirp filters (set below) */
+    ChirpConst chirp[2][n_chan];
+
+    /* Declare other per-channel constants that are computed once (set below) */
+    double gd_cos[2][n_chan];                     /* cosine term of gain_groupdelay */
+    double nl_minR[2][n_chan], nl_s0[2][n_chan];  /* parameters of NLafterohc */
+
     /* Declare and initialize state variables for C1ChirpFilt filter */
-    double C1gain_norm[2][n_chan], C1initphase[2][n_chan];
-    for (int e = 0; e < 2; e++){
-        for (int i = 0; i < n_chan; i++) {
-            C1gain_norm[e][i] = 0.0;
-            C1initphase[e][i] = 0.0;
-        }
-    }
     double**** C1input = (double ****) malloc(2 * sizeof(double***));
     for (int e = 0; e < 2; e++) {
         C1input[e] = (double ***) malloc(n_chan * sizeof(double**));
@@ -1114,13 +1099,6 @@ void model_binaural(
     }
 
     /* Declare and initialize state variables for C2ChirpFilt filter */
-    double C2gain_norm[2][n_chan], C2initphase[2][n_chan];
-    for (int e = 0; e < 2; e++) {
-        for (int i = 0; i < n_chan; i++) {
-            C2gain_norm[e][i] = 0.0;
-            C2initphase[e][i] = 0.0;
-        }
-    }
     double**** C2input = (double ****) malloc(2 * sizeof(double***));
     for (int e = 0; e < 2; e++) {
         C2input[e] = (double ***) malloc(n_chan * sizeof(double**));
@@ -1221,8 +1199,13 @@ void model_binaural(
             bmTaubm[e][c] = cohc[e][c]*(bmTaumax[e][c]-bmTaumin[e][c]) + bmTaumin[e][c];
             tauwb[e][c] = TauWBMax[e][c] + (bmTaubm[e][c]-bmTaumax[e][c]) * 
                 (TauWBMax[e][c]-TauWBMin[e][c])/(bmTaumax[e][c]-bmTaumin[e][c]);
-            wbgain[e][c] = gain_groupdelay(tdres, centerfreq[e][c], cf[c], tauwb[e][c], &grdelay[e][c]);
+            gd_cos[e][c] = groupdelay_cos(tdres, centerfreq[e][c], cf[c]);
+            wbgain[e][c] = gain_groupdelay_cos(tdres, gd_cos[e][c], tauwb[e][c], &grdelay[e][c]);
             tmpgain[e][c][0] = wbgain[e][c];
+
+            /* Compute constants of the OHC nonlinearity and the chirp filters */
+            NLafterohc_params(bmTaumin[e][c], bmTaumax[e][c], 7.0, &nl_minR[e][c], &nl_s0[e][c]);
+            chirp_init(tdres, cf[c], bmTaumax[e][c], 1/ratiobm[e][c], &chirp[e][c]);
             lasttmpgain[e][c] = wbgain[e][c];
 
             /* Calculate delay time introduced by cochlea/hair cells/synapse/etc
@@ -1287,8 +1270,8 @@ void model_binaural(
         }
     }
 
-    double ic_B_e[2], ic_A_e[3], ic_B_i[2], ic_A_i[3];
-    int ic_len_delay = (int) floor(ic_delay * 1/tdres);
+    double ic_B_e[n_chan][2], ic_A_e[n_chan][3], ic_B_i[n_chan][2], ic_A_i[n_chan][3];
+    int ic_len_delay[n_chan];
     double *ic_i[2][n_chan];
     double *ic_e_tmp[2][n_chan];
     double *ic_i_tmp[2][n_chan];
@@ -1307,6 +1290,24 @@ void model_binaural(
     /* Calculate CN params (constant across CFs) */
     get_alpha_norm(cn_tau_e, 1/tdres, 1.0, cn_B_e, cn_A_e);
     get_alpha_norm(cn_tau_i, 1/tdres, 1.0, cn_B_i, cn_A_i);
+
+    /* Calculate IC params for each channel */
+    for (int c = 0; c < n_chan; c++) {
+        if (cf[c]/4.0 > 64.0) {
+            /* Since this is a high CF (cf/4 > 64 Hz), we use the reference values */
+            ic_len_delay[c] = (int) floor(ic_delay * 1/tdres);
+            get_alpha_norm(ic_tau_e, 1/tdres, 1.0, ic_B_e[c], ic_A_e[c]);
+            get_alpha_norm(ic_tau_i, 1/tdres, 1.0, ic_B_i[c], ic_A_i[c]);
+        } else {
+            /* Since this is a low CF channel (cf/4 < 64 Hz), we scale the IC params with CF */
+            ic_tau_e_tmp = 1.0 / (10.0 * cf[c]/4.0);
+            ic_tau_i_tmp = ic_tau_e_tmp * 1.5;
+            ic_delay_tmp = ic_tau_e_tmp * 2.0;
+            ic_len_delay[c] = (int) floor(ic_delay_tmp * 1/tdres);
+            get_alpha_norm(ic_tau_e_tmp, 1/tdres, 1.0, ic_B_e[c], ic_A_e[c]);
+            get_alpha_norm(ic_tau_i_tmp, 1/tdres, 1.0, ic_B_i[c], ic_A_i[c]);
+        }
+    }
 
     /* Calculate variables for the MOC stage */
     double moc_d = exp(-TWOPI * (moc_cutoff/(1/tdres)));
@@ -1371,22 +1372,11 @@ void model_binaural(
                     gaininst = gainpostmix[e][c][n-len_moc_delay];
                 }
 
-                /* Determine time constants for cochlear filters */
-                Get_taubm(c, cf, species, Taumax[e], bmTaumax[e], bmTaumin[e], ratiobm[e]);
-                if ((n == 0) | (((n - len_moc_delay) < 0))) {  // On first sample or if we have not exceeded delay, use cohc[c]
-                    bmTaubm[e][c] = cohc[e][c]*(bmTaumax[e][c]-bmTaumin[e][c]) + bmTaumin[e][c];
-                } else {                                       // Otherwise use gain[c][n - len_moc_delay]
-                    bmTaubm[e][c] = gaininst*(bmTaumax[e][c]-bmTaumin[e][c]) + bmTaumin[e][c];
-                }
-                tauwb[e][c] = TauWBMax[e][c] + (bmTaubm[e][c]-bmTaumax[e][c]) * 
-                    (TauWBMax[e][c]-TauWBMin[e][c])/(bmTaumax[e][c]-bmTaumin[e][c]);
-                wbgain[e][c] = gain_groupdelay(tdres, centerfreq[e][c], cf[c], tauwb[e][c], &grdelay[e][c]);
-
                 /* Pass the control-path signal through the OHC model (nonlinear transduction and 
                 lowpass filtering) */
                 ohcnonlinout = Boltzman(wbout, 7.0, 12.0, 5.0, 5.0);
                 ohcout = OhcLowPass(ohcnonlinout, tdres, 600, n, 1.0, 2, ohc[e][c], ohcl[e][c]);
-                controlout[e][c][n] = NLafterohc(ohcout, bmTaumin[e][c], bmTaumax[e][c], 7.0);
+                controlout[e][c][n] = NLafterohc_apply(ohcout, bmTaumin[e][c], bmTaumax[e][c], nl_minR[e][c], nl_s0[e][c]);
 
                 /* Determine time constant and shift of C1 filter poles based on output of OHCs 
                 If moc_fix_gain == true, then we simply use the gain factor specified by 
@@ -1403,7 +1393,7 @@ void model_binaural(
                     (TauWBMax[e][c]-TauWBMin[e][c])/(bmTaumax[e][c]-bmTaumin[e][c]);
 
                 /* Do some sort of groupdelay manipulation??? TODO Clarify */
-                wb_gain = gain_groupdelay(tdres, centerfreq[e][c], cf[c], tauwb[e][c], &grdelay[e][c]);
+                wb_gain = gain_groupdelay_cos(tdres, gd_cos[e][c], tauwb[e][c], &grdelay[e][c]);
                 if ((grdelay[e][c]+n) < totalstim) {
                     tmpgain[e][c][grdelay[e][c]+n] = wb_gain;
                 }
@@ -1414,14 +1404,10 @@ void model_binaural(
                 lasttmpgain[e][c] = wbgain[e][c];
 
                 /* Apply signal-path C1 filter */
-                c1out[e][c][n] = C1ChirpFilt(me_curr, tdres, cf[c], n, bmTaumax[e][c], rsigma, 
-                                        &C1gain_norm[e][c], &C1initphase[e][c], C1input[e][c], 
-                                        C1output[e][c]);
+                c1out[e][c][n] = C1ChirpFilt(me_curr, &chirp[e][c], rsigma, C1input[e][c], C1output[e][c]);
 
                 /* Apply parallel-path C2 filter */
-                c2out[e][c][n] = C2ChirpFilt(me_curr, tdres, cf[c], n, bmTaumax[e][c], 1/ratiobm[e][c], 
-                                        &C2gain_norm[e][c], &C2initphase[e][c], C2input[e][c], 
-                                        C2output[e][c]);
+                c2out[e][c][n] = C2ChirpFilt(me_curr, &chirp[e][c], C2input[e][c], C2output[e][c]);
 
                 /* Apply IHC model: NL input-output function and lowpass filtering */
                 c1vihctmp  = NLogarithm(cihc[e][c]*c1out[e][c][n], 0.1, 3.0, cf[c]);
@@ -1465,32 +1451,12 @@ void model_binaural(
                 cntmp = tdres * (cn_amp*cn_e_tmp[e][c][n] - (cn_amp*cn_inh)*cn_i_tmp[e][c][n]);
                 cnout[e][c][n] = hw_rectify(cntmp);
 
-                /* Update IC parameters based on CF */
-                if (cf[c]/4.0 > 64.0) {
-                    /* Since this is a high CF (cf/4 > 64 Hz), we merely update back to ref values */
-                    ic_len_delay = (int) floor(ic_delay * 1/tdres);
-                    get_alpha_norm(ic_tau_e, 1/tdres, 1.0, ic_B_e, ic_A_e);
-                    get_alpha_norm(ic_tau_i, 1/tdres, 1.0, ic_B_i, ic_A_i);
-
-            } else {
-                    /* Since this is a low CF channel (cf/4 < 64 Hz), we need to calc temp values of IC params */
-                    ic_tau_e_tmp = 1.0 / (10.0 * cf[c]/4.0);
-                    ic_tau_i_tmp = ic_tau_e_tmp * 1.5;
-                    ic_delay_tmp = ic_tau_e_tmp * 2.0;
-
-                    /* Update IC delay value and parameters values */
-                    /* Since this is a high CF (cf/4 > 64 Hz), we merely update back to ref values */
-                    ic_len_delay = (int) floor(ic_delay_tmp * 1/tdres);
-                    get_alpha_norm(ic_tau_e_tmp, 1/tdres, 1.0, ic_B_e, ic_A_e);
-                    get_alpha_norm(ic_tau_i_tmp, 1/tdres, 1.0, ic_B_i, ic_A_i);
-            }
-
                 /* Delay CN output for SFIE inferior colliculus inhibitory pathway */
-                delay_signal(cnout[e][c], n, ic_len_delay, ic_i[e][c]);
+                delay_signal(cnout[e][c], n, ic_len_delay[c], ic_i[e][c]);
 
-                /* Apply SFIE filters for inferior colliculus stage */
-                filter_alpha(cnout[e][c], n, 1/tdres, ic_B_e, ic_A_e, ic_e_tmp[e][c]);
-                filter_alpha(ic_i[e][c], n, 1/tdres, ic_B_i, ic_A_i, ic_i_tmp[e][c]);
+                /* Apply SFIE filters for inferior colliculus stage (IC params depend on CF) */
+                filter_alpha(cnout[e][c], n, 1/tdres, ic_B_e[c], ic_A_e[c], ic_e_tmp[e][c]);
+                filter_alpha(ic_i[e][c], n, 1/tdres, ic_B_i[c], ic_A_i[c], ic_i_tmp[e][c]);
 
                 /* Compute output signal and rectify */
                 ictmp = tdres * (ic_amp*ic_e_tmp[e][c][n] - (ic_amp*ic_inh)*ic_i_tmp[e][c][n]);
@@ -1885,11 +1851,29 @@ void Get_taubm(int idx_chan, double *cf, int species, double *taumax, double *bm
  * @param tau ???
  * @param grdelay ???
  */
-double gain_groupdelay(double tdres, double centerfreq, double cf, double tau, int *grdelay) { 
-    double tmpcos,dtmp2,c1LP,c2LP,tmp1,tmp2,wb_gain;
+double gain_groupdelay(double tdres, double centerfreq, double cf, double tau, int *grdelay) {
+    return gain_groupdelay_cos(tdres, groupdelay_cos(tdres, centerfreq, cf), tau, grdelay);
+}
+
+/**
+ * groupdelay_cos
+ *
+ * Returns the cosine term used by gain_groupdelay, which depends only on the channel and
+ * can therefore be computed once per channel.
+ */
+double groupdelay_cos(double tdres, double centerfreq, double cf) {
+    return cos(TWOPI*(centerfreq-cf)*tdres);
+}
+
+/**
+ * gain_groupdelay_cos
+ *
+ * Same as gain_groupdelay, but takes the precomputed value of groupdelay_cos (tmpcos).
+ */
+double gain_groupdelay_cos(double tdres, double tmpcos, double tau, int *grdelay) {
+    double dtmp2,c1LP,c2LP,tmp1,tmp2,wb_gain;
 
     /* Calculate constants and parameters */
-    tmpcos = cos(TWOPI*(centerfreq-cf)*tdres);
     dtmp2 = tau*2.0/tdres;
     c1LP = (dtmp2-1)/(dtmp2+1);
     c2LP = 1.0/(dtmp2+1);
@@ -2074,19 +2058,42 @@ double IhcLowPass(double x, double tdres, double Fc, int n, double gain, int ord
  * @param taumax ???
  * @param asym ???
  */
-double NLafterohc(double x, double taumin, double taumax, double asym) {    
-	double R,dc,R1,s0,x1,out,minR;
+double NLafterohc(double x, double taumin, double taumax, double asym) {
+    double minR, s0;
+    NLafterohc_params(taumin, taumax, asym, &minR, &s0);
+    return NLafterohc_apply(x, taumin, taumax, minR, s0);
+}
+
+/**
+ * NLafterohc_params
+ *
+ * Computes the parameters of NLafterohc that depend only on the channel (minR and s0), so
+ * that they can be computed once per channel and passed to NLafterohc_apply.
+ */
+void NLafterohc_params(double taumin, double taumax, double asym, double *minR_out,
+                       double *s0_out) {
+	double R,dc,R1,minR;
 
     /* Calculate constants and parameters */
-	minR = 0.05;  // ratio of asymptotic lower bound of time constant to taumax 
+	minR = 0.05;  // ratio of asymptotic lower bound of time constant to taumax
     R  = taumin/taumax;
 	if (R < minR) minR = 0.5*R;
-    else minR = minR;
-    
+
     dc = (asym-1)/(asym+1.0)/2.0-minR;  // estimate of DC component of control-path output at high levels
     R1 = R-minR;
 
-    s0 = -dc/log(R1/(1-minR));
+    (*minR_out) = minR;
+    (*s0_out) = -dc/log(R1/(1-minR));
+}
+
+/**
+ * NLafterohc_apply
+ *
+ * Evaluates NLafterohc for input x given the parameters from NLafterohc_params.
+ */
+double NLafterohc_apply(double x, double taumin, double taumax, double minR, double s0) {
+	double x1,out;
+
     x1  = fabs(x);
 
     /* Calculate output, limiting by taumin and taumax */
@@ -2129,274 +2136,203 @@ double WbGammaTone(double x, double tdres, double centerfreq, int n, double tau,
                    double gain, int order, double *wbphase, COMPLEX *wbgtf, 
                    COMPLEX *wbgtfl) {
     double delta_phase,dtmp,c1LP,c2LP,out;
+    COMPLEX phasor;
     int i,j;
 
   delta_phase = -TWOPI*centerfreq*tdres;
   (*wbphase) += delta_phase;
-  
+
   dtmp = tau*2.0/tdres;
   c1LP = (dtmp-1)/(dtmp+1);
   c2LP = 1.0/(dtmp+1);
-  wbgtf[0] = compmult(x,compexp((*wbphase)));                 /* FREQUENCY SHIFT */
-  
+  phasor = compexp((*wbphase));
+  wbgtf[0] = compmult(x,phasor);                              /* FREQUENCY SHIFT */
+
   for(j = 1; j <= order; j++)                              /* IIR Bilinear transformation LPF */
   wbgtf[j] = comp2sum(compmult(c2LP*gain, comp2sum(wbgtf[j-1],wbgtfl[j-1])),
       compmult(c1LP,wbgtfl[j]));
-  out = REAL(compprod(compexp(-(*wbphase)), wbgtf[order])); /* FREQ SHIFT BACK UP */
+  /* FREQ SHIFT BACK UP: exp(-i*phase) is the conjugate of exp(i*phase) */
+  out = REAL(compprod(compconj(phasor), wbgtf[order]));
   
   for(i=0; i<=order;i++) wbgtfl[i] = wbgtf[i];
   return(out);
 }
 
 /**
- * C1ChirpFilt
- * 
- * C1-path chirping peripheral filter code.
- * 
- * @param x Input value for current time sample
+ * chirp_set_poles
+ *
+ * Sets the pole locations p[1..10] of the C1/C2 chirp filters given the real part of the
+ * first pole (p1x). p[7..10] repeat p[1], p[2], p[5], and p[6].
+ */
+static void chirp_set_poles(const ChirpConst *k, double p1x, COMPLEX *p) {
+    p[1].x = p1x;
+    p[1].y = k->ipw;
+    p[5].x = p[1].x - k->rpa;
+    p[5].y = p[1].y - k->ipb;
+    p[3].x = (p[1].x + p[5].x) * 0.5;
+    p[3].y = (p[1].y + p[5].y) * 0.5;
+    p[2] = compconj(p[1]);
+    p[4] = compconj(p[3]);
+    p[6] = compconj(p[5]);
+    p[7] = p[1];
+    p[8] = p[2];
+    p[9] = p[5];
+    p[10] = p[6];
+}
+
+/**
+ * chirp_init
+ *
+ * Computes the quantities of the C1/C2 chirp filters that depend only on the channel:
+ * pole-location parameters, bilinear-transform constant, initial phase, and normalized
+ * gain. Also computes the fixed pole locations and zero used by C2ChirpFilt, whose poles
+ * do not vary over time (C1ChirpFilt ignores these).
+ *
  * @param tdres Reciprocal of sampling rate (s)
  * @param cf Characteristic frequency (Hz)
- * @param n Order of filter
- * @param taumax 
- * @param rsigma 
- * @param C1gain_norm Pointer to the normalized gain value
- * @param C1initphase Pointer to the initial phase
- * @param C1input 2D array for input values
- * @param C1output 2D array for output values
- * @return Filtered output value
+ * @param taumax Filter time constant at low sound levels (s)
+ * @param fcohc Scale factor on the real part of the C2 poles (1/ratiobm)
+ * @param k Output: per-channel constants
  */
-double C1ChirpFilt(double x, double tdres,double cf, int n, double taumax, double rsigma,
-                   double *C1gain_norm, double *C1initphase, double **C1input, 
-                   double **C1output) {
-    double ipw, ipb, rpa, pzero, rzero, sigma0, fs_bilinear, CF, norm_gain, phase, c1filterout, temp, dy, preal, pimg;
-	int i,r,order_of_pole,half_order_pole,order_of_zero;
-	COMPLEX p[11]; 
-	
-    /* Configure locations of poles and zeros based on inputs */    
-    sigma0 = 1/taumax;
-    ipw    = 1.01*cf*TWOPI-50;
-    ipb    = 0.2343*TWOPI*cf-1104;
-    rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
-    pzero  = pow(10,log10(cf)*0.7+1.6)+500;
-    order_of_pole    = 10;             
-    half_order_pole  = order_of_pole/2;
-    order_of_zero    = half_order_pole;
-    fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
-    rzero       = -pzero;
-    CF          = TWOPI*cf;
+void chirp_init(double tdres, double cf, double taumax, double fcohc, ChirpConst *k) {
+    double pzero, rzero, gain_norm, preal, pimg, phase;
+    int i, r;
+    int order_of_pole = 10;
+    int half_order_pole = order_of_pole/2;
+    int order_of_zero = half_order_pole;
+    COMPLEX p[11];
 
-    /* If this is the first sample, initialize the state variables */ 
-    if (n==0) {		  
-        p[1].x = -sigma0;     
-        p[1].y = ipw;
-        p[5].x = p[1].x - rpa; 
-        p[5].y = p[1].y - ipb;
-        p[3].x = (p[1].x + p[5].x) * 0.5; 
-        p[3].y = (p[1].y + p[5].y) * 0.5;
-        p[2] = compconj(p[1]);    
-        p[4] = compconj(p[3]); 
-        p[6] = compconj(p[5]);
-        p[7] = p[1]; 
-        p[8] = p[2]; 
-        p[9] = p[5]; 
-        p[10] = p[6];
+    /* Configure locations of poles and zeros based on inputs */
+    k->sigma0 = 1/taumax;
+    k->ipw    = 1.01*cf*TWOPI-50;
+    k->ipb    = 0.2343*TWOPI*cf-1104;
+    k->rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
+    pzero     = pow(10,log10(cf)*0.7+1.6)+500;
+    k->fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
+    rzero     = -pzero;
+    k->CF     = TWOPI*cf;
 
-        /* Unknown ? */
-        (*C1initphase) = 0.0;
-        for (i=1; i<=half_order_pole; i++) {
-            preal     = p[i*2-1].x;
-            pimg      = p[i*2-1].y;
-            (*C1initphase) = (*C1initphase) + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
-        };
+    /* Initial phase and normalized gain, from the poles in the absence of OHC control */
+    chirp_set_poles(k, -k->sigma0, p);
+    k->initphase = 0.0;
+    for (i = 1; i <= half_order_pole; i++) {
+        preal = p[i*2-1].x;
+        pimg  = p[i*2-1].y;
+        k->initphase = k->initphase + atan(k->CF/(-rzero))-atan((k->CF-pimg)/(-preal))-atan((k->CF+pimg)/(-preal));
+    }
+    gain_norm = 1.0;
+    for (r = 1; r <= order_of_pole; r++) {
+        gain_norm = gain_norm*(pow((k->CF - p[r].y),2) + p[r].x*p[r].x);
+    }
+    k->norm_gain = sqrt(gain_norm)/pow(sqrt(k->CF*k->CF+rzero*rzero),order_of_zero);
 
-        for (i = 1; i <= (half_order_pole+1); i++) {
-            C1input[i][3] = 0; 
-            C1input[i][2] = 0; 
-            C1input[i][1] = 0;
-            C1output[i][3] = 0; 
-            C1output[i][2] = 0; 
-            C1output[i][1] = 0;
-        }
-
-        /* Compute normalized gain*/
-        (*C1gain_norm) = 1.0;
-        for (r = 1; r <= order_of_pole; r++) {
-            (*C1gain_norm) = (*C1gain_norm)*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
-        }
-    };
-     
-    norm_gain= sqrt((*C1gain_norm))/pow(sqrt(CF*CF+rzero*rzero),order_of_zero);
-	p[1].x = -sigma0 - rsigma;
-	p[1].y = ipw;
-	p[5].x = p[1].x - rpa; 
-    p[5].y = p[1].y - ipb;
-    p[3].x = (p[1].x + p[5].x) * 0.5; 
-    p[3].y = (p[1].y + p[5].y) * 0.5;
-    p[2] = compconj(p[1]); 
-    p[4] = compconj(p[3]); 
-    p[6] = compconj(p[5]);
-    p[7] = p[1]; 
-    p[8] = p[2]; 
-    p[9] = p[5]; 
-    p[10]= p[6];
-
+    /* Fixed poles and zero for C2ChirpFilt */
+    chirp_set_poles(k, -k->sigma0*fcohc, k->p_fixed);
     phase = 0.0;
     for (i = 1; i <= half_order_pole; i++) {
-           preal = p[i*2-1].x;
-		   pimg  = p[i*2-1].y;
-	       phase = phase-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
-	};
+        preal = k->p_fixed[i*2-1].x;
+        pimg  = k->p_fixed[i*2-1].y;
+        phase = phase-atan((k->CF-pimg)/(-preal))-atan((k->CF+pimg)/(-preal));
+    }
+    k->rzero_fixed = -k->CF/tan((k->initphase-phase)/order_of_zero);
+}
 
-	rzero = -CF/tan(((*C1initphase)-phase)/order_of_zero);
+/**
+ * chirp_sections
+ *
+ * Runs input x through the five second-order sections shared by the C1 and C2 chirp
+ * filters, given pole locations p and zero rzero, and returns the scaled output.
+ */
+static double chirp_sections(double x, const ChirpConst *k, const COMPLEX *p, double rzero,
+                             double **input, double **output) {
+    double temp, dy, preal, pimg;
+    double fs_bilinear = k->fs_bilinear;
+    int i;
+    int half_order_pole = 5;
 
-    C1input[1][3]=C1input[1][2]; 
-    C1input[1][2]=C1input[1][1]; 
-    C1input[1][1]= x;
+    input[1][3]=input[1][2];
+    input[1][2]=input[1][1];
+    input[1][1]= x;
 
     for (i = 1; i <= half_order_pole; i++) {
         preal = p[i*2-1].x;
         pimg  = p[i*2-1].y;
         temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
 
-        dy = C1input[i][1]*(fs_bilinear-rzero) - 2*rzero*C1input[i][2] - (fs_bilinear+rzero)*C1input[i][3]
-                +2*C1output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
-                -C1output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
+        dy = input[i][1]*(fs_bilinear-rzero) - 2*rzero*input[i][2] - (fs_bilinear+rzero)*input[i][3]
+                +2*output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
+                -output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
         dy = dy/temp;
 
-        C1input[i+1][3] = C1output[i][2]; 
-        C1input[i+1][2] = C1output[i][1]; 
-        C1input[i+1][1] = dy;
+        input[i+1][3] = output[i][2];
+        input[i+1][2] = output[i][1];
+        input[i+1][1] = dy;
 
-        C1output[i][2] = C1output[i][1]; 
-        C1output[i][1] = dy;
+        output[i][2] = output[i][1];
+        output[i][1] = dy;
     }
 
-    dy = C1output[half_order_pole][1]*norm_gain;  /* don't forget the gain term */
-    c1filterout= dy/4.0;   /* signal path output is divided by 4 to give correct C1 filter gain */
-	                   
-    return (c1filterout);
+    dy = output[half_order_pole][1]*k->norm_gain;  /* don't forget the gain term */
+    return dy/4.0;   /* signal path output is divided by 4 to give correct filter gain */
+}
+
+/**
+ * C1ChirpFilt
+ * 
+ * C1-path chirping peripheral filter code. The real part of the poles varies over time
+ * with rsigma, which is set by the OHC control path.
+ * 
+ * @param x Input value for current time sample
+ * @param k Per-channel constants from chirp_init
+ * @param rsigma Shift of the real part of the poles
+ * @param C1input 2D array for input values (filter state)
+ * @param C1output 2D array for output values (filter state)
+ * @return Filtered output value
+ */
+double C1ChirpFilt(double x, const ChirpConst *k, double rsigma, double **C1input,
+                   double **C1output) {
+    double phase, rzero, a1, b1, a3, b3, a5, b5;
+    double CF = k->CF;
+    int order_of_zero = 5;
+	COMPLEX p[11];
+
+    chirp_set_poles(k, -k->sigma0 - rsigma, p);
+
+    /* Phase of the poles. The five terms use poles p[1], p[3], p[5], p[7], p[9], and
+       p[7] and p[9] equal p[1] and p[5], so their arctangents are computed once and
+       added in the same order as the five-term sum. */
+    a1 = atan((CF-p[1].y)/(-p[1].x));
+    b1 = atan((CF+p[1].y)/(-p[1].x));
+    a3 = atan((CF-p[3].y)/(-p[3].x));
+    b3 = atan((CF+p[3].y)/(-p[3].x));
+    a5 = atan((CF-p[5].y)/(-p[5].x));
+    b5 = atan((CF+p[5].y)/(-p[5].x));
+    phase = 0.0;
+    phase = phase-a1-b1;
+    phase = phase-a3-b3;
+    phase = phase-a5-b5;
+    phase = phase-a1-b1;
+    phase = phase-a5-b5;
+
+	rzero = -CF/tan((k->initphase-phase)/order_of_zero);
+
+    return chirp_sections(x, k, p, rzero, C1input, C1output);
 }  
 
 /**
  * C2ChirpFilt
  * 
- * C2-path chirping peripheral filter code.
+ * C2-path chirping peripheral filter code. Its poles and zero are fixed for each channel
+ * and are precomputed by chirp_init.
  * 
- * @param xx Input value for current time sample?
- * @param tdres Reciprocal of sampling rate (s)
- * @param cf Characteristic frequency (Hz)
- * @param n Order of filter
- * @param taumax  ??
- * @param fcohc   ??
- * @param C2gain_norm Pointer to the normalized gain value
- * @param C2initphase Pointer to the initial phase
- * @param C2input 2D array for input values
- * @param C2output 2D array for output values
+ * @param xx Input value for current time sample
+ * @param k Per-channel constants from chirp_init
+ * @param C2input 2D array for input values (filter state)
+ * @param C2output 2D array for output values (filter state)
  * @return Filtered output value
  */
-double C2ChirpFilt(double xx, double tdres,double cf, int n, double taumax, double fcohc,
-                   double *C2gain_norm, double *C2initphase, double **C2input, 
-                   double **C2output) {
-	double ipw, ipb, rpa, pzero, rzero, sigma0, fs_bilinear, CF, norm_gain,phase, c2filterout, temp, dy, preal, pimg;
-	int    i,r,order_of_pole,half_order_pole,order_of_zero;
-	COMPLEX p[11]; 	
-
-    /* Configure locations of poles and zeros based on inputs */    
-    sigma0 = 1/taumax;
-    ipw    = 1.01*cf*TWOPI-50;
-    ipb    = 0.2343*TWOPI*cf-1104;
-    rpa    = pow(10, log10(cf)*0.9 + 0.55)+ 2000;
-    pzero  = pow(10,log10(cf)*0.7+1.6)+500;
-    order_of_pole    = 10;             
-    half_order_pole  = order_of_pole/2;
-    order_of_zero    = half_order_pole;
-    fs_bilinear = TWOPI*cf/tan(TWOPI*cf*tdres/2);
-    rzero       = -pzero;
-    CF          = TWOPI*cf;
-
-    /* If this is the first sample, initialize the state variables */ 
-    if (n==0) {		  
-        p[1].x = -sigma0;     
-        p[1].y = ipw;
-        p[5].x = p[1].x - rpa; p[5].y = p[1].y - ipb;
-        p[3].x = (p[1].x + p[5].x) * 0.5; 
-        p[3].y = (p[1].y + p[5].y) * 0.5;
-        p[2] = compconj(p[1]); 
-        p[4] = compconj(p[3]); 
-        p[6] = compconj(p[5]);
-        p[7] = p[1]; 
-        p[8] = p[2]; 
-        p[9] = p[5]; 
-        p[10]= p[6];
-
-        /* Unknown ? */
-        (*C2initphase) = 0.0;
-        for (i = 1; i <= half_order_pole; i++) {
-            preal     = p[i*2-1].x;
-            pimg      = p[i*2-1].y;
-            (*C2initphase) = (*C2initphase) + atan(CF/(-rzero))-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
-        };
-
-        /* Normalize gain? */
-        (*C2gain_norm) = 1.0;
-        for (r=1; r<=order_of_pole; r++) {
-            (*C2gain_norm) = (*C2gain_norm)*(pow((CF - p[r].y),2) + p[r].x*p[r].x);
-        }
-    };
-
-    /* Do some calculations? */ 
-    norm_gain= sqrt((*C2gain_norm))/pow(sqrt(CF*CF+rzero*rzero),order_of_zero);
-	p[1].x = -sigma0*fcohc;
-	p[1].y = ipw;
-	p[5].x = p[1].x - rpa; 
-    p[5].y = p[1].y - ipb;
-    p[3].x = (p[1].x + p[5].x) * 0.5; 
-    p[3].y = (p[1].y + p[5].y) * 0.5;
-    p[2] = compconj(p[1]); 
-    p[4] = compconj(p[3]); 
-    p[6] = compconj(p[5]);
-    p[7] = p[1]; 
-    p[8] = p[2]; 
-    p[9] = p[5]; 
-    p[10]= p[6];
-
-    /* Do some more calculations? */
-    phase = 0.0;
-    for (i = 1; i <= half_order_pole; i++) {
-           preal = p[i*2-1].x;
-		   pimg  = p[i*2-1].y;
-	       phase = phase-atan((CF-pimg)/(-preal))-atan((CF+pimg)/(-preal));
-	};
-
-	rzero = -CF/tan(((*C2initphase)-phase)/order_of_zero);	
-
-    C2input[1][3]=C2input[1][2]; 
-    C2input[1][2]=C2input[1][1]; 
-    C2input[1][1]= xx;
-
-    /* Loop through taps? */
-    for (i = 1; i <= half_order_pole; i++) {
-        preal = p[i*2-1].x;
-        pimg  = p[i*2-1].y;
-        temp  = pow((fs_bilinear-preal),2)+ pow(pimg,2);
-        dy = C2input[i][1]*(fs_bilinear-rzero) - 2*rzero*C2input[i][2] - (fs_bilinear+rzero)*C2input[i][3]
-                +2*C2output[i][1]*(fs_bilinear*fs_bilinear-preal*preal-pimg*pimg)
-                -C2output[i][2]*((fs_bilinear+preal)*(fs_bilinear+preal)+pimg*pimg);
-        dy = dy/temp;
-
-        C2input[i+1][3] = C2output[i][2]; 
-        C2input[i+1][2] = C2output[i][1]; 
-        C2input[i+1][1] = dy;
-
-        C2output[i][2] = C2output[i][1]; 
-        C2output[i][1] = dy;
-    };
-
-    /* Scale output and return */
-    dy = C2output[half_order_pole][1]*norm_gain;
-    c2filterout= dy/4.0;
-
-    return (c2filterout); 
-}   
+double C2ChirpFilt(double xx, const ChirpConst *k, double **C2input, double **C2output) {
+    return chirp_sections(xx, k, k->p_fixed, k->rzero_fixed, C2input, C2output);
+}
 
 

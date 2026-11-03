@@ -37,7 +37,8 @@ const MODEL_SYMS = Set(["model_monaural", "model_binaural", "middle_ear", "C1Chi
     "Boltzman", "gain_groupdelay", "Get_taubm", "Get_tauwb", "apply_ws1988_adaptation",
     "apply_powerlaw_adaptation", "apply_powerlaw_adaptation_iir", "filter_alpha",
     "get_alpha_norm", "moc_nonlinearity", "normal_pdf", "delay_signal", "filter_lowpass_iir",
-    "hw_rectify"])
+    "hw_rectify", "chirp_init", "chirp_sections", "NLafterohc_params", "NLafterohc_apply",
+    "groupdelay_cos", "gain_groupdelay_cos"])
 
 function parse_opts(args)
     o = Dict{String,Any}("chan" => 32, "dur" => 0.5, "binaural" => false, "kw" => "", "reps" => 3, "top" => 25)
