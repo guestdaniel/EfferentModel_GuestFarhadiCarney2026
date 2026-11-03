@@ -101,8 +101,8 @@ function main(args::AbstractVector{<:AbstractString}=String[])
     cf = O["chan"] == 1 ? [1000.0] : collect(exp.(range(log(125.0), log(16e3), O["chan"])))
     kw = isempty(O["kw"]) ? NamedTuple() : Core.eval(@__MODULE__, Meta.parse("(; $(O["kw"]))"))
 
-    # Keep the model library loaded for the whole run so that its addresses can be
-    # symbolized (model! dlopens/dlcloses it on every call, which would otherwise unload it)
+    # Hold an extra reference to the model library for the whole run so that its addresses
+    # can still be symbolized if the package reopens it (after a rebuild) during profiling
     lib = Libdl.dlopen(BEM.libgfc2026)
     try
         sim_gfc2023(x, cf; kw...)                       # compile first

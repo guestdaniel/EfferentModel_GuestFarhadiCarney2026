@@ -19,4 +19,6 @@ include("wrappers_orig.jl")
 include("utils.jl")
 include("test_utils.jl")
 
+__init__() = reset_model_library!()
+
 end

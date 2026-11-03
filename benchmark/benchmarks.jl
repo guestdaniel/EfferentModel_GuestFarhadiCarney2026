@@ -108,7 +108,7 @@ let mem = GFC2023_Mem(stim(0.1), cfs(32))
     add!("components", "zero_state! chan=32 dur=0.1s", @benchmarkable(zero_state!($mem)))
 end
 # Tiny simulation without padding: dominated by fixed per-call costs (keyword defaults,
-# allocation, dlopen/dlclose, C-side setup) rather than per-sample work
+# allocation, library lookup, C-side setup) rather than per-sample work
 let x = stim(0.001)
     add!("components", "call overhead (100 samples)", @benchmarkable(sim_gfc2023($x, [1000.0]; dur_pad_left=0.0));
          work=length(x))

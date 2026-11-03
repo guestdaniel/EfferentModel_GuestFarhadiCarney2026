@@ -9,8 +9,8 @@
 # Compiler output is shown only on failure; on success, one summary line is printed.
 # Exits nonzero if a build fails.
 #
-# A running Julia session picks up a rebuilt model library on its next model call, because
-# `model!` opens and closes the library on every call.
+# A running Julia session picks up a rebuilt model library on its next model call: the
+# package keeps the library open but reopens it when the file's modification time changes.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
