@@ -1,0 +1,8 @@
+[deps]
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+caplab_signals = "d2c79caf-ff6d-42b5-a7ab-185ce865a153"
+caplab_zbc2014 = "e6e7f8da-39d5-454e-9769-793fa81b0d40"

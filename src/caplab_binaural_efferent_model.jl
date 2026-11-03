@@ -1,12 +1,8 @@
 module caplab_binaural_efferent_model
 
-using DrWatson
 using DSP
-using FFTW
 using Match
 using Libdl
-using Profile
-using Dates
 
 using caplab_signals
 using caplab_zbc2014
