@@ -58,7 +58,8 @@ end
 # Method for GFC2023_Mem in terms of len_total and n_chan
 function GFC2023_Mem(len_total::Int64, n_chan::Int64, fs::Float64=100e3; binaural=false)
     # Start by initializing empty zerod ffGN (fractional == false)
-    ffGn_hsr, ffGn_lsr = get_ffGn(len_total, false, n_chan, fs)
+    get_ffGn_shaped = binaural ? get_ffGn_binaural : get_ffGn_monaural
+    ffGn_hsr, ffGn_lsr = get_ffGn_shaped(len_total, false, n_chan, fs)
 
     # Pre-allocate memory for intermediate/output variables; all values are initialized 
     # at 0, except for gain and gainpostmix, which are initialized at 1. 
