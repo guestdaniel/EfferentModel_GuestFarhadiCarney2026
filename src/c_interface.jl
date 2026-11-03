@@ -52,6 +52,19 @@ function model_function(name::Symbol)
     end
 end
 
+"""
+    model!(px, ffGn_hsr, ffGn_lsr, cf, n_chan, tdres, totalstim, ..., gain, gainpostmix)
+
+Low-level interface to the C model: runs `model_monaural` (when `px` is a
+`Vector{Float64}`) or `model_binaural` (when `px` is a `Vector{Vector{Float64}}`), writing
+results in place into the output arrays `controlout` through `gainpostmix`. Most users
+should call `sim_gfc2023` or `sim_gfc2023!` instead.
+
+Every output array (and every channel within it) must be a separate allocation that does
+not share memory with any other argument. Do not pass the same array for several outputs
+(for example, one scratch buffer for outputs that are not needed): the C code assumes the
+arrays do not overlap, and overlapping arrays give silently incorrect results.
+"""
 function model!(
     px::Vector{Float64},
     ffGn_hsr::Vector{Vector{Float64}},

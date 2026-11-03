@@ -243,26 +243,29 @@ void apply_powerlaw_adaptation(double *x, double *randNums, double *I1, double *
  * @param sout1 Output vector for path #1
  * @param sout2 Output vector for path #2
  */
-void apply_powerlaw_adaptation_iir(double *x, double *randNums, double *I1, double *I2, 
-                               double *E1, double *E2, double *D1, double *D2, 
-                               double *W1, double *W2, int n_process, int n,
-                               double alpha1, double alpha2, 
-                               double tdres, double *sout1, double *sout2) {
+void apply_powerlaw_adaptation_iir(const double *restrict x, const double *restrict randNums,
+                               double *restrict I1, double *restrict I2,
+                               double *restrict E1, double *restrict E2,
+                               const double *restrict D1, const double *restrict D2,
+                               const double *restrict W1, const double *restrict W2,
+                               int n_process, int n, double alpha1, double alpha2,
+                               double tdres, double *restrict sout1, double *restrict sout2) {
     // Apply power-law adaptation
-    sout1[n]  = __max(0, x[n] + randNums[n] - alpha1*(*I1));
-    sout2[n] = __max(0, x[n] - alpha2*(*I2));
+    double s1 = __max(0, x[n] + randNums[n] - alpha1*(*I1));
+    double s2 = __max(0, x[n] - alpha2*(*I2));
+    sout1[n] = s1;
+    sout2[n] = s2;
 
-    // Update values for I1/I2 based on approximation via parallel exponential processes
-    (*I1) = 0.0; (*I2) = 0.0;
+    // Update values for I1/I2 based on approximation via parallel exponential processes.
+    // The process states E1/E2 must be zero before the first sample (n == 0), in which case
+    // the update below reduces to E = W*s.
+    double acc1 = 0.0, acc2 = 0.0;
     for (int i = 0; i < n_process; i++) {
-        if (n == 0) {
-            E1[i] = W1[i] * sout1[n];
-            E2[i] = W2[i] * sout2[n];
-        } else {
-            E1[i] = W1[i] * sout1[n] + (1-D1[i]) * E1[i];
-            E2[i] = W2[i] * sout2[n] + (1-D2[i]) * E2[i];
-        }
-        (*I1) += E1[i];
-        (*I2) += E2[i];
+        E1[i] = W1[i] * s1 + (1-D1[i]) * E1[i];
+        E2[i] = W2[i] * s2 + (1-D2[i]) * E2[i];
+        acc1 += E1[i];
+        acc2 += E2[i];
     }
+    (*I1) = acc1;
+    (*I2) = acc2;
 }

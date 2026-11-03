@@ -185,9 +185,13 @@ void apply_ws1988_adaptation(double *, int, double, double, double, double, doub
                              double *);
 void apply_powerlaw_adaptation(double *, double *, double *, double *, int, double,
                                double, double, double, double, double *, double *);
-void apply_powerlaw_adaptation_iir(double *, double *, double *, double *, double *,
-                               double *, double *, double *, double *, double *, int, int, 
-                               double, double, double, double *, double *);
+void apply_powerlaw_adaptation_iir(const double *restrict, const double *restrict,
+                                   double *restrict, double *restrict,
+                                   double *restrict, double *restrict,
+                                   const double *restrict, const double *restrict,
+                                   const double *restrict, const double *restrict,
+                                   int, int, double, double, double,
+                                   double *restrict, double *restrict);
 // sfie.c
 void get_alpha_norm(double, double, double, double *, double *);
 void filter_alpha(double *, int, double, double *, double *, double *);
