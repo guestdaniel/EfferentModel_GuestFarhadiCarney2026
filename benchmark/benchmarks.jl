@@ -79,6 +79,12 @@ for (n, dur, sec) in [(8, 0.1, 2.0), (32, 0.1, 3.0)]
     add!("inplace", label(n, dur), @benchmarkable(sim_gfc2023!($mem, $x, $c; clean=true));
          work=n * nsamp(dur), seconds=sec)
 end
+for (n, dur, sec) in [(8, 0.1, 2.0), (32, 0.1, 3.0)]
+    x, c = stim2(dur), cfs(n)
+    mem = GFC2023_Mem(x, c)
+    add!("inplace_binaural", label(n, dur), @benchmarkable(sim_gfc2023!($mem, $x, $c; clean=true));
+         work=2 * n * nsamp(dur), seconds=sec)
+end
 
 # ------------------------------------------------------------------------------------------
 # Fractional Gaussian noise (fractional=true adds ffGn synthesis for 2 fiber types/channel)

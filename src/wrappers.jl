@@ -7,6 +7,28 @@ function peaknorm_gaussian(x, μ=0.0, σ=1.0, w=1.0, o=0.0)
 end
 
 # ##############################################################################
+# Helpers for removing zero-padded time from model outputs
+# ##############################################################################
+# Each helper takes nested vectors of outputs (stage × [ear ×] channel × time) and removes
+# n_left samples from the start and n_right samples from the end of each time series.
+
+# Trims in place without copying: deleteat! at the front of a Vector and resize! at the
+# back only move the bounds of the vector. Use only on arrays allocated by the wrapper.
+function trim_outputs!(v::Vector{Float64}, n_left::Int, n_right::Int)
+    n_right > 0 && resize!(v, length(v) - n_right)
+    n_left > 0 && deleteat!(v, 1:n_left)
+    return v
+end
+function trim_outputs!(v::Vector, n_left::Int, n_right::Int)
+    foreach(x -> trim_outputs!(x, n_left, n_right), v)
+    return v
+end
+
+# Returns copies of the trimmed time series
+window_copies(v::Vector{Float64}, n_left::Int, n_right::Int) = v[(n_left + 1):(length(v) - n_right)]
+window_copies(v::Vector, n_left::Int, n_right::Int) = [window_copies(x, n_left, n_right) for x in v]
+
+# ##############################################################################
 # GFC2023_Mem structure to store pre-allocated memory for sim_gfc2023!
 # ##############################################################################
 """
@@ -467,15 +489,15 @@ index 1 is the left ear and ear index 2 is the right ear.
    the precomputed values in the `gain` input. The default is `false`.
 - `clip_left::Bool`: whether or not to clip the beginning of the output to 
    remove the zero-padded time samples. The default is `true` if `dur_pad_left >
-   0`, and `false` otherwise. Note that clipping can entail substantial overhead
-   due to the need to copy data into new arrays after each model call.
+   0`, and `false` otherwise. `sim_gfc2023` trims its output arrays in place
+   without copying; `sim_gfc2023!` copies the clipped outputs into new arrays so
+   that its pre-allocated buffers keep their full length.
 - `dur_pad_right::Float64`: duration of zero-padding to add to the end of the
   input vector (s); default is 0.0 s. This time can be increased to a non-zero
    value if you wish to observe model responses after the end of the stimulus.
 - `clip_right::Bool`: whether or not to clip the end of the output to remove
   the zero-padded time samples. The default is `true` if `dur_pad_right > 0`,
-  and `false` otherwise. Note that clipping can entail substantial overhead due
-  to the need to copy data into new arrays after each model call.
+  and `false` otherwise. Copying behaves as described for `clip_left`.
 
 For monaural simulations, returns a `Vector{Vector{Vector{Float64}}}` where
 the dimensions are (output variable, channel, time). For binaural simulations,
@@ -623,7 +645,8 @@ function sim_gfc2023(
     icout = [zeros(len_total) for _ in 1:n_chan]
     mocwdr = [zeros(len_total) for _ in 1:n_chan]
     mocic = [zeros(len_total) for _ in 1:n_chan]
-    if isempty(gain[1])
+    gain_supplied = !isempty(gain[1])
+    if !gain_supplied
         gain = [ones(len_total) for _ in 1:n_chan]
     end
     gainpostmix = [ones(len_total) for _ in 1:n_chan]
@@ -710,14 +733,15 @@ function sim_gfc2023(
         gain,
         gainpostmix
     ]
-    if clip_left | clip_right
-        outputs = map(outputs) do output
-            output = map(output) do channel
-                idx_left = clip_left ? (len_pad_left + 1) : 1
-                idx_right = clip_right ? length(channel) - len_pad_right : length(channel)
-                channel = channel[idx_left:idx_right]
-            end
-        end
+    # Remove padded time. Arrays allocated here are trimmed in place without copying; a
+    # user-supplied gain is copied instead so that the caller's vectors are not shrunk.
+    n_left = clip_left ? len_pad_left : 0
+    n_right = clip_right ? len_pad_right : 0
+    if gain_supplied && (n_left > 0 || n_right > 0)
+        outputs[19] = window_copies(gain, n_left, n_right)
+        foreach(o -> trim_outputs!(o, n_left, n_right), outputs[[1:18; 20]])
+    else
+        trim_outputs!(outputs, n_left, n_right)
     end
     return outputs
 end
@@ -809,7 +833,8 @@ function sim_gfc2023(
     icout = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
     mocwdr = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
     mocic = [[zeros(len_total) for _ in 1:n_chan] for _ in 1:2]
-    if isempty(gain[1][1])
+    gain_supplied = !isempty(gain[1][1])
+    if !gain_supplied
         gain = [[ones(len_total) for _ in 1:n_chan] for _ in 1:2]
     end
     gainpostmix = [[ones(len_total) for _ in 1:n_chan] for _ in 1:2]
@@ -896,16 +921,15 @@ function sim_gfc2023(
         gain,
         gainpostmix
     ]
-    if clip_left | clip_right
-        outputs = map(outputs) do output
-            map(output) do ear_data
-                map(ear_data) do channel
-                    idx_left = clip_left ? (len_pad_left + 1) : 1
-                    idx_right = clip_right ? length(channel) - len_pad_right : length(channel)
-                    channel[idx_left:idx_right]
-                end
-            end
-        end
+    # Remove padded time. Arrays allocated here are trimmed in place without copying; a
+    # user-supplied gain is copied instead so that the caller's vectors are not shrunk.
+    n_left = clip_left ? len_pad_left : 0
+    n_right = clip_right ? len_pad_right : 0
+    if gain_supplied && (n_left > 0 || n_right > 0)
+        outputs[19] = window_copies(gain, n_left, n_right)
+        foreach(o -> trim_outputs!(o, n_left, n_right), outputs[[1:18; 20]])
+    else
+        trim_outputs!(outputs, n_left, n_right)
     end
     return outputs
 end
