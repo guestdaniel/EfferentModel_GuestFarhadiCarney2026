@@ -124,3 +124,11 @@ To run the testing suite yourself...
 2. Inside the Pkg REPL, activate this environment by typing `activate .`
 3. Inside the Pkg REPL, set this environment up by typing `instantiate`
 4. Inside the Pkg REPL, run the test suite by typing `test`
+
+# Known issues
+The following correctness issues have been identified but not yet resolved:
+- **`GFC2023_Mem` reuse without `clean=true` gives wrong results.** The C code multiplies cross-channel gain values into `gainpostmix` instead of overwriting it, so values carry over from the previous call. After one reuse of a 5000-sample simulation, `gainpostmix` differed from a fresh simulation by up to 4.9e-4. Passing `clean=true` avoids this, but the default is `clean=false`.
+- **Binaural ear mixing uses single precision.** In `model_binaural` (`deps/model/model.c`), `premix_left` and `premix_right` are declared `float` rather than `double`, so the gain values are rounded to single precision before mixing across ears.
+- **Keyword arguments are not passed to the 2014 reference model.** `sim_orig_dict` (`src/wrappers_orig.jl`) calls `sim_orig(args..., kwargs...)` with a comma instead of a semicolon. Passing any keyword argument (e.g., `species`) through `run_2014_vs_2023` raises a `MethodError`, so the regression tests can only compare against the reference model at its default settings.
+- **The "Binaural return types" test set checks nothing.** It contains no `@test` statements (`test/binaural.jl`), so it cannot fail.
+- **Possible uninitialized variable (latent).** In `initialize_ws1988_adaptation` (`deps/model/adaptation.c`), `vsat` is only assigned when `kslope >= 0`. With the current parameters `kslope` is always positive, so this does not occur in practice.
