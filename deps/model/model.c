@@ -606,6 +606,12 @@ void model_monaural(
         }
     }
 
+    /* Precompute the weight totals and normalized weights used to mix gains across channels,
+       and allocate scratch space for the mixing (see mix_gain_across_channels) */
+    double mix_wtot[n_chan], mix_g[n_chan], mix_L[n_chan], mix_m[n_chan];
+    double *mix_wnT = (double*) malloc((size_t) n_chan * n_chan * sizeof(double));
+    mix_gain_init(n_chan, &moc_wb_weights[0][0], mix_wtot, mix_wnT);
+
     /* Calculate middle-ear output */
     middle_ear(px, tdres, totalstim, species, meout);
 
@@ -745,19 +751,12 @@ void model_monaural(
            cannot take place until the first channel loop is done because we need access to
            the gain factors in all channels at this time step. Since gain factors naturally
            live on a log scale, we combine gain factors from different channels according to
-           a geometric average. The temporary variable contr is used to store the number of 
-           contributing channels to each calculation. The final result is stored in the 
-           matrix gainpostmix (i.e., gain after mixing across channels).
+           a weighted geometric average (see mix_gain_across_channels). The final result is
+           stored in the matrix gainpostmix (i.e., gain after mixing across channels).
          */
         if (moc_width > 0.0) {
-            for (int c=0; c < n_chan; c++) {
-                double weight_total = 0.0;
-                for (int subc = 0; subc < n_chan; subc++) {
-                    gainpostmix[c][n] = gainpostmix[c][n] * pow(gain[subc][n], moc_wb_weights[c][subc]);
-                    weight_total = weight_total + moc_wb_weights[c][subc];
-                }
-                gainpostmix[c][n] = pow(gainpostmix[c][n], 1 / weight_total);
-            }
+            mix_gain_across_channels(n_chan, n, gain, gainpostmix, &moc_wb_weights[0][0],
+                                     mix_wtot, mix_wnT, mix_g, mix_L, mix_m);
         } else {
             for (int c=0; c < n_chan; c++) {
                 gainpostmix[c][n] = gain[c][n];
@@ -766,6 +765,7 @@ void model_monaural(
     } // end main time loop
 
     /* Free dynamic memory */
+    free(mix_wnT);
     for (int i = 0; i < n_chan; i++) {
         free(tmpgain[i]);
         free(cn_i[i]);
@@ -1344,6 +1344,12 @@ void model_binaural(
         }
     }
 
+    /* Precompute the weight totals and normalized weights used to mix gains across channels,
+       and allocate scratch space for the mixing (see mix_gain_across_channels) */
+    double mix_wtot[n_chan], mix_g[n_chan], mix_L[n_chan], mix_m[n_chan];
+    double *mix_wnT = (double*) malloc((size_t) n_chan * n_chan * sizeof(double));
+    mix_gain_init(n_chan, &moc_wb_weights[0][0], mix_wtot, mix_wnT);
+
     /* Calculate middle-ear output */
     for (int e = 0; e < 2; e++) {
         middle_ear(px[e], tdres, totalstim, species, meout[e]);
@@ -1488,20 +1494,13 @@ void model_binaural(
            cannot take place until the first channel loop is done because we need access to
            the gain factors in all channels at this time step. Since gain factors naturally
            live on a log scale, we combine gain factors from different channels according to
-           a geometric average. The temporary variable contr is used to store the number of 
-           contributing channels to each calculation. The final result is stored in the 
-           matrix gainpostmix (i.e., gain after mixing across channels).
+           a weighted geometric average (see mix_gain_across_channels). The final result is
+           stored in the matrix gainpostmix (i.e., gain after mixing across channels).
          */
         if (moc_width > 0.0) {
             for (int e=0; e < 2; e ++) {
-                for (int c=0; c < n_chan; c++) {
-                    double weight_total = 0.0;
-                    for (int subc = 0; subc < n_chan; subc++) {
-                        gainpostmix[e][c][n] = gainpostmix[e][c][n] * pow(gain[e][subc][n], moc_wb_weights[c][subc]);
-                        weight_total = weight_total + moc_wb_weights[c][subc];
-                    }
-                    gainpostmix[e][c][n] = pow(gainpostmix[e][c][n], 1 / weight_total);
-                }
+                mix_gain_across_channels(n_chan, n, gain[e], gainpostmix[e], &moc_wb_weights[0][0],
+                                         mix_wtot, mix_wnT, mix_g, mix_L, mix_m);
             }
         } else {
             for (int e = 0; e < 2; e++) {
@@ -1528,6 +1527,7 @@ void model_binaural(
     } // end main time loop
 
     /* Free dynamic memory */
+    free(mix_wnT);
     for (int e = 0; e < 2; e++) {
         for (int i = 0; i < n_chan; i++) {
             free(tmpgain[e][i]);
@@ -1576,6 +1576,91 @@ void model_binaural(
     free(C2output);
 }
 
+
+/**
+ * mix_gain_init
+ *
+ * Precomputes the quantities used by mix_gain_across_channels from the weight matrix w
+ * (n_chan x n_chan, row-major, w[c*n_chan + j] is the weight of channel j's gain in channel
+ * c's mixed gain): the total weight for each channel (wtot) and the normalized weights
+ * w[c][j]/wtot[c], stored transposed (wnT[j*n_chan + c]) so that the mixing loop is
+ * contiguous over c.
+ */
+void mix_gain_init(int n_chan, const double *w, double *wtot, double *wnT) {
+    for (int c = 0; c < n_chan; c++) {
+        double total = 0.0;
+        for (int j = 0; j < n_chan; j++) {
+            total = total + w[c*n_chan + j];
+        }
+        wtot[c] = total;
+    }
+    for (int c = 0; c < n_chan; c++) {
+        for (int j = 0; j < n_chan; j++) {
+            wnT[j*n_chan + c] = w[c*n_chan + j] / wtot[c];
+        }
+    }
+}
+
+/**
+ * mix_gain_across_channels
+ *
+ * Computes the mixed ("postmix") gain at sample n for every channel as a weighted geometric
+ * mean of all channels' premix gains:
+ *
+ *     gainpostmix[c][n] = (prod_j gain[j][n]^w[c][j])^(1/wtot[c])
+ *                       = exp(sum_j (w[c][j]/wtot[c]) * log(gain[j][n]))
+ *
+ * When every gain is strictly positive, the second form is used (one log and one exp per
+ * channel instead of n_chan^2 calls to pow). Otherwise (a gain of zero, which can occur
+ * with cohc = 0, or a negative/NaN gain), the first form is used, which handles zero gains
+ * and zero weights the same way pow does (pow(0, w) = 0 for w > 0 and pow(g, 0) = 1).
+ *
+ * @param n_chan Number of channels
+ * @param n Current sample index
+ * @param gain Premix gains, gain[j][n]
+ * @param gainpostmix Output: mixed gains, gainpostmix[c][n]
+ * @param w Weight matrix from mix_gain_init (row-major)
+ * @param wtot Weight totals from mix_gain_init
+ * @param wnT Normalized, transposed weights from mix_gain_init
+ * @param g, L, m Scratch arrays of length n_chan
+ */
+void mix_gain_across_channels(int n_chan, int n, double **gain, double **gainpostmix,
+                              const double *w, const double *wtot,
+                              const double *restrict wnT, double *restrict g,
+                              double *restrict L, double *restrict m) {
+    int all_positive = 1;
+    for (int j = 0; j < n_chan; j++) {
+        g[j] = gain[j][n];
+        if (!(g[j] > 0.0)) all_positive = 0;
+    }
+
+    if (all_positive) {
+        for (int j = 0; j < n_chan; j++) {
+            L[j] = log(g[j]);
+        }
+        for (int c = 0; c < n_chan; c++) {
+            m[c] = 0.0;
+        }
+        for (int j = 0; j < n_chan; j++) {
+            const double Lj = L[j];
+            const double *restrict row = wnT + (size_t) j*n_chan;
+            for (int c = 0; c < n_chan; c++) {
+                m[c] += row[c] * Lj;
+            }
+        }
+        for (int c = 0; c < n_chan; c++) {
+            gainpostmix[c][n] = exp(m[c]);
+        }
+    } else {
+        for (int c = 0; c < n_chan; c++) {
+            double prod = 1.0;
+            for (int j = 0; j < n_chan; j++) {
+                prod = prod * pow(g[j], w[c*n_chan + j]);
+            }
+            gainpostmix[c][n] = pow(prod, 1 / wtot[c]);
+        }
+    }
+}
 
 /**
  * normal_pdf

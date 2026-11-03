@@ -75,6 +75,8 @@ const CASES = Pair{String,Function}[
     "mono_4ch_impaired" => () -> sim_gfc2023(noise(75.0, 0.2; seed=14), cfs(4);
                                              cohc=fill(0.5, 4), cihc=fill(0.8, 4)),
     "mono_4ch_cat" => () -> sim_gfc2023(noise(70.0, 0.2; seed=15), cfs(4); species="cat"),
+    "mono_8ch_cohc0" => () -> sim_gfc2023(noise(70.0, 0.2; seed=19), cfs(8);
+                                          cohc=[1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0]),
     "mono_4ch_fractional" => () -> (Random.seed!(16); sim_gfc2023(noise(70.0, 0.2; seed=16), cfs(4); fractional=true)),
     "mono_1ch_powerlaw_exact" => () -> sim_gfc2023(tone(1000.0, 60.0, 0.05), [1000.0]; powerlaw_mode=1),
     "mono_8ch_inplace" => () -> run_inplace(noise(70.0, 0.2; seed=12), cfs(8)),

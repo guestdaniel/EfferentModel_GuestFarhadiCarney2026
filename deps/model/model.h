@@ -176,6 +176,10 @@ double delay_human(double);
 void delay_signal(double *, int, int, double*);
 void filter_lowpass_iir(double *, int, double, double *);
 double moc_nonlinearity(double, double, double, double, double);
+void mix_gain_init(int, const double *, double *, double *);
+void mix_gain_across_channels(int, int, double **, double **, const double *, const double *,
+                              const double *restrict, double *restrict, double *restrict,
+                              double *restrict);
 // adaptation.c
 void initialize_ws1988_adaptation(double, double, double *, double *, double *,
                                   double *, double *, double *, double *, double *,
