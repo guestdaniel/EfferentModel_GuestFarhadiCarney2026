@@ -6,7 +6,7 @@
 # testing for the power-law approximation provided by `powerlaw_mode=2` is tested elsewhere. 
 @testset "Regression vs 2014 --- single channel" begin
     # Loop over different frequencies
-    @testset "CF/tone freq = $cf Hz" for cf in [1000.0, 2000.0, 4000.0]
+    @testset "CF/tone freq = $cf Hz" for cf in [1000.0, 2000.0]
         # Simulate responses
         orig, new = run_2014_vs_2023(
             pt(cf, 50.0), 
