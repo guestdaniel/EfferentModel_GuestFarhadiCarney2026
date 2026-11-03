@@ -8,7 +8,9 @@ They replace the old `Helios_perf/` package and `src/profile.jl`.
 | `benchmarks.jl` | The benchmark suite: a BenchmarkTools `SUITE` (PkgBenchmark.jl convention), plus `WORK` (channel-samples per benchmark) for throughput reporting |
 | `run.jl` | Runs the suite, prints a table, saves results with provenance metadata, and compares against a saved run |
 | `profile.jl` | Statistical profile of one workload with C-level attribution (model code vs. libm vs. GC, by function) |
-| `results/` | Saved runs, one directory per run (`results.json` + `meta.toml`); git-ignored |
+| `reference.jl` | Output-snapshot check: records all 20 output stages for 13 fixed cases and reports whether later code reproduces them bit-for-bit, to rounding level, or not |
+| `results/` | Saved benchmark runs, one directory per run (`results.json` + `meta.toml`); git-ignored |
+| `reference/` | Saved output snapshots (about 250 MB each); git-ignored |
 
 ## Running
 
@@ -68,6 +70,29 @@ julia --project=benchmark benchmark/profile.jl [options]
 | `fractional` | `fractional=true` (includes fractional Gaussian noise synthesis) |
 | `powerlaw_exact` | `powerlaw_mode=1` (exact, O(n²) power-law adaptation; used by the regression tests) |
 | `components` | `ffGn_native`, memory allocation and zeroing, and fixed per-call overhead |
+
+## Checking that outputs are unchanged
+
+Performance numbers only count if the model still produces the same outputs. `reference.jl` records the outputs of 13 fixed cases once, then compares later code against them:
+
+```julia
+include("benchmark/reference.jl")
+ReferenceCheck.record()       # once, before optimizing (snapshot "baseline")
+ReferenceCheck.compare()      # after each change
+```
+
+The cases cover monaural and binaural input; 1, 4, 8 and 32 channels; cross-channel mixing on and off; MOC feedback off; impaired cochlea; cat; fractional noise (seeded); exact power-law adaptation; and the in-place API. Stimuli are generated inside the file from fixed seeds. Recording runs every case twice and fails if the runs differ.
+
+Each case is classified by its worst stage, using the largest difference relative to that stage's peak magnitude:
+
+| Result | Meaning |
+| --- | --- |
+| `identical` | Bit-for-bit equal. Expected when work is moved or cached without changing any floating-point operation. |
+| `rounding` | At most 1e-9. Expected when arithmetic is reordered. For scale, a perturbation of 1e-13 in the MOC gain grows to about 1e-12 through the feedback loop. |
+| `small` | At most 1e-6. Inspect before accepting. |
+| `CHANGED` | Anything larger, or a change in shape or NaN pattern. The model's behavior changed. |
+
+Binaural cases are insensitive to small changes in the per-ear gain, because the ear-mixing step currently rounds gains to single precision (see "Known issues" in the top-level README).
 
 ## Good practice
 
