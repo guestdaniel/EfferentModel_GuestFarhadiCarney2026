@@ -1,4 +1,4 @@
-export model!
+export model!, spikegen_zbc2014!, spikegen_zbc2014_max_spikes
 
 # ##############################################################################
 # Handle to the model library
@@ -12,9 +12,11 @@ mutable struct ModelLibrary
     mtime::Float64
     monaural::Ptr{Cvoid}
     binaural::Ptr{Cvoid}
+    spikegen::Ptr{Cvoid}
+    spikegen_max_spikes::Ptr{Cvoid}
 end
 
-const MODEL_LIBRARY = ModelLibrary(C_NULL, 0.0, C_NULL, C_NULL)
+const MODEL_LIBRARY = ModelLibrary(C_NULL, 0.0, C_NULL, C_NULL, C_NULL, C_NULL)
 
 # Called from the module's __init__: pointers from a previous process are never valid
 function reset_model_library!()
@@ -22,14 +24,17 @@ function reset_model_library!()
     MODEL_LIBRARY.mtime = 0.0
     MODEL_LIBRARY.monaural = C_NULL
     MODEL_LIBRARY.binaural = C_NULL
+    MODEL_LIBRARY.spikegen = C_NULL
+    MODEL_LIBRARY.spikegen_max_spikes = C_NULL
     return nothing
 end
 
 """
     model_function(name::Symbol)
 
-Return the address of entry point `name` (`:model_monaural` or `:model_binaural`) in the
-model library, opening the library if needed and reopening it if the file has changed.
+Return the address of entry point `name` (`:model_monaural`, `:model_binaural`,
+`:spikegen_zbc2014`, or `:spikegen_zbc2014_max_spikes`) in the model library, opening the
+library if needed and reopening it if the file has changed.
 """
 function model_function(name::Symbol)
     lib = MODEL_LIBRARY
@@ -40,11 +45,15 @@ function model_function(name::Symbol)
         handle = Libdl.dlopen(libgfc2026)
         lib.monaural = Libdl.dlsym(handle, :model_monaural)
         lib.binaural = Libdl.dlsym(handle, :model_binaural)
+        lib.spikegen = Libdl.dlsym(handle, :spikegen_zbc2014)
+        lib.spikegen_max_spikes = Libdl.dlsym(handle, :spikegen_zbc2014_max_spikes)
         lib.handle = handle
         lib.mtime = t
     end
     name === :model_monaural && return lib.monaural
     name === :model_binaural && return lib.binaural
+    name === :spikegen_zbc2014 && return lib.spikegen
+    name === :spikegen_zbc2014_max_spikes && return lib.spikegen_max_spikes
     throw(ArgumentError("unknown model entry point: $name"))
 end
 
@@ -400,3 +409,70 @@ function model!(
     return nothing
 end
 
+# ##############################################################################
+# Spike generator
+# ##############################################################################
+"""
+    spikegen_zbc2014_max_spikes(n, tdres)
+
+Return the maximum number of spikes that `spikegen_zbc2014!` can generate from a rate
+function of `n` samples at time resolution `tdres` (s). Use it to size the buffers passed to
+`spikegen_zbc2014!`: `sptime` needs at least this many elements and `rand_unif` at least
+this many plus 2.
+"""
+function spikegen_zbc2014_max_spikes(n::Integer, tdres::Float64)
+    f = model_function(:spikegen_zbc2014_max_spikes)
+    return Int(ccall(f, Cint, (Cint, Cdouble), n, tdres))
+end
+
+"""
+    spikegen_zbc2014!(sptime, synout, tdres, rand_unif)
+
+Low-level interface to the C spike generator from Zilany, Bruce, and Carney (2014): generates
+one spike train from `synout`, writes the spike times (s) into the first elements of
+`sptime`, and returns the number of spikes.
+
+`synout` must be the synapse output *before* refractory effects, i.e., `syn_hsr` or
+`syn_lsr` from `sim_gfc2023_dict` (or `synout_hsr`/`synout_lsr` from `model!`), for one
+channel. Do not pass `hsr` or `lsr`: those rates already include an approximate refractory
+correction, and the spike generator applies refractoriness itself.
+
+`rand_unif` holds uniform random numbers in (0, 1), one per spike plus 2, so it needs at
+least `spikegen_zbc2014_max_spikes(length(synout), tdres) + 2` elements; `sptime` needs at
+least `spikegen_zbc2014_max_spikes(length(synout), tdres)`. Julia's `rand` draws from
+[0, 1), so use `1 .- rand(rng, n)` to exclude 0. Throws an error if either buffer is too
+small.
+"""
+function spikegen_zbc2014!(
+    sptime::Vector{Float64},
+    synout::Vector{Float64},
+    tdres::Float64,
+    rand_unif::Vector{Float64},
+)
+    f = model_function(:spikegen_zbc2014)
+    n_spikes = ccall(
+        f,
+        Cint,
+        (
+            Ptr{Cdouble}, # rate
+            Cint,         # n
+            Cdouble,      # tdres
+            Ptr{Cdouble}, # rand_unif
+            Cint,         # n_rand
+            Ptr{Cdouble}, # sptime
+            Cint,         # n_sptime
+        ),
+        synout,
+        length(synout),
+        tdres,
+        rand_unif,
+        length(rand_unif),
+        sptime,
+        length(sptime),
+    )
+    n_spikes < 0 && throw(ArgumentError(
+        "spike generator ran out of buffer space: sptime needs at least " *
+        "spikegen_zbc2014_max_spikes(length(synout), tdres) elements and rand_unif at " *
+        "least 2 more"))
+    return Int(n_spikes)
+end
