@@ -4,6 +4,7 @@ using DSP
 using FFTW: fft, ifft
 using Match
 using Libdl
+using Random: AbstractRNG, default_rng
 
 using caplab_signals
 using caplab_zbc2014
@@ -13,6 +14,7 @@ const libgfc2026 = joinpath(@__DIR__, "..", "deps", "model", "libgfc2026." * Lib
 include("c_interface.jl")
 include("ffgn.jl")
 include("wrappers.jl")
+include("spikes.jl")
 include("wrappers_orig.jl")
 include("utils.jl")
 include("test_utils.jl")
