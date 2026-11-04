@@ -6,8 +6,7 @@ export model!
 # The library is opened on first use and kept open, with the addresses of its entry points
 # cached. Before every call, the library file's modification time is checked; if the file
 # has changed (e.g., after rebuilding with deps/build_clib.sh), the library is closed and
-# reopened so that the new build is used. Rebuilding the library while simulations are
-# running on other threads is therefore unsafe.
+# reopened so that the new build is used. The cache is not thread-safe.
 mutable struct ModelLibrary
     handle::Ptr{Cvoid}
     mtime::Float64
@@ -16,7 +15,6 @@ mutable struct ModelLibrary
 end
 
 const MODEL_LIBRARY = ModelLibrary(C_NULL, 0.0, C_NULL, C_NULL)
-const MODEL_LIBRARY_LOCK = ReentrantLock()
 
 # Called from the module's __init__: pointers from a previous process are never valid
 function reset_model_library!()
@@ -34,22 +32,20 @@ Return the address of entry point `name` (`:model_monaural` or `:model_binaural`
 model library, opening the library if needed and reopening it if the file has changed.
 """
 function model_function(name::Symbol)
-    lock(MODEL_LIBRARY_LOCK) do
-        lib = MODEL_LIBRARY
-        t = mtime(libgfc2026)
-        if lib.handle == C_NULL || t != lib.mtime
-            lib.handle == C_NULL || Libdl.dlclose(lib.handle)
-            lib.handle = C_NULL
-            handle = Libdl.dlopen(libgfc2026)
-            lib.monaural = Libdl.dlsym(handle, :model_monaural)
-            lib.binaural = Libdl.dlsym(handle, :model_binaural)
-            lib.handle = handle
-            lib.mtime = t
-        end
-        name === :model_monaural && return lib.monaural
-        name === :model_binaural && return lib.binaural
-        throw(ArgumentError("unknown model entry point: $name"))
+    lib = MODEL_LIBRARY
+    t = mtime(libgfc2026)
+    if lib.handle == C_NULL || t != lib.mtime
+        lib.handle == C_NULL || Libdl.dlclose(lib.handle)
+        lib.handle = C_NULL
+        handle = Libdl.dlopen(libgfc2026)
+        lib.monaural = Libdl.dlsym(handle, :model_monaural)
+        lib.binaural = Libdl.dlsym(handle, :model_binaural)
+        lib.handle = handle
+        lib.mtime = t
     end
+    name === :model_monaural && return lib.monaural
+    name === :model_binaural && return lib.binaural
+    throw(ArgumentError("unknown model entry point: $name"))
 end
 
 """
