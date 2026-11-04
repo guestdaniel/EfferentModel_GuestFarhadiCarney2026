@@ -190,14 +190,14 @@ end
 function update_ffGn!(mem::GFC2023_Mem{Vector{Vector{Float64}}})
     # Synthesize ffGn
     for i in 1:mem.n_chan
-        mem.ffGn_hsr[i] .= ffGn_native(
+        mem.ffGn_hsr[i] .= ffGn_fast(
             mem.len_total,
             1 / mem.fs,
             0.9,
             1.0,
             100.0,
         )
-        mem.ffGn_lsr[i] .= ffGn_native(
+        mem.ffGn_lsr[i] .= ffGn_fast(
             mem.len_total,
             1 / mem.fs,
             0.9,
@@ -211,14 +211,14 @@ function update_ffGn!(mem::GFC2023_Mem{Vector{Vector{Vector{Float64}}}})
     # Synthesize ffGn
     for e in 1:2
         for i in 1:mem.n_chan
-            mem.ffGn_hsr[e][i] .= ffGn_native(
+            mem.ffGn_hsr[e][i] .= ffGn_fast(
                 mem.len_total,
                 1 / mem.fs,
                 0.9,
                 1.0,
                 100.0,
             )
-            mem.ffGn_lsr[e][i] .= ffGn_native(
+            mem.ffGn_lsr[e][i] .= ffGn_fast(
                 mem.len_total,
                 1 / mem.fs,
                 0.9,
@@ -316,7 +316,7 @@ function get_ffGn_monaural(len_total, fractional, n_chan, fs=100e3)
     # Synthesize ffGn
     if fractional
         ffGn_hsr = map(1:n_chan) do _
-            ffGn_native(
+            ffGn_fast(
                 len_total,
                 1 / fs,
                 0.9,
@@ -325,7 +325,7 @@ function get_ffGn_monaural(len_total, fractional, n_chan, fs=100e3)
             )
         end
         ffGn_lsr = map(1:n_chan) do _
-            ffGn_native(
+            ffGn_fast(
                 len_total,
                 1 / fs,
                 0.9,
@@ -346,7 +346,7 @@ function get_ffGn_binaural(len_total, fractional, n_chan, fs=100e3)
     if fractional
         ffGn_hsr = map(1:2) do _
             map(1:n_chan) do _
-                ffGn_native(
+                ffGn_fast(
                     len_total,
                     1 / fs,
                     0.9,
@@ -357,7 +357,7 @@ function get_ffGn_binaural(len_total, fractional, n_chan, fs=100e3)
         end
         ffGn_lsr = map(1:2) do _
             map(1:n_chan) do _
-                ffGn_native(
+                ffGn_fast(
                     len_total,
                     1 / fs,
                     0.9,
@@ -592,7 +592,7 @@ function sim_gfc2023(
     # Synthesize ffGn
     if fractional
         ffGn_hsr = map(1:n_chan) do _
-            ffGn_native(
+            ffGn_fast(
                 len_total,
                 1 / fs,
                 0.9,
@@ -601,7 +601,7 @@ function sim_gfc2023(
             )
         end
         ffGn_lsr = map(1:n_chan) do _
-            ffGn_native(
+            ffGn_fast(
                 len_total,
                 1 / fs,
                 0.9,
