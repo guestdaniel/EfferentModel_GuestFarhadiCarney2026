@@ -131,3 +131,6 @@ The following correctness issues have been identified but not yet resolved:
 - **Keyword arguments are not passed to the 2014 reference model.** `sim_orig_dict` (`src/wrappers_orig.jl`) calls `sim_orig(args..., kwargs...)` with a comma instead of a semicolon. Passing any keyword argument (e.g., `species`) through `run_2014_vs_2023` raises a `MethodError`, so the regression tests can only compare against the reference model at its default settings.
 - **The "Binaural return types" test set checks nothing.** It contains no `@test` statements (`test/binaural.jl`), so it cannot fail.
 - **Possible uninitialized variable (latent).** In `initialize_ws1988_adaptation` (`deps/model/adaptation.c`), `vsat` is only assigned when `kslope >= 0`. With the current parameters `kslope` is always positive, so this does not occur in practice.
+
+# AI assistance
+Portions of this codebase have been developed with assistance from Claude Code (running Claude Opus 5.5, primarily).
